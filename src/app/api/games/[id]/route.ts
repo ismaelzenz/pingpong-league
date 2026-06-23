@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const matchday = await db.select({ weekStart: matchdays.weekStart }).from(matchdays).where(eq(matchdays.id, game.matchdayId)).then(r => r[0])
     const today = new Date().toISOString().split('T')[0]
-    if (matchday?.weekStart && matchday.weekStart > today) {
+    if (!matchday?.weekStart || matchday.weekStart > today) {
       return NextResponse.json({ error: 'Cannot enter result for a future matchday' }, { status: 400 })
     }
 

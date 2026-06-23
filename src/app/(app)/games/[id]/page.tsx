@@ -31,7 +31,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   const [homePlayer, awayPlayer, matchday] = await Promise.all([
     db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, game.homePlayerId)).then(r => r[0]),
     db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, game.awayPlayerId)).then(r => r[0]),
-    db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays).where(eq(matchdays.id, game.matchdayId)).then(r => r[0]),
+    db.select({ id: matchdays.id, number: matchdays.number, weekStart: matchdays.weekStart }).from(matchdays).where(eq(matchdays.id, game.matchdayId)).then(r => r[0]),
   ])
 
   const isParticipant = session.userId === game.homePlayerId || session.userId === game.awayPlayerId
