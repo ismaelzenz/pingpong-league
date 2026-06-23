@@ -42,14 +42,14 @@ export default async function MatchdaysPage() {
         <p className="text-muted-foreground">{tournament.name}</p>
       </div>
 
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         {allMatchdays.map(matchday => {
           const dayGames = allGames.filter(g => g.matchdayId === matchday.id)
           const confirmed = dayGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
           const pending = dayGames.filter(g => g.status === 'pending').length
 
           return (
-            <Link key={matchday.id} href={`/matchdays/${matchday.id}`}>
+            <Link key={matchday.id} href={`/matchdays/${matchday.id}`} className="block">
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
                 <CardContent className="py-4">
                   <div className="flex items-center justify-between gap-3">
