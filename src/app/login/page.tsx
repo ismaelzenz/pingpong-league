@@ -69,11 +69,6 @@ export default function LoginPage() {
                   Join the league
                 </Link>
               </p>
-              <p className="text-sm text-muted-foreground text-center">
-                <Link href="/forgot-password" className="hover:underline">
-                  Forgot password?
-                </Link>
-              </p>
             </CardFooter>
           </form>
         </Card>

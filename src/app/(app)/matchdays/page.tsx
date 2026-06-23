@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { tournaments, matchdays, games } from '@/lib/db/schema'
-import { eq, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
@@ -15,13 +15,18 @@ export default async function MatchdaysPage() {
   if (!session.userId) redirect('/login')
 
   const tournament = await db.select().from(tournaments)
-    .where(inArray(tournaments.status, ['active', 'finished']))
+    .where(eq(tournaments.status, 'active'))
     .orderBy(tournaments.createdAt)
     .limit(1)
     .then(r => r[0] ?? null)
 
   if (!tournament) {
-    return <div className="text-center py-24 text-muted-foreground">No active tournament yet.</div>
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+        <div className="text-5xl">🏓</div>
+        <p className="text-muted-foreground">No active tournament. Check back once one starts!</p>
+      </div>
+    )
   }
 
   const allMatchdays = await db.select().from(matchdays)
@@ -38,7 +43,7 @@ export default async function MatchdaysPage() {
         <p className="text-muted-foreground">{tournament.name}</p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {allMatchdays.map(matchday => {
           const dayGames = allGames.filter(g => g.matchdayId === matchday.id)
           const confirmed = dayGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length

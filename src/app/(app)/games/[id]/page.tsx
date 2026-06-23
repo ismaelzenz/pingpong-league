@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import GameResultForm from '@/components/GameResultForm'
+import AdminGameActions from '@/components/AdminGameActions'
 import { ChevronLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -37,7 +38,8 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   const isSubmitter = game.submittedBy === session.userId
   const canConfirm = game.status === 'result_entered' && isParticipant && !isSubmitter
   const canEnter = game.status === 'pending' && isParticipant
-  const canPostpone = (game.status === 'pending' || game.status === 'postponed') && isParticipant
+  const canPostpone = (game.status === 'pending' || game.status === 'postponed') && (isParticipant || session.isAdmin)
+  const canAdminAct = session.isAdmin && !['confirmed', 'forfeited'].includes(game.status)
 
   const config = statusConfig[game.status] ?? statusConfig.pending
 
@@ -141,6 +143,14 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
         <div className="text-center text-sm text-muted-foreground py-4">
           ✅ Result confirmed. The scoreboard has been updated.
         </div>
+      )}
+
+      {canAdminAct && (
+        <Card className="border-orange-200 bg-orange-50/50">
+          <CardContent className="pt-4">
+            <AdminGameActions gameId={game.id} isPostponed={game.status === 'postponed'} />
+          </CardContent>
+        </Card>
       )}
     </div>
   )

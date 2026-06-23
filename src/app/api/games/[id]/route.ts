@@ -65,6 +65,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updatedAt: new Date().toISOString(),
     }).where(eq(games.id, gameId))
 
+  } else if (action === 'forfeit') {
+    if (!session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+    if (['confirmed', 'forfeited'].includes(game.status)) {
+      return NextResponse.json({ error: 'Cannot forfeit a completed game' }, { status: 400 })
+    }
+    await db.update(games).set({
+      status: 'forfeited',
+      homeSets: 0,
+      awaySets: 0,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(games.id, gameId))
+
   } else {
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   }

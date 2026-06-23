@@ -31,10 +31,8 @@ interface Props {
 
 export default function GameCard({ game, currentUserId }: Props) {
   const config = statusConfig[game.status] ?? statusConfig.pending
-  const isHome = game.homePlayerId === currentUserId
-  const opponent = isHome ? game.awayPlayer : game.homePlayer
-  const myLabel = isHome ? 'Home' : 'Away'
   const hasResult = game.homeSets !== null && game.awaySets !== null
+  const isHome = game.homePlayerId === currentUserId
 
   return (
     <Link href={`/games/${game.id}`}>
@@ -43,16 +41,18 @@ export default function GameCard({ game, currentUserId }: Props) {
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <p className="font-medium text-sm truncate">
-                vs <span>{opponent?.name ?? '—'}</span>
+                <span className={game.homePlayerId === currentUserId ? 'text-primary' : ''}>{game.homePlayer?.name ?? '—'}</span>
+                <span className="text-muted-foreground font-normal"> vs </span>
+                <span className={game.awayPlayerId === currentUserId ? 'text-primary' : ''}>{game.awayPlayer?.name ?? '—'}</span>
               </p>
               <p className="text-xs text-muted-foreground">
-                {myLabel} · Matchday {game.matchday?.number ?? '?'}
+                Matchday {game.matchday?.number ?? '?'}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {hasResult && (
                 <span className="text-sm font-mono font-bold">
-                  {isHome ? game.homeSets : game.awaySets} – {isHome ? game.awaySets : game.homeSets}
+                  {game.homeSets} – {game.awaySets}
                 </span>
               )}
               <Badge variant="outline" className={`text-xs ${config.className}`}>

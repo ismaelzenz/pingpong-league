@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { tournaments } from '@/lib/db/schema'
-import { inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -14,13 +14,18 @@ export default async function ScoreboardPage() {
   if (!session.userId) redirect('/login')
 
   const tournament = await db.select().from(tournaments)
-    .where(inArray(tournaments.status, ['active', 'finished']))
+    .where(eq(tournaments.status, 'active'))
     .orderBy(tournaments.createdAt)
     .limit(1)
     .then(r => r[0] ?? null)
 
   if (!tournament) {
-    return <div className="text-center py-24 text-muted-foreground">No active tournament yet.</div>
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+        <div className="text-5xl">🏓</div>
+        <p className="text-muted-foreground">No active tournament. Check back once one starts!</p>
+      </div>
+    )
   }
 
   const scores = await computeScoreboard(tournament.id)

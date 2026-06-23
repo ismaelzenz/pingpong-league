@@ -52,7 +52,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {enriched.map(game => (
           <GameCard key={game.id} game={game} currentUserId={session.userId} />
         ))}

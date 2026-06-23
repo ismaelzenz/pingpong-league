@@ -72,6 +72,9 @@ async function main() {
     );
   `)
 
+  // Add new columns to existing tables (safe to re-run)
+  try { await client.execute('ALTER TABLE users ADD COLUMN avatar_color TEXT') } catch {}
+
   console.log('Database initialised:', process.env.TURSO_DATABASE_URL)
   client.close()
 }

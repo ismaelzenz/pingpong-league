@@ -1,13 +1,15 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { db } from '@/lib/db'
-import { tournaments, participants, users } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { tournaments, participants, users, matchdays, games } from '@/lib/db/schema'
+import { eq, and, lt, inArray } from 'drizzle-orm'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import AdminActions from '@/components/AdminActions'
 import CreateTournamentForm from '@/components/CreateTournamentForm'
+import DeleteTournamentButton from '@/components/DeleteTournamentButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +19,20 @@ export default async function AdminPage() {
 
   const allTournaments = await db.select().from(tournaments).orderBy(tournaments.createdAt)
   const activeTournament = allTournaments.find(t => t.status !== 'finished') ?? null
+
+  // Check for matchdays that have ended but still have unplayed games
+  const today = new Date().toISOString().split('T')[0]
+  let overdueMatchdays: { id: number; number: number; count: number }[] = []
+  if (activeTournament?.status === 'active') {
+    const pastMatchdays = await db.select({ id: matchdays.id, number: matchdays.number })
+      .from(matchdays)
+      .where(and(eq(matchdays.tournamentId, activeTournament.id), lt(matchdays.weekEnd, today)))
+    for (const md of pastMatchdays) {
+      const unplayed = await db.select().from(games)
+        .where(and(eq(games.matchdayId, md.id), inArray(games.status, ['pending', 'postponed'])))
+      if (unplayed.length > 0) overdueMatchdays.push({ id: md.id, number: md.number, count: unplayed.length })
+    }
+  }
 
   const participantsWithProfiles = activeTournament
     ? await db.select({ participant: participants, user: users })
@@ -32,6 +48,24 @@ export default async function AdminPage() {
         <h1 className="text-2xl font-bold">Admin Panel</h1>
         <p className="text-muted-foreground">Manage tournaments and participants</p>
       </div>
+
+      {overdueMatchdays.length > 0 && (
+        <Card className="border-yellow-300 bg-yellow-50">
+          <CardContent className="pt-4 pb-4 space-y-2">
+            <p className="text-sm font-semibold text-yellow-800">⚠️ Unplayed games from past matchdays</p>
+            <p className="text-xs text-yellow-700">The following matchdays have ended with games still pending. Go to each matchday to forfeit or reschedule individual games.</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {overdueMatchdays.map(md => (
+                <Link key={md.id} href={`/matchdays/${md.id}`}>
+                  <Badge variant="outline" className="border-yellow-400 text-yellow-800 hover:bg-yellow-100 cursor-pointer">
+                    Matchday {md.number} — {md.count} unplayed
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!activeTournament ? (
         <Card>
@@ -98,7 +132,10 @@ export default async function AdminPage() {
                 {allTournaments.filter(t => t.status === 'finished').map(t => (
                   <div key={t.id} className="flex items-center justify-between text-sm">
                     <span>{t.name}</span>
-                    <Badge variant="secondary">Finished</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">Finished</Badge>
+                      <DeleteTournamentButton tournamentId={t.id} name={t.name} />
+                    </div>
                   </div>
                 ))}
               </CardContent>

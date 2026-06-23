@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import ProfileEditForm from '@/components/ProfileEditForm'
+import ProfileColorForm from '@/components/ProfileColorForm'
+import ChangePasswordForm from '@/components/ChangePasswordForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,6 +55,7 @@ export default async function ProfilePage() {
     }
   }
 
+  const userRecord = await db.select({ avatarColor: users.avatarColor }).from(users).where(eq(users.id, session.userId)).then(r => r[0])
   const initials = session.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   return (
@@ -63,7 +66,7 @@ export default async function ProfilePage() {
         <CardContent className="pt-6">
           <div className="flex items-center gap-4 mb-6">
             <Avatar className="h-16 w-16">
-              <AvatarFallback className="text-xl">{initials}</AvatarFallback>
+              <AvatarFallback className="text-xl text-white" style={{ backgroundColor: userRecord?.avatarColor ?? undefined }}>{initials}</AvatarFallback>
             </Avatar>
             <div>
               <p className="text-xl font-bold">{session.name}</p>
@@ -71,7 +74,20 @@ export default async function ProfilePage() {
             </div>
           </div>
           <Separator className="mb-4" />
-          <ProfileEditForm currentName={session.name} />
+          <div className="space-y-6">
+            <ProfileEditForm currentName={session.name} />
+            <Separator />
+            <ProfileColorForm currentColor={userRecord?.avatarColor ?? null} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Change password</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm />
         </CardContent>
       </Card>
 
