@@ -66,6 +66,21 @@ export default function AdminActions({ tournamentId, status, participantCount }:
     setLoading(false)
   }
 
+  async function handleCancel() {
+    if (!confirm('Cancel this tournament? All registrations will be removed and this cannot be undone.')) return
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/tournaments/${tournamentId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Error')
+      toast.success('Tournament cancelled')
+      router.refresh()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error')
+    }
+    setLoading(false)
+  }
+
   if (status === 'registration') {
     return (
       <div className="space-y-3">
@@ -73,9 +88,14 @@ export default function AdminActions({ tournamentId, status, participantCount }:
           {participantCount} participant{participantCount !== 1 ? 's' : ''} registered.
           Once everyone is in, close registration and generate the schedule.
         </p>
-        <Button onClick={handleStart} disabled={loading || participantCount < 2}>
-          {loading ? 'Generating schedule…' : 'Close registration & start tournament'}
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={handleStart} disabled={loading || participantCount < 2}>
+            {loading ? 'Generating schedule…' : 'Close registration & start tournament'}
+          </Button>
+          <Button variant="ghost" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={handleCancel} disabled={loading}>
+            Cancel tournament
+          </Button>
+        </div>
       </div>
     )
   }

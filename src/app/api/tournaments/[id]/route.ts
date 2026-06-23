@@ -15,8 +15,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const tournament = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).then(r => r[0])
   if (!tournament) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (tournament.status !== 'finished') {
-    return NextResponse.json({ error: 'Only finished tournaments can be deleted' }, { status: 400 })
+  if (tournament.status === 'active') {
+    return NextResponse.json({ error: 'Cannot delete an active tournament — end it first' }, { status: 400 })
   }
 
   // Cascade delete in order: games → matchdays → participants → tournament
