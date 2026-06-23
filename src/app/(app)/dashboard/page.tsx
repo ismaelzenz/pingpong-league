@@ -5,7 +5,8 @@ import { db } from '@/lib/db'
 import { tournaments, participants, games, users, matchdays } from '@/lib/db/schema'
 import { eq, or, inArray, and } from 'drizzle-orm'
 import { buttonVariants } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import JoinTournamentButton from '@/components/JoinTournamentButton'
 import GameCard from '@/components/GameCard'
@@ -44,9 +45,12 @@ export default async function DashboardPage() {
     .where(and(eq(participants.tournamentId, tournament.id), eq(participants.userId, session.userId)))
     .then(r => r[0] ?? null)
 
-  const participantCount = await db.select().from(participants)
+  const enrolledPlayers = await db
+    .select({ id: users.id, name: users.name, avatarColor: users.avatarColor })
+    .from(participants)
+    .leftJoin(users, eq(users.id, participants.userId))
     .where(eq(participants.tournamentId, tournament.id))
-    .then(r => r.length)
+    .orderBy(participants.joinedAt)
 
   if (tournament.status === 'registration') {
     return (
@@ -58,11 +62,12 @@ export default async function DashboardPage() {
           </div>
           <Badge variant="outline" className="text-yellow-600 border-yellow-600">Registration open</Badge>
         </div>
+
         <Card>
           <CardContent className="pt-6 text-center space-y-4">
             <div className="text-5xl">📋</div>
             <div>
-              <p className="text-lg font-medium">{participantCount} player{participantCount !== 1 ? 's' : ''} registered</p>
+              <p className="text-lg font-medium">{enrolledPlayers.length} player{enrolledPlayers.length !== 1 ? 's' : ''} registered</p>
               <p className="text-muted-foreground text-sm mt-1">
                 The tournament starts once the admin closes registration and generates the schedule.
               </p>
@@ -76,6 +81,64 @@ export default async function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Players signed up</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {enrolledPlayers.length === 0 && (
+                <p className="text-sm text-muted-foreground">No players yet.</p>
+              )}
+              {enrolledPlayers.map((player, i) => {
+                const initials = (player.name ?? '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                const isMe = player.id === session.userId
+                return (
+                  <div key={player.id} className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground w-4">{i + 1}</span>
+                    <Avatar className="h-7 w-7">
+                      <AvatarFallback className="text-xs text-white" style={{ backgroundColor: player.avatarColor ?? undefined }}>
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className={`text-sm font-medium ${isMe ? 'text-primary' : ''}`}>
+                      {player.name}{isMe && ' (you)'}
+                    </span>
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">How it works</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex gap-2">
+                <span>🔄</span>
+                <span><strong className="text-foreground">Double round-robin</strong> — you play everyone twice, once as home and once as away.</span>
+              </div>
+              <div className="flex gap-2">
+                <span>🏓</span>
+                <span><strong className="text-foreground">Best of 3 sets</strong> — first to win 2 sets wins the match.</span>
+              </div>
+              <div className="flex gap-2">
+                <span>📅</span>
+                <span><strong className="text-foreground">1 game per week</strong> — each matchday covers one week.</span>
+              </div>
+              <div className="flex gap-2">
+                <span>🏆</span>
+                <span><strong className="text-foreground">Scoring</strong> — 1 point per set won, +1 bonus point for winning the match. Win 2–0: 3 pts. Win 2–1: 3 pts, opponent gets 1 pt.</span>
+              </div>
+              <div className="flex gap-2">
+                <span>✅</span>
+                <span><strong className="text-foreground">Results</strong> — one player enters the score, the opponent confirms it.</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
