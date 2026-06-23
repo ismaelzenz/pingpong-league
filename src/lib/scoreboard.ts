@@ -6,6 +6,7 @@ export interface ScoreboardEntry {
   userId: number
   name: string
   email: string
+  avatarColor: string | null
   points: number
   setsWon: number
   setsLost: number
@@ -15,7 +16,7 @@ export interface ScoreboardEntry {
 }
 
 export async function computeScoreboard(tournamentId: number): Promise<ScoreboardEntry[]> {
-  const playerList = await db.select({ userId: participants.userId, name: users.name, email: users.email })
+  const playerList = await db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
     .from(participants)
     .leftJoin(users, eq(users.id, participants.userId))
     .where(eq(participants.tournamentId, tournamentId))
@@ -52,6 +53,7 @@ export async function computeScoreboard(tournamentId: number): Promise<Scoreboar
       userId: p.userId!,
       name: p.name!,
       email: p.email!,
+      avatarColor: p.avatarColor ?? null,
       points,
       setsWon,
       setsLost,

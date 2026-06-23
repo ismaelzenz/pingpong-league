@@ -5,7 +5,6 @@ import { db } from '@/lib/db'
 import { tournaments, matchdays, games } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 
 export const dynamic = 'force-dynamic'
@@ -48,19 +47,15 @@ export default async function MatchdaysPage() {
           const dayGames = allGames.filter(g => g.matchdayId === matchday.id)
           const confirmed = dayGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
           const pending = dayGames.filter(g => g.status === 'pending').length
-          const hasMyGame = dayGames.some(g => g.homePlayerId === session.userId || g.awayPlayerId === session.userId)
 
           return (
             <Link key={matchday.id} href={`/matchdays/${matchday.id}`}>
               <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="pt-4 pb-3">
+                <CardContent className="py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">Matchday {matchday.number}</h3>
-                        {hasMyGame && (
-                          <Badge variant="outline" className="text-xs text-primary border-primary">You play</Badge>
-                        )}
                       </div>
                       {matchday.weekStart && matchday.weekEnd && (
                         <p className="text-xs text-muted-foreground mt-0.5">

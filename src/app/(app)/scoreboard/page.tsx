@@ -65,7 +65,7 @@ export default async function ScoreboardPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-7 w-7">
-                            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                            <AvatarFallback className="text-xs text-white" style={{ backgroundColor: entry.avatarColor ?? undefined }}>{initials}</AvatarFallback>
                           </Avatar>
                           <span className={`font-medium ${isMe ? 'text-primary' : ''}`}>
                             {entry.name}{isMe && ' (you)'}
