@@ -37,7 +37,9 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   const isParticipant = session.userId === game.homePlayerId || session.userId === game.awayPlayerId
   const isSubmitter = game.submittedBy === session.userId
   const canConfirm = game.status === 'result_entered' && isParticipant && !isSubmitter
-  const canEnter = game.status === 'pending' && isParticipant
+  const today = new Date().toISOString().split('T')[0]
+  const matchdayStarted = !matchday?.weekStart || matchday.weekStart <= today
+  const canEnter = game.status === 'pending' && isParticipant && matchdayStarted
   const canPostpone = (game.status === 'pending' || game.status === 'postponed') && (isParticipant || session.isAdmin)
   const canAdminAct = session.isAdmin && !['confirmed', 'forfeited'].includes(game.status)
 
@@ -96,6 +98,14 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
 
       {isParticipant && (
         <>
+          {game.status === 'pending' && !matchdayStarted && (
+            <Card className="border-blue-200 bg-blue-50/50">
+              <CardContent className="pt-4 pb-4 text-sm text-blue-800">
+                📅 This game is scheduled for a future matchday. You'll be able to enter the result once the matchday starts.
+              </CardContent>
+            </Card>
+          )}
+
           {canEnter && (
             <Card>
               <CardHeader className="pb-3">

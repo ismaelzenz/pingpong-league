@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { games } from '@/lib/db/schema'
+import { games, matchdays } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
 import { eq } from 'drizzle-orm'
 
@@ -16,13 +16,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!game) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const isParticipant = session.userId === game.homePlayerId || session.userId === game.awayPlayerId
-  if (!isParticipant) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isParticipant && !session.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { action, homeSets, awaySets } = body
 
   if (action === 'enter') {
     if (game.status !== 'pending') return NextResponse.json({ error: 'Game not pending' }, { status: 400 })
     if (!isValidResult(homeSets, awaySets)) return NextResponse.json({ error: 'Invalid result' }, { status: 400 })
+
+    const matchday = await db.select({ weekStart: matchdays.weekStart }).from(matchdays).where(eq(matchdays.id, game.matchdayId)).then(r => r[0])
+    const today = new Date().toISOString().split('T')[0]
+    if (matchday?.weekStart && matchday.weekStart > today) {
+      return NextResponse.json({ error: 'Cannot enter result for a future matchday' }, { status: 400 })
+    }
 
     await db.update(games).set({
       homeSets,

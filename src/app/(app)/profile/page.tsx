@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { db } from '@/lib/db'
-import { tournaments, games, users } from '@/lib/db/schema'
+import { tournaments, games, users, matchdays } from '@/lib/db/schema'
 import { eq, inArray, or, and } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -47,7 +47,6 @@ export default async function ProfilePage() {
   const opponentMap = Object.fromEntries(opponents.map(o => [o.id, o.name]))
 
   const matchdayNums: Record<number, number> = {}
-  const { matchdays } = await import('@/lib/db/schema')
   for (const g of recentGames) {
     if (!matchdayNums[g.matchdayId]) {
       const md = await db.select({ number: matchdays.number }).from(matchdays).where(eq(matchdays.id, g.matchdayId)).then(r => r[0])
