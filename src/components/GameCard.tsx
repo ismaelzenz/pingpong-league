@@ -35,7 +35,7 @@ export default function GameCard({ game, currentUserId }: Props) {
   const isHome = game.homePlayerId === currentUserId
 
   return (
-    <Link href={`/games/${game.id}`}>
+    <Link href={`/games/${game.id}`} className="block">
       <Card className="hover:shadow-md transition-shadow cursor-pointer">
         <CardContent className="pt-4 pb-3">
           <div className="flex items-center justify-between gap-2">
