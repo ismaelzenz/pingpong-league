@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import AdminActions from '@/components/AdminActions'
 import CreateTournamentForm from '@/components/CreateTournamentForm'
 import DeleteTournamentButton from '@/components/DeleteTournamentButton'
+import AdminResetPasswordButton from '@/components/AdminResetPasswordButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -115,6 +116,7 @@ export default async function AdminPage() {
                     <div>
                       <p className="font-medium">{user?.name}</p>
                       <p className="text-muted-foreground text-xs">{user?.email}</p>
+                      {user?.email && <AdminResetPasswordButton email={user.email} name={user.name ?? ''} />}
                     </div>
                     <Badge variant="outline" className="text-xs">#{i + 1}</Badge>
                   </div>
