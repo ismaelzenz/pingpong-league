@@ -17,6 +17,7 @@ interface Props {
   name: string
   email: string
   isAdmin: boolean
+  avatarColor: string | null
 }
 
 const navLinks = [
@@ -25,7 +26,7 @@ const navLinks = [
   { href: '/matchdays', label: 'Matchdays' },
 ]
 
-export default function AppNav({ name, email, isAdmin }: Props) {
+export default function AppNav({ name, email, isAdmin, avatarColor }: Props) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -84,7 +85,7 @@ export default function AppNav({ name, email, isAdmin }: Props) {
         <DropdownMenu>
           <DropdownMenuTrigger className="relative h-8 w-8 rounded-full cursor-pointer">
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+              <AvatarFallback className="text-xs text-white" style={{ backgroundColor: avatarColor ?? undefined }}>{initials}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
