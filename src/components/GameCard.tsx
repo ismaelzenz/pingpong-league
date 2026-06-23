@@ -32,7 +32,6 @@ interface Props {
 export default function GameCard({ game, currentUserId }: Props) {
   const config = statusConfig[game.status] ?? statusConfig.pending
   const hasResult = game.homeSets !== null && game.awaySets !== null
-  const isHome = game.homePlayerId === currentUserId
 
   return (
     <Link href={`/games/${game.id}`} className="block">
