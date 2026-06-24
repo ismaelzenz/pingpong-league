@@ -12,6 +12,7 @@ import CreateTournamentForm from '@/components/CreateTournamentForm'
 import DeleteTournamentButton from '@/components/DeleteTournamentButton'
 import AdminResetPasswordButton from '@/components/AdminResetPasswordButton'
 import UnenrollButton from '@/components/UnenrollButton'
+import EliminatePlayerButton from '@/components/EliminatePlayerButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -122,6 +123,9 @@ export default async function AdminPage() {
                     <div className="flex items-center gap-2">
                       {activeTournament.status === 'registration' && (
                         <UnenrollButton participantId={participant.id} playerName={user?.name ?? 'this player'} />
+                      )}
+                      {activeTournament.status === 'active' && (
+                        <EliminatePlayerButton participantId={participant.id} playerName={user?.name ?? 'this player'} />
                       )}
                       <Badge variant="outline" className="text-xs">#{i + 1}</Badge>
                     </div>
