@@ -82,7 +82,7 @@ export default function GameResultForm({ gameId, mode, isPostponed }: Props) {
 
   if (mode === 'postpone') {
     return (
-      <Button variant={isPostponed ? 'outline' : 'secondary'} onClick={handlePostpone} disabled={loading}>
+      <Button variant={isPostponed ? 'outline' : 'secondary'} onClick={handlePostpone} disabled={loading} className="w-full">
         {loading ? 'Updating…' : isPostponed ? 'Unpostpone game' : 'Mark as postponed'}
       </Button>
     )

@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import JoinTournamentButton from '@/components/JoinTournamentButton'
 import GameCard from '@/components/GameCard'
+import HowItWorks from '@/components/HowItWorks'
 import { computeScoreboard } from '@/lib/scoreboard'
 
 export const dynamic = 'force-dynamic'
@@ -111,33 +112,7 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">How it works</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <div className="flex gap-2">
-                <span>🔄</span>
-                <span><strong className="text-foreground">Double round-robin</strong> — you play everyone twice, once as home and once as away.</span>
-              </div>
-              <div className="flex gap-2">
-                <span>🏓</span>
-                <span><strong className="text-foreground">Best of 3 sets</strong> — first to win 2 sets wins the match.</span>
-              </div>
-              <div className="flex gap-2">
-                <span>📅</span>
-                <span><strong className="text-foreground">1 game per week</strong> — each matchday covers one week.</span>
-              </div>
-              <div className="flex gap-2">
-                <span>🏆</span>
-                <span><strong className="text-foreground">Scoring</strong> — 1 point per set won, +1 bonus point for winning the match. Win 2–0: 3 pts. Win 2–1: 3 pts, opponent gets 1 pt.</span>
-              </div>
-              <div className="flex gap-2">
-                <span>✅</span>
-                <span><strong className="text-foreground">Results</strong> — one player enters the score, the opponent confirms it.</span>
-              </div>
-            </CardContent>
-          </Card>
+          <HowItWorks />
         </div>
       </div>
     )
@@ -234,6 +209,8 @@ export default async function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      <HowItWorks collapsible />
     </div>
   )
 }

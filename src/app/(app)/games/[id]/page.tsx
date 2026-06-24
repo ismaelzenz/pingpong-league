@@ -6,6 +6,7 @@ import { games, users, matchdays } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import GameResultForm from '@/components/GameResultForm'
 import AdminGameActions from '@/components/AdminGameActions'
 import { ChevronLeft } from 'lucide-react'
@@ -29,8 +30,8 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   if (!game) notFound()
 
   const [homePlayer, awayPlayer, matchday] = await Promise.all([
-    db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, game.homePlayerId)).then(r => r[0]),
-    db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, game.awayPlayerId)).then(r => r[0]),
+    db.select({ id: users.id, name: users.name, avatarColor: users.avatarColor }).from(users).where(eq(users.id, game.homePlayerId)).then(r => r[0]),
+    db.select({ id: users.id, name: users.name, avatarColor: users.avatarColor }).from(users).where(eq(users.id, game.awayPlayerId)).then(r => r[0]),
     db.select({ id: matchdays.id, number: matchdays.number, weekStart: matchdays.weekStart }).from(matchdays).where(eq(matchdays.id, game.matchdayId)).then(r => r[0]),
   ])
 
@@ -44,6 +45,9 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   const canAdminAct = session.isAdmin && !['confirmed', 'forfeited'].includes(game.status)
 
   const config = statusConfig[game.status] ?? statusConfig.pending
+
+  const initials = (name?: string) =>
+    (name ?? '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
@@ -64,13 +68,20 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-around text-center gap-4">
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground mb-1">Home</p>
-              <p className={`font-bold text-lg ${homePlayer?.id === session.userId ? 'text-primary' : ''}`}>
-                {homePlayer?.name ?? '—'}{homePlayer?.id === session.userId && ' (you)'}
-              </p>
+            <div className="flex-1 flex flex-col items-center gap-2">
+              <Avatar className="h-14 w-14">
+                <AvatarFallback className="text-base text-white" style={{ backgroundColor: homePlayer?.avatarColor ?? undefined }}>
+                  {initials(homePlayer?.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm text-muted-foreground">Home</p>
+                <p className={`font-bold text-lg ${homePlayer?.id === session.userId ? 'text-primary' : ''}`}>
+                  {homePlayer?.name ?? '—'}{homePlayer?.id === session.userId && ' (you)'}
+                </p>
+              </div>
             </div>
-            <div className="text-center px-4">
+            <div className="text-center px-2">
               {game.homeSets !== null && game.awaySets !== null ? (
                 <div className="flex items-center gap-3">
                   <span className={`text-4xl font-black ${game.homeSets > game.awaySets ? 'text-green-600' : game.homeSets < game.awaySets ? 'text-red-500' : ''}`}>
@@ -86,11 +97,18 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
               )}
               {matchday && <p className="text-xs text-muted-foreground mt-1">Matchday {matchday.number}</p>}
             </div>
-            <div className="flex-1">
-              <p className="text-sm text-muted-foreground mb-1">Away</p>
-              <p className={`font-bold text-lg ${awayPlayer?.id === session.userId ? 'text-primary' : ''}`}>
-                {awayPlayer?.name ?? '—'}{awayPlayer?.id === session.userId && ' (you)'}
-              </p>
+            <div className="flex-1 flex flex-col items-center gap-2">
+              <Avatar className="h-14 w-14">
+                <AvatarFallback className="text-base text-white" style={{ backgroundColor: awayPlayer?.avatarColor ?? undefined }}>
+                  {initials(awayPlayer?.name)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm text-muted-foreground">Away</p>
+                <p className={`font-bold text-lg ${awayPlayer?.id === session.userId ? 'text-primary' : ''}`}>
+                  {awayPlayer?.name ?? '—'}{awayPlayer?.id === session.userId && ' (you)'}
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -101,7 +119,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
           {game.status === 'pending' && !matchdayStarted && (
             <Card className="border-blue-200 bg-blue-50/50">
               <CardContent className="pt-4 pb-4 text-sm text-blue-800">
-                📅 This game is scheduled for a future matchday. You'll be able to enter the result once the matchday starts.
+                📅 This game is scheduled for a future matchday. You&apos;ll be able to enter the result once the matchday starts.
               </CardContent>
             </Card>
           )}
@@ -141,7 +159,8 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
 
           {canPostpone && (
             <Card>
-              <CardContent className="pt-4">
+              <CardContent className="pt-4 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Game actions</p>
                 <GameResultForm gameId={game.id} mode="postpone" isPostponed={game.status === 'postponed'} />
               </CardContent>
             </Card>

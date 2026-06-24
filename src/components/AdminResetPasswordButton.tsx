@@ -53,9 +53,8 @@ export default function AdminResetPasswordButton({ email, name }: { email: strin
 
   return (
     <Button
-      size="sm"
-      variant="ghost"
-      className="text-xs text-muted-foreground hover:text-foreground"
+      variant="link"
+      className="h-auto p-0 mt-0.5 text-xs font-normal text-muted-foreground hover:text-foreground"
       disabled={loading}
       onClick={handleGenerate}
     >

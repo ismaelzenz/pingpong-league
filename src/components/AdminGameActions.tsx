@@ -35,22 +35,22 @@ export default function AdminGameActions({ gameId, isPostponed }: Props) {
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Admin actions</p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2">
         <Button
           variant="outline"
-          size="sm"
           disabled={loading}
           onClick={() => callAction('postpone')}
+          className="flex-1"
         >
           {isPostponed ? 'Mark as pending' : 'Postpone'}
         </Button>
         <Button
           variant="destructive"
-          size="sm"
           disabled={loading}
           onClick={() => {
             if (confirm('Forfeit this game? Sets will be recorded as 0–0.')) callAction('forfeit')
           }}
+          className="flex-1"
         >
           Forfeit
         </Button>
