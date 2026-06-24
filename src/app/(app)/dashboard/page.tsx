@@ -202,12 +202,12 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 flex flex-col">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Top standings</h2>
             <Link href="/scoreboard" className="text-sm text-primary hover:underline">Full table</Link>
           </div>
-          <Card>
+          <Card className="flex-1">
             <CardContent className="pt-4 p-0">
               <table className="w-full text-sm">
                 <thead>
