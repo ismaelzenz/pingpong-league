@@ -135,14 +135,24 @@ export default async function DashboardPage() {
       or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
       inArray(games.status, ['pending', 'result_entered', 'postponed'])
     ))
-    .limit(5)
 
   // Enrich with away player names
   const enrichedGames = await Promise.all(myPendingGames.map(async row => {
     const awayPlayer = await db.select({ id: users.id, name: users.name, email: users.email })
       .from(users).where(eq(users.id, row.game.awayPlayerId)).then(r => r[0])
-    return { ...row.game, homePlayer: row.homePlayer, awayPlayer, matchday: row.matchday }
+    return { ...row.game, homePlayer: row.homePlayer, awayPlayer, matchday: row.matchday, weekStart: row.matchday?.weekStart ?? null }
   }))
+
+  // A pending game whose matchday week has already started is overdue — a "catch-up"
+  // game. This is how a mid-season newcomer's missed past games surface for them.
+  const today = new Date().toISOString().split('T')[0]
+  const catchUpGames = enrichedGames
+    .filter(g => g.weekStart && g.weekStart <= today)
+    .sort((a, b) => (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0))
+  const upcomingGames = enrichedGames
+    .filter(g => !g.weekStart || g.weekStart > today)
+    .sort((a, b) => (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0))
+    .slice(0, 5)
 
   const scores = await computeScoreboard(tournament.id)
 
@@ -156,20 +166,37 @@ export default async function DashboardPage() {
         <Badge className="bg-green-600">Active</Badge>
       </div>
 
+      {catchUpGames.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-yellow-700">⏳ Catch-up games</h2>
+            <Badge variant="outline" className="border-yellow-400 text-yellow-700">{catchUpGames.length}</Badge>
+          </div>
+          <p className="text-sm text-muted-foreground -mt-1">
+            These are from matchdays that have already started. Play them to catch up.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {catchUpGames.map(game => (
+              <GameCard key={game.id} game={game} currentUserId={session.userId} />
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">My upcoming games</h2>
             <Link href="/matchdays" className="text-sm text-primary hover:underline">View all</Link>
           </div>
-          {enrichedGames.length > 0 ? (
-            enrichedGames.map(game => (
+          {upcomingGames.length > 0 ? (
+            upcomingGames.map(game => (
               <GameCard key={game.id} game={game} currentUserId={session.userId} />
             ))
           ) : (
             <Card>
               <CardContent className="pt-6 text-center text-muted-foreground text-sm py-8">
-                No pending games — you&apos;re all caught up!
+                No upcoming games scheduled.
               </CardContent>
             </Card>
           )}
@@ -199,7 +226,7 @@ export default async function DashboardPage() {
                       <td className="px-4 py-2.5 font-medium truncate max-w-[140px]">
                         {entry.userId === session.userId
                           ? <span className="text-primary">{entry.name} (you)</span>
-                          : entry.name}
+                          : <PlayerLink userId={entry.userId} currentUserId={session.userId} className="hover:underline">{entry.name}</PlayerLink>}
                       </td>
                       <td className="px-4 py-2.5 text-right font-bold">{entry.points}</td>
                       <td className="px-4 py-2.5 text-right text-green-600">{entry.victories}</td>

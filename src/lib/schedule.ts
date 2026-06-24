@@ -44,6 +44,52 @@ export function generateSchedule(playerIds: number[]): ScheduledMatchday[] {
   return result
 }
 
+export interface DistributedGame {
+  matchdayId: number
+  home: number
+  away: number
+}
+
+/**
+ * Build the games for a player added after the tournament has started.
+ *
+ * The league is a double round-robin, so the new player must play every existing
+ * player twice (once home, once away). We graft these games onto the matchdays that
+ * already exist rather than regenerating the schedule (which would wipe played games).
+ *
+ * Leg-1 games (new player at home) fill the earliest matchdays; leg-2 games fill the
+ * later ones — mirroring how the original two legs are laid out. Games that land in a
+ * matchday whose week has already started are "catch-up" games; the rest are upcoming.
+ *
+ * `matchdayIds` must be ordered by matchday number. When there are fewer matchdays than
+ * games (an even original roster), the final games wrap onto the first matchdays, so the
+ * new player plays twice on those days — an accepted trade-off for not rescheduling.
+ */
+export function distributeNewPlayerGames(
+  newPlayerId: number,
+  opponentIds: number[],
+  matchdayIds: number[],
+): DistributedGame[] {
+  if (matchdayIds.length === 0 || opponentIds.length === 0) return []
+
+  const opps = [...opponentIds]
+  for (let i = opps.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[opps[i], opps[j]] = [opps[j], opps[i]]
+  }
+
+  const pairings: { home: number; away: number }[] = []
+  for (const opp of opps) pairings.push({ home: newPlayerId, away: opp }) // leg 1
+  for (const opp of opps) pairings.push({ home: opp, away: newPlayerId }) // leg 2
+
+  const T = matchdayIds.length
+  return pairings.map((pr, i) => ({
+    matchdayId: matchdayIds[i % T],
+    home: pr.home,
+    away: pr.away,
+  }))
+}
+
 function roundRobin(players: number[]): [number, number][][] {
   const n = players.length
   const rounds: [number, number][][] = []

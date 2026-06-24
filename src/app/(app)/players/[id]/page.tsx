@@ -80,10 +80,32 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     }
   }).reverse() // most recent first (confirmedAt asc → reverse)
 
-  // Head-to-head = the subset of games against the current user.
+  // Head-to-head = the subset of finished games against the current user.
   const h2h = results.filter(r => r.opponentId === session.userId)
   const playerWins = h2h.filter(r => r.won).length
   const myWins = h2h.length - playerWins
+
+  // Scheduled games between the two of you that haven't been played yet.
+  const upcomingH2H = tournament
+    ? await db.select({ id: games.id, matchdayId: games.matchdayId, status: games.status })
+        .from(games)
+        .where(and(
+          eq(games.tournamentId, tournament.id),
+          inArray(games.status, ['pending', 'result_entered', 'postponed']),
+          or(
+            and(eq(games.homePlayerId, playerId), eq(games.awayPlayerId, session.userId)),
+            and(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, playerId)),
+          ),
+        ))
+        .orderBy(games.matchdayId)
+    : []
+
+  // Resolve matchday numbers for any upcoming games not already in the map.
+  const missingMdIds = [...new Set(upcomingH2H.map(g => g.matchdayId))].filter(mid => !(mid in matchdayMap))
+  if (missingMdIds.length) {
+    const extra = await db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays).where(inArray(matchdays.id, missingMdIds))
+    for (const m of extra) matchdayMap[m.id] = m.number
+  }
 
   const initials = player.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
@@ -168,44 +190,68 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           <CardTitle className="text-base">Head-to-head vs you</CardTitle>
         </CardHeader>
         <CardContent>
-          {h2h.length === 0 ? (
+          {h2h.length === 0 && upcomingH2H.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-2">
-              You haven&apos;t played each other yet.
+              You haven&apos;t played each other yet, and no games are scheduled.
             </p>
           ) : (
             <>
-              <div className="flex items-center justify-center gap-6 mb-4">
-                <div className="text-center">
-                  <p className="text-3xl font-black text-green-600">{myWins}</p>
-                  <p className="text-xs text-muted-foreground">You</p>
-                </div>
-                <span className="text-muted-foreground text-lg">–</span>
-                <div className="text-center">
-                  <p className="text-3xl font-black text-red-500">{playerWins}</p>
-                  <p className="text-xs text-muted-foreground">{player.name.split(' ')[0]}</p>
-                </div>
-              </div>
-              <Separator className="mb-3" />
-              <div className="space-y-2">
-                {h2h.map(r => {
-                  // `won` is from the viewed player's perspective; flip it for you.
-                  const youWon = !r.forfeited && r.oppSets > r.theirSets
-                  return (
-                    <Link key={r.gameId} href={`/games/${r.gameId}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${youWon ? 'bg-green-500' : 'bg-red-500'}`}>
-                          {youWon ? 'W' : 'L'}
-                        </span>
-                        <span className="text-muted-foreground">{r.forfeited ? 'Forfeit' : 'Result'}</span>
-                      </div>
-                      <div className="flex items-center gap-3 text-muted-foreground">
-                        <span className="font-mono font-bold text-foreground">{r.oppSets} – {r.theirSets}</span>
-                        <span className="text-xs">MD {r.matchdayNumber}</span>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
+              {h2h.length > 0 && (
+                <>
+                  <div className="flex items-center justify-center gap-6 mb-4">
+                    <div className="text-center">
+                      <p className="text-3xl font-black text-green-600">{myWins}</p>
+                      <p className="text-xs text-muted-foreground">You</p>
+                    </div>
+                    <span className="text-muted-foreground text-lg">–</span>
+                    <div className="text-center">
+                      <p className="text-3xl font-black text-red-500">{playerWins}</p>
+                      <p className="text-xs text-muted-foreground">{player.name.split(' ')[0]}</p>
+                    </div>
+                  </div>
+                  <Separator className="mb-3" />
+                  <div className="space-y-2">
+                    {h2h.map(r => {
+                      // `won` is from the viewed player's perspective; flip it for you.
+                      const youWon = !r.forfeited && r.oppSets > r.theirSets
+                      return (
+                        <Link key={r.gameId} href={`/games/${r.gameId}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${youWon ? 'bg-green-500' : 'bg-red-500'}`}>
+                              {youWon ? 'W' : 'L'}
+                            </span>
+                            <span className="text-muted-foreground">{r.forfeited ? 'Forfeit' : 'Result'}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            <span className="font-mono font-bold text-foreground">{r.oppSets} – {r.theirSets}</span>
+                            <span className="text-xs">MD {r.matchdayNumber}</span>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {upcomingH2H.length > 0 && (
+                <>
+                  {h2h.length > 0 && <Separator className="my-3" />}
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Upcoming</p>
+                  <div className="space-y-2">
+                    {upcomingH2H.map(g => (
+                      <Link key={g.id} href={`/games/${g.id}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs bg-muted text-muted-foreground">📅</span>
+                          <span className="text-muted-foreground">
+                            {g.status === 'result_entered' ? 'Awaiting confirmation' : g.status === 'postponed' ? 'Postponed' : 'Scheduled'}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">MD {matchdayMap[g.matchdayId] ?? '?'}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           )}
         </CardContent>

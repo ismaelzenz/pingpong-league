@@ -2,9 +2,8 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { db } from '@/lib/db'
-import { matchdays, games, users } from '@/lib/db/schema'
+import { matchdays, games, users, participants } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import GameCard from '@/components/GameCard'
 import { format } from 'date-fns'
@@ -32,6 +31,15 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
 
   const confirmed = dayGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
 
+  // Players enrolled in the tournament who have no game this matchday are on a bye
+  // (this is how odd player counts are handled — one or more players sit out each round).
+  const roster = await db.select({ id: users.id, name: users.name })
+    .from(participants)
+    .leftJoin(users, eq(users.id, participants.userId))
+    .where(eq(participants.tournamentId, matchday.tournamentId))
+  const playingIds = new Set(dayGames.flatMap(g => [g.homePlayerId, g.awayPlayerId]))
+  const byePlayers = roster.filter(p => p.id != null && !playingIds.has(p.id))
+
   return (
     <div className="space-y-6">
       <div>
@@ -57,6 +65,13 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
           <GameCard key={game.id} game={game} currentUserId={session.userId} />
         ))}
       </div>
+
+      {byePlayers.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium">Bye this matchday:</span>{' '}
+          {byePlayers.map(p => p.name).join(', ')}
+        </p>
+      )}
     </div>
   )
 }

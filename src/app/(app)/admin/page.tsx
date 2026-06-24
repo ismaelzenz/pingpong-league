@@ -13,6 +13,7 @@ import DeleteTournamentButton from '@/components/DeleteTournamentButton'
 import AdminResetPasswordButton from '@/components/AdminResetPasswordButton'
 import UnenrollButton from '@/components/UnenrollButton'
 import EliminatePlayerButton from '@/components/EliminatePlayerButton'
+import AddPlayerForm from '@/components/AddPlayerForm'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,7 +26,7 @@ export default async function AdminPage() {
 
   // Check for matchdays that have ended but still have unplayed games
   const today = new Date().toISOString().split('T')[0]
-  let overdueMatchdays: { id: number; number: number; count: number }[] = []
+  const overdueMatchdays: { id: number; number: number; count: number }[] = []
   if (activeTournament?.status === 'active') {
     const pastMatchdays = await db.select({ id: matchdays.id, number: matchdays.number })
       .from(matchdays)
@@ -44,6 +45,15 @@ export default async function AdminPage() {
         .where(eq(participants.tournamentId, activeTournament.id))
         .orderBy(participants.joinedAt)
     : []
+
+  // Users with an account who aren't yet in the active tournament — eligible to be
+  // added mid-season by an admin.
+  let eligibleUsers: { id: number; name: string; email: string }[] = []
+  if (activeTournament?.status === 'active') {
+    const enrolledIds = new Set(participantsWithProfiles.map(p => p.participant.userId))
+    const allUsers = await db.select({ id: users.id, name: users.name, email: users.email }).from(users)
+    eligibleUsers = allUsers.filter(u => !enrolledIds.has(u.id)).sort((a, b) => a.name.localeCompare(b.name))
+  }
 
   return (
     <div className="space-y-6">
@@ -102,6 +112,21 @@ export default async function AdminPage() {
               />
             </CardContent>
           </Card>
+
+          {activeTournament.status === 'active' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Add a player mid-season</CardTitle>
+                <CardDescription>
+                  Adds the player against everyone (home &amp; away). Past matchdays become catch-up
+                  games; the rest are slotted into upcoming matchdays.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AddPlayerForm tournamentId={activeTournament.id} eligibleUsers={eligibleUsers} />
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
