@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import PlayerLink from '@/components/PlayerLink'
 import GameResultForm from '@/components/GameResultForm'
 import AdminGameActions from '@/components/AdminGameActions'
 import { ChevronLeft } from 'lucide-react'
@@ -68,7 +69,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-around text-center gap-4">
-            <div className="flex-1 flex flex-col items-center gap-2">
+            <PlayerLink userId={game.homePlayerId} currentUserId={session.userId} className="flex-1 flex flex-col items-center gap-2">
               <Avatar className="h-14 w-14">
                 <AvatarFallback className="text-base text-white" style={{ backgroundColor: homePlayer?.avatarColor ?? undefined }}>
                   {initials(homePlayer?.name)}
@@ -80,7 +81,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
                   {homePlayer?.name ?? '—'}{homePlayer?.id === session.userId && ' (you)'}
                 </p>
               </div>
-            </div>
+            </PlayerLink>
             <div className="text-center px-2">
               {game.homeSets !== null && game.awaySets !== null ? (
                 <div className="flex items-center gap-3">
@@ -97,7 +98,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
               )}
               {matchday && <p className="text-xs text-muted-foreground mt-1">Matchday {matchday.number}</p>}
             </div>
-            <div className="flex-1 flex flex-col items-center gap-2">
+            <PlayerLink userId={game.awayPlayerId} currentUserId={session.userId} className="flex-1 flex flex-col items-center gap-2">
               <Avatar className="h-14 w-14">
                 <AvatarFallback className="text-base text-white" style={{ backgroundColor: awayPlayer?.avatarColor ?? undefined }}>
                   {initials(awayPlayer?.name)}
@@ -109,7 +110,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
                   {awayPlayer?.name ?? '—'}{awayPlayer?.id === session.userId && ' (you)'}
                 </p>
               </div>
-            </div>
+            </PlayerLink>
           </div>
         </CardContent>
       </Card>

@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import PlayerLink from '@/components/PlayerLink'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,14 +64,14 @@ export default async function ScoreboardPage() {
                         {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                        <PlayerLink userId={entry.userId} currentUserId={session.userId} className="flex items-center gap-2 w-fit">
                           <Avatar className="h-7 w-7">
                             <AvatarFallback className="text-xs text-white" style={{ backgroundColor: entry.avatarColor ?? undefined }}>{initials}</AvatarFallback>
                           </Avatar>
-                          <span className={`font-medium ${isMe ? 'text-primary' : ''}`}>
+                          <span className={`font-medium ${isMe ? 'text-primary' : 'hover:underline'}`}>
                             {entry.name}{isMe && ' (you)'}
                           </span>
-                        </div>
+                        </PlayerLink>
                       </td>
                       <td className="px-4 py-3 text-right text-muted-foreground">{entry.gamesPlayed}</td>
                       <td className="px-4 py-3 text-right text-green-600 font-medium">{entry.victories}</td>

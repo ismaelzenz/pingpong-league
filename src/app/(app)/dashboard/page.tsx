@@ -8,6 +8,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import PlayerLink from '@/components/PlayerLink'
 import JoinTournamentButton from '@/components/JoinTournamentButton'
 import GameCard from '@/components/GameCard'
 import HowItWorks from '@/components/HowItWorks'
@@ -98,14 +99,16 @@ export default async function DashboardPage() {
                 return (
                   <div key={player.id} className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground w-4">{i + 1}</span>
-                    <Avatar className="h-7 w-7">
-                      <AvatarFallback className="text-xs text-white" style={{ backgroundColor: player.avatarColor ?? undefined }}>
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className={`text-sm font-medium ${isMe ? 'text-primary' : ''}`}>
-                      {player.name}{isMe && ' (you)'}
-                    </span>
+                    <PlayerLink userId={player.id!} currentUserId={session.userId} className="flex items-center gap-3 w-fit">
+                      <Avatar className="h-7 w-7">
+                        <AvatarFallback className="text-xs text-white" style={{ backgroundColor: player.avatarColor ?? undefined }}>
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className={`text-sm font-medium ${isMe ? 'text-primary' : 'hover:underline'}`}>
+                        {player.name}{isMe && ' (you)'}
+                      </span>
+                    </PlayerLink>
                   </div>
                 )
               })}
