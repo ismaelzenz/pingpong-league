@@ -152,7 +152,7 @@ export default async function DashboardPage() {
   const upcomingGames = enrichedGames
     .filter(g => !g.weekStart || g.weekStart > today)
     .sort((a, b) => (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0))
-    .slice(0, 5)
+    .slice(0, 4)
 
   const scores = await computeScoreboard(tournament.id)
 
@@ -220,7 +220,7 @@ export default async function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {scores.slice(0, 5).map((entry, i) => (
+                  {scores.slice(0, 8).map((entry, i) => (
                     <tr key={entry.userId} className={`border-b last:border-0 ${entry.userId === session.userId ? 'bg-primary/5' : ''}`}>
                       <td className="px-4 py-2.5 text-muted-foreground">{i + 1}</td>
                       <td className="px-4 py-2.5 font-medium truncate max-w-[140px]">
@@ -240,7 +240,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <HowItWorks collapsible />
+      <HowItWorks />
     </div>
   )
 }

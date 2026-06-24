@@ -62,7 +62,9 @@ export default function AddPlayerForm({ tournamentId, eligibleUsers }: Props) {
     <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
       <Select value={userId} onValueChange={v => setUserId(v ?? '')}>
         <SelectTrigger className="sm:w-64">
-          <SelectValue placeholder="Select a player to add…" />
+          <SelectValue placeholder="Select a player to add…">
+            {(value: string | null) => eligibleUsers.find(u => String(u.id) === value)?.name ?? value}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {eligibleUsers.map(u => (
