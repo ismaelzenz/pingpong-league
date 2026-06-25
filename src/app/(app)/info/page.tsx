@@ -50,6 +50,7 @@ export default async function InfoPage() {
           <li>Check the <strong className="text-foreground">Scoreboard</strong>, and tap any player&apos;s avatar to see their stats and your head-to-head.</li>
         </ol>
         <p>That&apos;s the whole loop: play → report → confirm → repeat.</p>
+        <p className="text-xs">📱 Tip: on your phone you can install this as an app — open the browser menu and choose <strong className="text-foreground">Add to Home Screen</strong>.</p>
       </Section>
 
       <Section icon={ClipboardCheck} title="Entering & confirming results">

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:init": "npx tsx src/lib/db/migrate.ts"
+    "db:init": "npx tsx src/lib/db/migrate.ts",
+    "gen:icons": "node scripts/gen-icons.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
