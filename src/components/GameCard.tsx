@@ -5,11 +5,11 @@ import PlayerLink from '@/components/PlayerLink'
 import type { GameStatus } from '@/lib/db/schema'
 
 const statusConfig: Record<GameStatus, { label: string; className: string }> = {
-  pending: { label: 'Pending', className: 'border-gray-300 text-gray-600' },
-  result_entered: { label: 'Awaiting confirmation', className: 'border-yellow-400 text-yellow-700' },
-  confirmed: { label: 'Confirmed', className: 'border-green-400 text-green-700' },
-  postponed: { label: 'Postponed', className: 'border-blue-400 text-blue-700' },
-  forfeited: { label: 'Forfeited', className: 'border-red-400 text-red-600' },
+  pending: { label: 'Pending', className: 'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-300' },
+  result_entered: { label: 'Awaiting confirmation', className: 'border-yellow-400 text-yellow-700 dark:border-yellow-600 dark:text-yellow-400' },
+  confirmed: { label: 'Confirmed', className: 'border-green-400 text-green-700 dark:border-green-600 dark:text-green-400' },
+  postponed: { label: 'Postponed', className: 'border-blue-400 text-blue-700 dark:border-blue-600 dark:text-blue-400' },
+  forfeited: { label: 'Forfeited', className: 'border-red-400 text-red-600 dark:border-red-600 dark:text-red-400' },
 }
 
 interface GameWithPlayers {
@@ -68,7 +68,7 @@ export default function GameCard({ game, currentUserId }: Props) {
           </div>
         </div>
         {game.status === 'result_entered' && game.submittedBy !== currentUserId && (
-          <p className="text-xs text-yellow-700 mt-2 bg-yellow-50 rounded px-2 py-1">
+          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2 bg-yellow-50 dark:bg-yellow-950/40 rounded px-2 py-1">
             Your opponent entered a result — tap to confirm
           </p>
         )}

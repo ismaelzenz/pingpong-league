@@ -55,15 +55,15 @@ export default async function MatchdaysPage() {
       </div>
 
       {session.isAdmin && !health.ok && (
-        <Card className="border-yellow-300 bg-yellow-50">
+        <Card className="border-yellow-300 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40">
           <CardContent className="py-4 space-y-2">
-            <p className="text-sm font-semibold text-yellow-800 flex items-center gap-1.5">
+            <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4" /> Schedule needs attention
             </p>
-            <p className="text-xs text-yellow-700">
+            <p className="text-xs text-yellow-700 dark:text-yellow-300">
               Every pair should meet exactly twice.
             </p>
-            <ul className="text-xs text-yellow-800 space-y-1 list-disc pl-4">
+            <ul className="text-xs text-yellow-800 dark:text-yellow-300 space-y-1 list-disc pl-4">
               {health.issues.map((iss, idx) => (
                 <li key={idx}>
                   <span className="font-medium">{iss.aName} vs {iss.bName}</span>{' '}
@@ -73,7 +73,7 @@ export default async function MatchdaysPage() {
                       ? `is never scheduled (should be 2)`
                       : `is only scheduled ${iss.count}× (should be 2)`}
                   {(iss.matchdayNumbers.length > 0 || iss.catchUpCount > 0) && (
-                    <span className="text-yellow-700">
+                    <span className="text-yellow-700 dark:text-yellow-400">
                       {' — '}
                       {iss.matchdayNumbers.map(n => `MD${n}`).join(', ')}
                       {iss.catchUpCount > 0 ? `${iss.matchdayNumbers.length ? ', ' : ''}${iss.catchUpCount} catch-up` : ''}
@@ -83,7 +83,7 @@ export default async function MatchdaysPage() {
               ))}
             </ul>
 
-            <p className="text-xs text-yellow-700 pt-1">
+            <p className="text-xs text-yellow-700 dark:text-yellow-300 pt-1">
               To fix it, use <span className="font-medium">Regenerate schedule</span> on the Admin panel — it rebuilds
               all unplayed matchdays cleanly in one click, without touching games that already have results.
             </p>

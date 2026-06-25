@@ -113,13 +113,13 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
   return (
     <div className="space-y-3">
       {doubled.length > 0 && (
-        <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+        <p className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-900 rounded px-2 py-1">
           ⚠️ Playing more than once this matchday: {doubled.map(p => p.name).join(', ')}
         </p>
       )}
 
       {unassigned.length > 0 && (
-        <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+        <p className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded px-2 py-1">
           🪑 No game this matchday (bye): {unassigned.map(p => p.name).join(', ')}
         </p>
       )}

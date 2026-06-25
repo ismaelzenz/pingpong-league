@@ -75,7 +75,7 @@ export default async function DashboardPage() {
               </p>
             </div>
             {myParticipation ? (
-              <div className="inline-flex items-center gap-2 bg-green-50 text-green-700 border border-green-200 rounded-full px-4 py-2 text-sm font-medium">
+              <div className="inline-flex items-center gap-2 bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-900 rounded-full px-4 py-2 text-sm font-medium">
                 ✓ You&apos;re in! Waiting for the tournament to start…
               </div>
             ) : (
@@ -169,8 +169,8 @@ export default async function DashboardPage() {
       {catchUpGames.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-yellow-700">⏳ Catch-up games</h2>
-            <Badge variant="outline" className="border-yellow-400 text-yellow-700">{catchUpGames.length}</Badge>
+            <h2 className="font-semibold text-yellow-700 dark:text-yellow-400">⏳ Catch-up games</h2>
+            <Badge variant="outline" className="border-yellow-400 text-yellow-700 dark:text-yellow-400">{catchUpGames.length}</Badge>
           </div>
           <p className="text-sm text-muted-foreground -mt-1">
             These are from matchdays that have already started. Play them to catch up.

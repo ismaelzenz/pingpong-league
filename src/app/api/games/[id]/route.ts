@@ -106,6 +106,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updatedAt: new Date().toISOString(),
     }).where(eq(games.id, gameId))
 
+  } else if (action === 'admin-set-result') {
+    // Admin correction of a result (works even on already-confirmed/forfeited games).
+    if (!session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+    if (!isValidResult(homeSets, awaySets)) return NextResponse.json({ error: 'Invalid result' }, { status: 400 })
+
+    await db.update(games).set({
+      homeSets,
+      awaySets,
+      status: 'confirmed',
+      confirmedBy: session.userId,
+      confirmedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }).where(eq(games.id, gameId))
+
   } else if (action === 'forfeit') {
     if (!session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
     if (['confirmed', 'forfeited'].includes(game.status)) {

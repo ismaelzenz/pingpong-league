@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import PlayerLink from '@/components/PlayerLink'
 import GameResultForm from '@/components/GameResultForm'
 import AdminGameActions from '@/components/AdminGameActions'
+import AdminEditResultForm from '@/components/AdminEditResultForm'
 import { ChevronLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -118,8 +119,8 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
       {isParticipant && (
         <>
           {game.status === 'pending' && !matchdayStarted && (
-            <Card className="border-blue-200 bg-blue-50/50">
-              <CardContent className="pt-4 pb-4 text-sm text-blue-800">
+            <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/40">
+              <CardContent className="pt-4 pb-4 text-sm text-blue-800 dark:text-blue-300">
                 📅 This game is scheduled for a future matchday. You&apos;ll be able to enter the result once the matchday starts.
               </CardContent>
             </Card>
@@ -137,15 +138,15 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
           )}
 
           {game.status === 'result_entered' && isSubmitter && (
-            <Card className="border-yellow-200 bg-yellow-50">
-              <CardContent className="pt-4 text-sm text-yellow-800">
+            <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40">
+              <CardContent className="pt-4 text-sm text-yellow-800 dark:text-yellow-300">
                 ⏳ You entered the result. Waiting for your opponent to confirm.
               </CardContent>
             </Card>
           )}
 
           {canConfirm && (
-            <Card className="border-yellow-200">
+            <Card className="border-yellow-200 dark:border-yellow-900">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Confirm result</CardTitle>
                 <p className="text-sm text-muted-foreground">
@@ -176,9 +177,18 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
       )}
 
       {canAdminAct && (
-        <Card className="border-orange-200 bg-orange-50/50">
+        <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/30">
           <CardContent className="pt-4">
             <AdminGameActions gameId={game.id} isPostponed={game.status === 'postponed'} />
+          </CardContent>
+        </Card>
+      )}
+
+      {session.isAdmin && (game.status === 'confirmed' || game.status === 'forfeited') && (
+        <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/30">
+          <CardContent className="pt-4 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Admin: correct result</p>
+            <AdminEditResultForm gameId={game.id} homeSets={game.homeSets} awaySets={game.awaySets} />
           </CardContent>
         </Card>
       )}

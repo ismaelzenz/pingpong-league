@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { tournaments, games, users, matchdays } from '@/lib/db/schema'
 import { eq, inArray, or, and } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
+import { computePlayerForm } from '@/lib/playerStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
@@ -107,6 +108,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     for (const m of extra) matchdayMap[m.id] = m.number
   }
 
+  const playerForm = computePlayerForm(playerGames, playerId)
   const initials = player.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   return (
@@ -175,6 +177,35 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                 <p className="text-xs text-muted-foreground">Sets Lost</p>
               </div>
             </div>
+            <Separator className="my-4" />
+            <div className="grid grid-cols-4 gap-3 text-center">
+              <div>
+                <p className="text-xl font-bold">{Math.round(playerForm.winPct * 100)}%</p>
+                <p className="text-xs text-muted-foreground">Win rate</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold">{Math.round(playerForm.setWinPct * 100)}%</p>
+                <p className="text-xs text-muted-foreground">Set rate</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold">{stats.gamesPlayed ? (stats.points / stats.gamesPlayed).toFixed(1) : '0'}</p>
+                <p className="text-xs text-muted-foreground">Pts/game</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold">{playerForm.longestWinStreak}</p>
+                <p className="text-xs text-muted-foreground">Best streak</p>
+              </div>
+            </div>
+            {playerForm.form.length > 0 && (
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <span className="text-xs text-muted-foreground">Recent form</span>
+                <div className="flex gap-1">
+                  {playerForm.form.map((r, i) => (
+                    <span key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${r === 'W' ? 'bg-green-500' : 'bg-red-500'}`}>{r}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (

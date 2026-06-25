@@ -102,16 +102,16 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
       )}
 
       {session.isAdmin && localOverIssues.length > 0 && (
-        <Card className="border-yellow-300 bg-yellow-50">
+        <Card className="border-yellow-300 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40">
           <CardContent className="py-4 space-y-1.5">
-            <p className="text-sm font-semibold text-yellow-800 flex items-center gap-1.5">
+            <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4" /> Duplicate pairing in this matchday
             </p>
-            <ul className="text-xs text-yellow-800 space-y-1 list-disc pl-4">
+            <ul className="text-xs text-yellow-800 dark:text-yellow-300 space-y-1 list-disc pl-4">
               {localOverIssues.map((iss, i) => (
                 <li key={i}>
                   <span className="font-medium">{iss.aName} vs {iss.bName}</span> meet {iss.count}× across the tournament
-                  {iss.matchdayNumbers.length > 0 && <span className="text-yellow-700"> (MD {iss.matchdayNumbers.join(', ')})</span>}
+                  {iss.matchdayNumbers.length > 0 && <span className="text-yellow-700 dark:text-yellow-400"> (MD {iss.matchdayNumbers.join(', ')})</span>}
                   {' '}— they should meet twice. Edit a game below, or use <span className="font-medium">Regenerate schedule</span> (Admin panel) to rebuild the unplayed matchdays cleanly.
                 </li>
               ))}
@@ -121,7 +121,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
       )}
 
       {canEdit && (
-        <Card className="border-orange-200 bg-orange-50/40">
+        <Card className="border-orange-200 bg-orange-50/40 dark:border-orange-900 dark:bg-orange-950/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Admin: edit line-up</CardTitle>
             <p className="text-sm text-muted-foreground">

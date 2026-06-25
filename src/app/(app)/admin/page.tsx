@@ -15,6 +15,7 @@ import UnenrollButton from '@/components/UnenrollButton'
 import EliminatePlayerButton from '@/components/EliminatePlayerButton'
 import AddPlayerForm from '@/components/AddPlayerForm'
 import BreakWeeksForm from '@/components/BreakWeeksForm'
+import InviteLink from '@/components/InviteLink'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,14 +75,14 @@ export default async function AdminPage() {
       </div>
 
       {overdueMatchdays.length > 0 && (
-        <Card className="border-yellow-300 bg-yellow-50">
+        <Card className="border-yellow-300 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40">
           <CardContent className="pt-4 pb-4 space-y-2">
-            <p className="text-sm font-semibold text-yellow-800">⚠️ Unplayed games from past matchdays</p>
-            <p className="text-xs text-yellow-700">The following matchdays have ended with games still pending. Go to each matchday to forfeit or reschedule individual games.</p>
+            <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">⚠️ Unplayed games from past matchdays</p>
+            <p className="text-xs text-yellow-700 dark:text-yellow-400">The following matchdays have ended with games still pending. Go to each matchday to forfeit or reschedule individual games.</p>
             <div className="flex flex-wrap gap-2 pt-1">
               {overdueMatchdays.map(md => (
                 <Link key={md.id} href={`/matchdays/${md.id}`}>
-                  <Badge variant="outline" className="border-yellow-400 text-yellow-800 hover:bg-yellow-100 cursor-pointer">
+                  <Badge variant="outline" className="border-yellow-400 text-yellow-800 dark:text-yellow-300 hover:bg-yellow-100 dark:hover:bg-yellow-900/40 cursor-pointer">
                     Matchday {md.number} — {md.count} unplayed
                   </Badge>
                 </Link>
@@ -153,6 +154,20 @@ export default async function AdminPage() {
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Invite players</CardTitle>
+              <CardDescription>
+                {activeTournament.status === 'registration'
+                  ? 'Share this link so colleagues can sign up and join the tournament.'
+                  : 'Share this link so colleagues can create an account — then add them above.'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <InviteLink tournamentId={activeTournament.id} />
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

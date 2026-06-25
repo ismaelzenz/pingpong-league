@@ -131,6 +131,8 @@ played" count or its bye list.
 From the **Admin panel**:
 
 - **Create a tournament** — opens registration so players can join.
+- **Invite players** (during registration) — share a link (`/join/<id>`) so colleagues can sign
+  up and join the tournament themselves.
 - **Schedule breaks** (during registration) — pick weeks to leave matchday-free (holidays,
   summer break). Schedule generation skips those weeks and simply resumes the following week.
 - **Close registration & start** — generates the full canonical double round-robin schedule
@@ -143,6 +145,8 @@ From the **Admin panel**:
 - **Forfeit unplayed games** — marks still-pending games from past matchdays as forfeited.
 - **End tournament** — marks the season finished (read-only afterwards).
 - **Cancel tournament** — during registration only, discards it.
+- **Correct a confirmed result** — admins can fix the score of an already-confirmed/forfeited
+  game from its page; the scoreboard recalculates.
 - **Reset a player's password** and **edit future matchday line-ups** (next sections).
 
 ### What "Regenerate schedule" does

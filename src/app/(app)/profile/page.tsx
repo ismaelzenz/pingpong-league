@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { tournaments, games, users, matchdays } from '@/lib/db/schema'
 import { eq, inArray, or, and } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
+import { computePlayerForm } from '@/lib/playerStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
@@ -36,6 +37,18 @@ export default async function ProfilePage() {
         .orderBy(games.confirmedAt)
         .limit(10)
     : []
+
+  // All finished games (oldest → newest) for accurate form/streak stats.
+  const allFinishedGames = tournament
+    ? await db.select().from(games)
+        .where(and(
+          eq(games.tournamentId, tournament.id),
+          or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
+          inArray(games.status, ['confirmed', 'forfeited'])
+        ))
+        .orderBy(games.confirmedAt)
+    : []
+  const myForm = computePlayerForm(allFinishedGames, session.userId)
 
   const opponentIds = [...new Set(recentGames.map(g =>
     g.homePlayerId === session.userId ? g.awayPlayerId : g.homePlayerId
@@ -121,6 +134,35 @@ export default async function ProfilePage() {
                 <p className="text-xs text-muted-foreground">Sets Lost</p>
               </div>
             </div>
+            <Separator className="my-4" />
+            <div className="grid grid-cols-4 gap-3 text-center">
+              <div>
+                <p className="text-xl font-bold">{Math.round(myForm.winPct * 100)}%</p>
+                <p className="text-xs text-muted-foreground">Win rate</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold">{Math.round(myForm.setWinPct * 100)}%</p>
+                <p className="text-xs text-muted-foreground">Set rate</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold">{myStats.gamesPlayed ? (myStats.points / myStats.gamesPlayed).toFixed(1) : '0'}</p>
+                <p className="text-xs text-muted-foreground">Pts/game</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold">{myForm.longestWinStreak}</p>
+                <p className="text-xs text-muted-foreground">Best streak</p>
+              </div>
+            </div>
+            {myForm.form.length > 0 && (
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <span className="text-xs text-muted-foreground">Recent form</span>
+                <div className="flex gap-1">
+                  {myForm.form.map((r, i) => (
+                    <span key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${r === 'W' ? 'bg-green-500' : 'bg-red-500'}`}>{r}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

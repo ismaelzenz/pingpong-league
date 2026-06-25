@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -10,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Shield, Home, Trophy, CalendarDays, BookOpen } from 'lucide-react'
+import { LogOut, User, Shield, Home, Trophy, CalendarDays, BookOpen, Sun, Moon } from 'lucide-react'
 
 interface Props {
   name: string
@@ -28,6 +29,8 @@ const navLinks = [
 export default function AppNav({ name, email, isAdmin, avatarColor }: Props) {
   const pathname = usePathname()
   const router = useRouter()
+  const { resolvedTheme, setTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
 
   async function handleSignOut() {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -101,6 +104,13 @@ export default function AppNav({ name, email, isAdmin, avatarColor }: Props) {
             <DropdownMenuItem render={<Link href="/info" />}>
               <BookOpen className="mr-2 h-4 w-4" />
               How it works
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.preventDefault(); setTheme(isDark ? 'light' : 'dark') }}
+              className="cursor-pointer"
+            >
+              {isDark ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+              {isDark ? 'Light mode' : 'Dark mode'}
             </DropdownMenuItem>
             {isAdmin && (
               <DropdownMenuItem render={<Link href="/admin" />} className="sm:hidden">
