@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { participants, tournaments, matchdays, games, users } from '@/lib/db/schema'
+import { participants, tournaments, games, users } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
 import { and, eq, or } from 'drizzle-orm'
 import { regenerateSchedule } from '@/lib/regenerateSchedule'
@@ -37,17 +37,15 @@ export async function POST(req: NextRequest) {
   await db.insert(participants).values({ tournamentId, userId })
   await regenerateSchedule(tournamentId, tournament.startedAt)
 
-  // The newcomer's games that fall in already-started matchdays are catch-up games.
-  const today = new Date().toISOString().split('T')[0]
-  const newGames = await db.select({ weekStart: matchdays.weekStart })
+  // Tally the newcomer's games: catch-up backlog vs games slotted into matchdays.
+  const newGames = await db.select({ isCatchUp: games.isCatchUp })
     .from(games)
-    .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
     .where(and(
       eq(games.tournamentId, tournamentId),
       or(eq(games.homePlayerId, userId), eq(games.awayPlayerId, userId)),
     ))
   const total = newGames.length
-  const catchUp = newGames.filter(g => g.weekStart && g.weekStart <= today).length
+  const catchUp = newGames.filter(g => g.isCatchUp).length
 
   return NextResponse.json({
     ok: true,

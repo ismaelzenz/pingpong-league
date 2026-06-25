@@ -21,7 +21,9 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
   const matchday = await db.select().from(matchdays).where(eq(matchdays.id, parseInt(id))).then(r => r[0] ?? null)
   if (!matchday) notFound()
 
-  const dayGames = await db.select().from(games).where(eq(games.matchdayId, matchday.id)).orderBy(games.id)
+  // Catch-up games are only FK-pinned to a matchday; they aren't part of its line-up.
+  const allDayGames = await db.select().from(games).where(eq(games.matchdayId, matchday.id)).orderBy(games.id)
+  const dayGames = allDayGames.filter(g => !g.isCatchUp)
 
   const enriched = await Promise.all(dayGames.map(async g => {
     const homePlayer = await db.select({ id: users.id, name: users.name, email: users.email })

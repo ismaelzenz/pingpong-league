@@ -20,6 +20,7 @@ interface GameWithPlayers {
   homeSets: number | null
   awaySets: number | null
   submittedBy: number | null
+  isCatchUp?: boolean
   homePlayer?: { id: number; name: string } | null
   awayPlayer?: { id: number; name: string } | null
   matchday?: { number: number } | null
@@ -52,7 +53,7 @@ export default function GameCard({ game, currentUserId }: Props) {
               </PlayerLink>
             </p>
             <p className="text-xs text-muted-foreground">
-              Matchday {game.matchday?.number ?? '?'}
+              {game.isCatchUp ? 'Catch-up game' : `Matchday ${game.matchday?.number ?? '?'}`}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">

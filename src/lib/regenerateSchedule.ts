@@ -1,27 +1,28 @@
 import { db } from '@/lib/db'
 import { matchdays, games, participants } from '@/lib/db/schema'
 import { eq, inArray } from 'drizzle-orm'
-import { addDays, format } from 'date-fns'
+import { generateSchedule } from '@/lib/schedule'
+import { addDays, nextMonday, format } from 'date-fns'
 
-// Games with a real result (or awaiting confirmation) are always preserved.
+// A matchday that contains any of these is considered "played" and is never touched.
 const RESULT_STATUSES = ['confirmed', 'forfeited', 'result_entered']
 
 /**
- * Rebuild the *unplayed, future* portion of a tournament's schedule for the current
- * roster, without touching anything that has already happened.
+ * Rebuild the not-yet-played part of a tournament's schedule for the current roster.
  *
- * Rules:
- *  - Games in matchdays that have already started (week_start <= today) are left exactly
- *    as they are — played or not. Pending ones there are catch-up games.
- *  - Games with a result anywhere (confirmed / forfeited / result_entered) are kept.
- *  - Unplayed games in future matchdays are discarded and recomputed.
+ * A matchday is **locked** if it contains any game with a result (confirmed / forfeited /
+ * awaiting confirmation). Locked matchdays — and every game in them — are left exactly as
+ * they are: a played game never moves to a different matchday. Everything else is deleted
+ * and rebuilt.
  *
- * The remaining required pairings of the double round-robin (every ordered pair the
- * roster hasn't covered yet) are laid into the future matchdays, one game per player per
- * matchday. Anything that can't fit (e.g. a mid-season newcomer who needs more games than
- * there are remaining matchdays) becomes a catch-up game placed in an already-started
- * matchday, so both players see it as a game they still owe each other. If there are no
- * started matchdays yet, extra matchdays are appended instead.
+ * - If nothing has been played yet, the whole schedule is rebuilt as a clean canonical
+ *   double round-robin: even roster of N → 2·(N−1) matchdays of N/2 games; odd roster →
+ *   one evenly-shared bye per matchday. Every pair meets exactly twice (once each way).
+ * - If some matchdays are locked, they stay put and the remaining pairings are scheduled
+ *   into a canonical number of fresh future matchdays. Anything that can't fit one-game-
+ *   per-player-per-matchday (typically a mid-season newcomer's backlog) becomes a catch-up
+ *   game — flagged `isCatchUp`, played anytime, outside the regular matchday grid. Either
+ *   way every pair still ends up played exactly twice.
  */
 export async function regenerateSchedule(tournamentId: number, startedAt: string | null) {
   const roster = (await db.select({ userId: participants.userId }).from(participants)
@@ -31,109 +32,116 @@ export async function regenerateSchedule(tournamentId: number, startedAt: string
     .where(eq(matchdays.tournamentId, tournamentId)).orderBy(matchdays.number)
   const allGames = await db.select().from(games).where(eq(games.tournamentId, tournamentId))
 
-  const today = new Date().toISOString().split('T')[0]
-  const isStarted = (md: typeof allMatchdays[number]) => !!md.weekStart && md.weekStart <= today
-  const startedMatchdays = allMatchdays.filter(isStarted)
-  const startedIds = new Set(startedMatchdays.map(m => m.id))
-  const futureMatchdays = allMatchdays.filter(m => !isStarted(m))
+  // Lock any matchday that already has a played/in-progress result.
+  const lockedMatchdayIds = new Set(
+    allGames.filter(g => RESULT_STATUSES.includes(g.status)).map(g => g.matchdayId)
+  )
+  const lockedMatchdays = allMatchdays.filter(m => lockedMatchdayIds.has(m.id))
+  const lockedGames = allGames.filter(g => lockedMatchdayIds.has(g.matchdayId))
 
-  // Keep results anywhere + everything inside started matchdays. Discard unplayed future games.
-  const keep = (g: typeof allGames[number]) => RESULT_STATUSES.includes(g.status) || startedIds.has(g.matchdayId)
-  const toDelete = allGames.filter(g => !keep(g)).map(g => g.id)
-  if (toDelete.length) await db.delete(games).where(inArray(games.id, toDelete))
-  const keptGames = allGames.filter(keep)
+  // Drop every unplayed matchday and its games — they'll be rebuilt.
+  const staleGameIds = allGames.filter(g => !lockedMatchdayIds.has(g.matchdayId)).map(g => g.id)
+  if (staleGameIds.length) await db.delete(games).where(inArray(games.id, staleGameIds))
+  const staleMatchdayIds = allMatchdays.filter(m => !lockedMatchdayIds.has(m.id)).map(m => m.id)
+  if (staleMatchdayIds.length) await db.delete(matchdays).where(inArray(matchdays.id, staleMatchdayIds))
 
-  if (roster.length < 2) {
-    return { matchdays: allMatchdays.length, games: keptGames.length, catchUp: 0 }
+  if (roster.length < 2) return { matchdays: lockedMatchdays.length, games: lockedGames.length }
+
+  // ── Nothing played: clean canonical rebuild from scratch ──────────────────────────────
+  if (lockedMatchdays.length === 0) {
+    const schedule = generateSchedule(roster)
+    let weekStart = startedAt ? nextMonday(new Date(startedAt)) : nextMonday(new Date())
+    let gameCount = 0
+    for (const md of schedule) {
+      const [row] = await db.insert(matchdays).values({
+        tournamentId,
+        number: md.number,
+        weekStart: format(weekStart, 'yyyy-MM-dd'),
+        weekEnd: format(addDays(weekStart, 6), 'yyyy-MM-dd'),
+      }).returning()
+      if (md.games.length > 0) {
+        await db.insert(games).values(md.games.map(g => ({
+          matchdayId: row.id,
+          tournamentId,
+          homePlayerId: g.home,
+          awayPlayerId: g.away,
+          status: 'pending' as const,
+        })))
+        gameCount += md.games.length
+      }
+      weekStart = addDays(weekStart, 7)
+    }
+    return { matchdays: schedule.length, games: gameCount }
   }
 
-  // Every ordered pair must be played once (double round-robin). Drop the ones already covered.
-  const covered = new Set(keptGames.map(g => `${g.homePlayerId}-${g.awayPlayerId}`))
+  // ── Some matchdays are locked: keep them, rebuild a canonical future + catch-up ───────
+  // Every ordered pair must be played once; drop the ones the locked games already cover.
+  const covered = new Set(lockedGames.map(g => `${g.homePlayerId}-${g.awayPlayerId}`))
   const remaining: [number, number][] = []
   for (const h of roster) for (const a of roster) {
     if (h !== a && !covered.has(`${h}-${a}`)) remaining.push([h, a])
   }
+  // Place newcomer games first (a newcomer plays at most once per matchday, so their
+  // backlog is what overflows into catch-up — not an established player's games).
+  const established = new Set(lockedGames.flatMap(g => [g.homePlayerId, g.awayPlayerId]))
+  const newcomers = (h: number, a: number) => (established.has(h) ? 0 : 1) + (established.has(a) ? 0 : 1)
   for (let i = remaining.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[remaining[i], remaining[j]] = [remaining[j], remaining[i]]
   }
+  remaining.sort((x, y) => newcomers(y[0], y[1]) - newcomers(x[0], x[1]))
 
-  // Track which players already occupy each matchday so we never double-book.
-  const usedByMd = new Map<number, Set<number>>()
-  for (const md of allMatchdays) usedByMd.set(md.id, new Set())
-  for (const g of keptGames) {
-    const s = usedByMd.get(g.matchdayId)
-    if (s) { s.add(g.homePlayerId); s.add(g.awayPlayerId) }
+  // Keep the season the canonical length: as many future matchdays as a full schedule for
+  // this roster would have, minus the ones already locked.
+  const canonicalTotal = generateSchedule(roster).length
+  const futureCount = Math.max(0, canonicalTotal - lockedMatchdays.length)
+
+  let nextNumber = Math.max(...lockedMatchdays.map(m => m.number)) + 1
+  let weekStart = lockedMatchdays[lockedMatchdays.length - 1].weekStart
+    ? new Date(lockedMatchdays[lockedMatchdays.length - 1].weekStart!)
+    : (startedAt ? new Date(startedAt) : new Date())
+
+  const futureMds: { id: number }[] = []
+  for (let i = 0; i < futureCount; i++) {
+    weekStart = addDays(weekStart, 7)
+    const [row] = await db.insert(matchdays).values({
+      tournamentId,
+      number: nextNumber++,
+      weekStart: format(weekStart, 'yyyy-MM-dd'),
+      weekEnd: format(addDays(weekStart, 6), 'yyyy-MM-dd'),
+    }).returning()
+    futureMds.push({ id: row.id })
   }
 
-  type Insert = { matchdayId: number; tournamentId: number; homePlayerId: number; awayPlayerId: number }
+  type Insert = { matchdayId: number; tournamentId: number; homePlayerId: number; awayPlayerId: number; status: 'pending'; isCatchUp: boolean }
   const inserts: Insert[] = []
-  const overflow: [number, number][] = []
-
-  // Place each remaining pairing into the earliest future matchday where both are free.
-  for (const [h, a] of remaining) {
-    let placed = false
-    for (const md of futureMatchdays) {
-      const used = usedByMd.get(md.id)!
-      if (!used.has(h) && !used.has(a)) {
-        inserts.push({ matchdayId: md.id, tournamentId, homePlayerId: h, awayPlayerId: a })
-        used.add(h); used.add(a)
-        placed = true
-        break
-      }
-    }
-    if (!placed) overflow.push([h, a])
-  }
-
-  // Overflow → catch-up games in started matchdays (preferring a free slot), or appended
-  // matchdays if the tournament hasn't started any matchdays yet.
+  const usedByMd = new Map<number, Set<number>>(futureMds.map(m => [m.id, new Set<number>()]))
+  const countByMd = new Map<number, number>(futureMds.map(m => [m.id, 0]))
+  // Catch-up games still need a matchday FK; pin them to the most recent locked matchday.
+  const catchUpMatchdayId = lockedMatchdays[lockedMatchdays.length - 1].id
   let catchUp = 0
-  if (overflow.length && startedMatchdays.length > 0) {
-    for (const [h, a] of overflow) {
-      const target = startedMatchdays.find(md => {
-        const u = usedByMd.get(md.id)!
-        return !u.has(h) && !u.has(a)
-      }) ?? startedMatchdays[startedMatchdays.length - 1]
-      const used = usedByMd.get(target.id)!
-      inserts.push({ matchdayId: target.id, tournamentId, homePlayerId: h, awayPlayerId: a })
+
+  for (const [h, a] of remaining) {
+    // Place into the least-loaded matchday where both players are free, so games spread
+    // evenly instead of front-loading early matchdays and starving later ones.
+    let best: { id: number } | null = null
+    for (const md of futureMds) {
+      const used = usedByMd.get(md.id)!
+      if (used.has(h) || used.has(a)) continue
+      if (best === null || countByMd.get(md.id)! < countByMd.get(best.id)!) best = md
+    }
+    if (best) {
+      inserts.push({ matchdayId: best.id, tournamentId, homePlayerId: h, awayPlayerId: a, status: 'pending', isCatchUp: false })
+      const used = usedByMd.get(best.id)!
       used.add(h); used.add(a)
+      countByMd.set(best.id, countByMd.get(best.id)! + 1)
+    } else {
+      inserts.push({ matchdayId: catchUpMatchdayId, tournamentId, homePlayerId: h, awayPlayerId: a, status: 'pending', isCatchUp: true })
       catchUp++
     }
-  } else if (overflow.length) {
-    let queue = overflow
-    let weekStart = allMatchdays.at(-1)?.weekStart
-      ? new Date(allMatchdays.at(-1)!.weekStart!)
-      : (startedAt ? new Date(startedAt) : new Date())
-    let nextNumber = (allMatchdays.at(-1)?.number ?? 0) + 1
-    while (queue.length) {
-      weekStart = addDays(weekStart, 7)
-      const [row] = await db.insert(matchdays).values({
-        tournamentId,
-        number: nextNumber++,
-        weekStart: format(weekStart, 'yyyy-MM-dd'),
-        weekEnd: format(addDays(weekStart, 6), 'yyyy-MM-dd'),
-      }).returning()
-      const used = new Set<number>()
-      const next: [number, number][] = []
-      for (const [h, a] of queue) {
-        if (!used.has(h) && !used.has(a)) {
-          inserts.push({ matchdayId: row.id, tournamentId, homePlayerId: h, awayPlayerId: a })
-          used.add(h); used.add(a)
-        } else {
-          next.push([h, a])
-        }
-      }
-      queue = next
-    }
   }
 
-  if (inserts.length) {
-    await db.insert(games).values(inserts.map(i => ({ ...i, status: 'pending' as const })))
-  }
+  if (inserts.length) await db.insert(games).values(inserts)
 
-  return {
-    matchdays: (await db.select({ id: matchdays.id }).from(matchdays).where(eq(matchdays.tournamentId, tournamentId))).length,
-    games: keptGames.length + inserts.length,
-    catchUp,
-  }
+  return { matchdays: lockedMatchdays.length + futureMds.length, games: lockedGames.length + inserts.length, catchUp }
 }

@@ -44,6 +44,9 @@ export const games = sqliteTable('games', {
   status: text('status', { enum: ['pending', 'result_entered', 'confirmed', 'postponed', 'forfeited'] }).notNull().default('pending'),
   homeSets: integer('home_sets'),
   awaySets: integer('away_sets'),
+  // A catch-up game is a backlog game (e.g. owed by a mid-season newcomer) that lives
+  // outside the regular matchday grid — playable anytime, shown in each player's catch-up list.
+  isCatchUp: integer('is_catch_up', { mode: 'boolean' }).notNull().default(false),
   submittedBy: integer('submitted_by').references(() => users.id),
   confirmedBy: integer('confirmed_by').references(() => users.id),
   submittedAt: text('submitted_at'),

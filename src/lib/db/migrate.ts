@@ -54,6 +54,7 @@ async function main() {
       status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','result_entered','confirmed','postponed','forfeited')),
       home_sets INTEGER,
       away_sets INTEGER,
+      is_catch_up INTEGER NOT NULL DEFAULT 0,
       submitted_by INTEGER REFERENCES users(id),
       confirmed_by INTEGER REFERENCES users(id),
       submitted_at TEXT,
@@ -74,6 +75,7 @@ async function main() {
 
   // Add new columns to existing tables (safe to re-run)
   try { await client.execute('ALTER TABLE users ADD COLUMN avatar_color TEXT') } catch {}
+  try { await client.execute('ALTER TABLE games ADD COLUMN is_catch_up INTEGER NOT NULL DEFAULT 0') } catch {}
 
   console.log('Database initialised:', process.env.TURSO_DATABASE_URL)
   client.close()

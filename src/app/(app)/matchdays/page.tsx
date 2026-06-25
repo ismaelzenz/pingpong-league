@@ -34,6 +34,7 @@ export default async function MatchdaysPage() {
 
   const allGames = await db.select().from(games)
     .where(eq(games.tournamentId, tournament.id))
+    .then(rows => rows.filter(g => !g.isCatchUp)) // catch-up games aren't part of any matchday line-up
 
   return (
     <div className="space-y-6">

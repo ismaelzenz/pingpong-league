@@ -143,14 +143,14 @@ export default async function DashboardPage() {
     return { ...row.game, homePlayer: row.homePlayer, awayPlayer, matchday: row.matchday, weekStart: row.matchday?.weekStart ?? null }
   }))
 
-  // A pending game whose matchday week has already started is overdue — a "catch-up"
-  // game. This is how a mid-season newcomer's missed past games surface for them.
+  // Catch-up = explicit backlog games (a newcomer's owed games) plus any regular game
+  // whose matchday week has already started but is still unplayed (overdue).
   const today = new Date().toISOString().split('T')[0]
   const catchUpGames = enrichedGames
-    .filter(g => g.weekStart && g.weekStart <= today)
+    .filter(g => g.isCatchUp || (g.weekStart && g.weekStart <= today))
     .sort((a, b) => (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0))
   const upcomingGames = enrichedGames
-    .filter(g => !g.weekStart || g.weekStart > today)
+    .filter(g => !g.isCatchUp && (!g.weekStart || g.weekStart > today))
     .sort((a, b) => (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0))
     .slice(0, 4)
 
