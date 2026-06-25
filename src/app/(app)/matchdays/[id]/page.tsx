@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import GameCard from '@/components/GameCard'
 import MatchdayEditor from '@/components/MatchdayEditor'
-import { analyzeSchedule, suggestFixes } from '@/lib/scheduleHealth'
+import { analyzeSchedule } from '@/lib/scheduleHealth'
 import { format } from 'date-fns'
 import { ChevronLeft, AlertTriangle } from 'lucide-react'
 
@@ -51,16 +51,14 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
   const canEdit = session.isAdmin && isFuture
   const rosterPlayers = roster.filter(p => p.id != null).map(p => ({ id: p.id!, name: p.name ?? '—' }))
 
-  // Schedule-health check across the whole tournament, narrowed to this matchday — so an
-  // editing admin sees which games here are over-scheduled and a one-click fix for each.
+  // Schedule-health check across the whole tournament, narrowed to over-scheduled pairs
+  // that appear in this matchday — so an editing admin sees what's wrong here.
   let localOverIssues: { aName: string; bName: string; count: number; matchdayNumbers: number[] }[] = []
-  let editorSuggestions: { gameId: number; toHomeId: number; toAwayId: number; toAName: string; toBName: string }[] = []
   if (session.isAdmin) {
     const tournamentGames = await db.select().from(games).where(eq(games.tournamentId, matchday.tournamentId))
-    const tournamentMatchdays = await db.select({ id: matchdays.id, number: matchdays.number, weekStart: matchdays.weekStart })
+    const tournamentMatchdays = await db.select({ id: matchdays.id, number: matchdays.number })
       .from(matchdays).where(eq(matchdays.tournamentId, matchday.tournamentId))
-    const numberById = new Map(tournamentMatchdays.map(m => [m.id, m.number]))
-    const health = analyzeSchedule(tournamentGames, numberById, rosterPlayers)
+    const health = analyzeSchedule(tournamentGames, new Map(tournamentMatchdays.map(m => [m.id, m.number])), rosterPlayers)
 
     const nameById = new Map(rosterPlayers.map(p => [p.id, p.name]))
     const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`)
@@ -68,18 +66,6 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
       pairKey(nameById.get(g.homePlayerId) ?? '', nameById.get(g.awayPlayerId) ?? '')))
     localOverIssues = health.issues.filter(iss =>
       iss.kind === 'over' && pairsHere.has(pairKey(iss.aName, iss.bName)))
-
-    // Editable = future matchday with no played result yet.
-    const resultMatchdayIds = new Set(
-      tournamentGames.filter(g => ['confirmed', 'forfeited', 'result_entered'].includes(g.status)).map(g => g.matchdayId)
-    )
-    const editableMatchdayIds = new Set(
-      tournamentMatchdays.filter(m => m.weekStart && m.weekStart > today && !resultMatchdayIds.has(m.id)).map(m => m.id)
-    )
-    const dayGameIds = new Set(dayGames.map(g => g.id))
-    editorSuggestions = suggestFixes(tournamentGames, rosterPlayers, editableMatchdayIds, numberById)
-      .filter(s => dayGameIds.has(s.gameId))
-      .map(s => ({ gameId: s.gameId, toHomeId: s.toAId, toAwayId: s.toBId, toAName: s.toAName, toBName: s.toBName }))
   }
 
   return (
@@ -126,7 +112,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
                 <li key={i}>
                   <span className="font-medium">{iss.aName} vs {iss.bName}</span> meet {iss.count}× across the tournament
                   {iss.matchdayNumbers.length > 0 && <span className="text-yellow-700"> (MD {iss.matchdayNumbers.join(', ')})</span>}
-                  {' '}— they should meet twice. Change one of these games below.
+                  {' '}— they should meet twice. Edit a game below, or use <span className="font-medium">Regenerate schedule</span> (Admin panel) to rebuild the unplayed matchdays cleanly.
                 </li>
               ))}
             </ul>
@@ -147,7 +133,6 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
               matchdayId={matchday.id}
               games={dayGames.map(g => ({ id: g.id, homePlayerId: g.homePlayerId, awayPlayerId: g.awayPlayerId }))}
               roster={rosterPlayers}
-              suggestions={editorSuggestions}
             />
           </CardContent>
         </Card>

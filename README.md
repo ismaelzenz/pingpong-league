@@ -198,14 +198,10 @@ Because manual edits can break the "each pair exactly twice" rule, the app conti
 - A matchday's detail page warns the editing admin about duplicate pairings in that matchday
   and where else those players meet.
 
-**You don't have to untangle it by hand.** The app computes concrete fixes and offers them:
-- In the line-up editor, an over-scheduled game shows a **suggested fix with an Apply button** —
-  e.g. *"play Joe vs Kim here instead"* — which switches that game to an under-scheduled pairing.
-  Because that single change fixes both the over- and the under-scheduled pair at once (and keeps
-  every player's game and bye counts balanced), it ends the "fixing one breaks another" loop.
-- The matchday-list banner lists the same suggestions with links to the matchday.
-- As a one-click reset, **Regenerate schedule** (Admin panel) rebuilds all *unplayed* matchdays
-  cleanly at once — it never touches played games.
+**To fix it, use Regenerate schedule** (Admin panel). It rebuilds all *unplayed* matchdays
+cleanly so every pair meets exactly twice again, without touching any game that already has a
+result. Trying to untangle an imbalance by hand tends to shift it elsewhere ("fix one, break
+another"), so Regenerate is the reliable one-click repair.
 
 ---
 

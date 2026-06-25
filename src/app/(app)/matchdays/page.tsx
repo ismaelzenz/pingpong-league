@@ -5,7 +5,7 @@ import { db } from '@/lib/db'
 import { tournaments, matchdays, games, participants, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Card, CardContent } from '@/components/ui/card'
-import { analyzeSchedule, suggestFixes } from '@/lib/scheduleHealth'
+import { analyzeSchedule } from '@/lib/scheduleHealth'
 import { format } from 'date-fns'
 import { AlertTriangle } from 'lucide-react'
 
@@ -47,17 +47,6 @@ export default async function MatchdaysPage() {
   const matchdayNumberById = new Map(allMatchdays.map(m => [m.id, m.number]))
   const health = analyzeSchedule(allGamesRaw, matchdayNumberById, roster)
 
-  const today = new Date().toISOString().split('T')[0]
-  const resultMatchdayIds = new Set(
-    allGamesRaw.filter(g => ['confirmed', 'forfeited', 'result_entered'].includes(g.status)).map(g => g.matchdayId)
-  )
-  const editableMatchdayIds = new Set(
-    allMatchdays.filter(m => m.weekStart && m.weekStart > today && !resultMatchdayIds.has(m.id)).map(m => m.id)
-  )
-  const fixes = session.isAdmin && !health.ok
-    ? suggestFixes(allGamesRaw, roster, editableMatchdayIds, matchdayNumberById)
-    : []
-
   return (
     <div className="space-y-6">
       <div>
@@ -94,27 +83,9 @@ export default async function MatchdaysPage() {
               ))}
             </ul>
 
-            {fixes.length > 0 && (
-              <div className="pt-1">
-                <p className="text-xs font-semibold text-green-800">Suggested fixes (open the matchday to apply with one click):</p>
-                <ul className="text-xs text-green-800 space-y-1 list-disc pl-4 mt-1">
-                  {fixes.map((f, idx) => (
-                    <li key={idx}>
-                      In{' '}
-                      <Link href={`/matchdays/${allMatchdays.find(m => m.number === f.matchdayNumber)?.id ?? ''}`} className="font-medium underline">
-                        MD{f.matchdayNumber}
-                      </Link>
-                      , change <span className="font-medium">{f.fromAName} vs {f.fromBName}</span> →{' '}
-                      <span className="font-medium">{f.toAName} vs {f.toBName}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
             <p className="text-xs text-yellow-700 pt-1">
-              Or use <span className="font-medium">Regenerate schedule</span> on the Admin panel to rebuild all
-              unplayed matchdays cleanly at once.
+              To fix it, use <span className="font-medium">Regenerate schedule</span> on the Admin panel — it rebuilds
+              all unplayed matchdays cleanly in one click, without touching games that already have results.
             </p>
           </CardContent>
         </Card>

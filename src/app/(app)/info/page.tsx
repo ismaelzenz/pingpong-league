@@ -101,7 +101,7 @@ export default async function InfoPage() {
             <li>The <strong className="text-foreground">matchday list</strong> shows a ⚠️ icon on any matchday with a conflict, plus a banner listing each issue — e.g. <em>&ldquo;Isma vs Sameer is scheduled 3× (should be 2)&rdquo;</em> and the matching <em>&ldquo;Joe vs Kim is only scheduled 1×&rdquo;</em>.</li>
             <li>A matchday&apos;s page warns you about duplicate pairings there and where else those players meet.</li>
           </ul>
-          <p>You don&apos;t have to untangle it by hand: an over-scheduled game shows a <strong className="text-foreground">suggested fix with an Apply button</strong> in the line-up editor. One click switches it to an under-scheduled pairing, which fixes both problems at once and keeps everyone&apos;s game and bye counts balanced. Or use <strong className="text-foreground">Regenerate schedule</strong> to rebuild all unplayed matchdays cleanly at once.</p>
+          <p>To fix it, use <strong className="text-foreground">Regenerate schedule</strong> — it rebuilds all unplayed matchdays cleanly so every pair meets exactly twice again, without touching games that already have a result. (Untangling it by hand tends to just move the problem around.)</p>
         </Section>
       )}
     </div>
