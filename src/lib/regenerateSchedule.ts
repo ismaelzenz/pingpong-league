@@ -1,11 +1,21 @@
 import { db } from '@/lib/db'
-import { matchdays, games, participants } from '@/lib/db/schema'
+import { matchdays, games, participants, tournaments } from '@/lib/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 import { generateSchedule } from '@/lib/schedule'
 import { addDays, nextMonday, format } from 'date-fns'
 
 // A matchday that contains any of these is considered "played" and is never touched.
 const RESULT_STATUSES = ['confirmed', 'forfeited', 'result_entered']
+
+function parseBreakWeeks(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
 
 /**
  * Rebuild the not-yet-played part of a tournament's schedule for the current roster.
@@ -32,6 +42,17 @@ export async function regenerateSchedule(tournamentId: number, startedAt: string
     .where(eq(matchdays.tournamentId, tournamentId)).orderBy(matchdays.number)
   const allGames = await db.select().from(games).where(eq(games.tournamentId, tournamentId))
 
+  // Holiday breaks: weeks the admin chose to leave matchday-free. We advance past them
+  // when dating matchdays so no matchday lands on a blackout week.
+  const trow = await db.select({ breakWeeks: tournaments.breakWeeks }).from(tournaments)
+    .where(eq(tournaments.id, tournamentId)).then(r => r[0])
+  const breakSet = new Set(parseBreakWeeks(trow?.breakWeeks))
+  const nextOpenWeek = (d: Date) => {
+    let x = d
+    while (breakSet.has(format(x, 'yyyy-MM-dd'))) x = addDays(x, 7)
+    return x
+  }
+
   // Lock any matchday that already has a played/in-progress result.
   const lockedMatchdayIds = new Set(
     allGames.filter(g => RESULT_STATUSES.includes(g.status)).map(g => g.matchdayId)
@@ -53,6 +74,7 @@ export async function regenerateSchedule(tournamentId: number, startedAt: string
     let weekStart = startedAt ? nextMonday(new Date(startedAt)) : nextMonday(new Date())
     let gameCount = 0
     for (const md of schedule) {
+      weekStart = nextOpenWeek(weekStart)
       const [row] = await db.insert(matchdays).values({
         tournamentId,
         number: md.number,
@@ -103,7 +125,7 @@ export async function regenerateSchedule(tournamentId: number, startedAt: string
 
   const futureMds: { id: number }[] = []
   for (let i = 0; i < futureCount; i++) {
-    weekStart = addDays(weekStart, 7)
+    weekStart = nextOpenWeek(addDays(weekStart, 7))
     const [row] = await db.insert(matchdays).values({
       tournamentId,
       number: nextNumber++,

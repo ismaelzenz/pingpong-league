@@ -131,6 +131,8 @@ played" count or its bye list.
 From the **Admin panel**:
 
 - **Create a tournament** — opens registration so players can join.
+- **Schedule breaks** (during registration) — pick weeks to leave matchday-free (holidays,
+  summer break). Schedule generation skips those weeks and simply resumes the following week.
 - **Close registration & start** — generates the full canonical double round-robin schedule
   and makes the tournament active. (Needs at least 2 participants.)
 - **Add a player mid-season** — see [below](#adding-a-newcomer-mid-season).
@@ -194,7 +196,7 @@ Because manual edits can break the "each pair exactly twice" rule, the app conti
 - The **matchday list** shows a ⚠️ icon on any matchday with a problem (a pairing happening
   more than twice, or a player double-booked), plus an admin banner listing every issue —
   e.g. *"Isma vs Sameer is scheduled 3× (should be 2) — MD1, MD3, MD14"* and the matching
-  *"Joe vs Kim is only scheduled 1×"*.
+  *"Ana vs Sam is only scheduled 1×"*.
 - A matchday's detail page warns the editing admin about duplicate pairings in that matchday
   and where else those players meet.
 

@@ -204,14 +204,14 @@ export default async function DashboardPage() {
 
         <div className="space-y-3 flex flex-col">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Top standings</h2>
+            <h2 className="font-semibold">Standings</h2>
             <Link href="/scoreboard" className="text-sm text-primary hover:underline">Full table</Link>
           </div>
-          <Card className="flex-1">
-            <CardContent className="pt-4 p-0">
+          <Card className="flex-1 flex flex-col">
+            <CardContent className="p-0 flex-1 min-h-0 overflow-auto max-h-[28rem]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
+                  <tr className="border-b bg-card sticky top-0">
                     <th className="text-left px-4 py-2 text-muted-foreground font-medium">#</th>
                     <th className="text-left px-4 py-2 text-muted-foreground font-medium">Player</th>
                     <th className="text-right px-4 py-2 text-muted-foreground font-medium">Pts</th>
@@ -220,7 +220,7 @@ export default async function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {scores.slice(0, 8).map((entry, i) => (
+                  {scores.map((entry, i) => (
                     <tr key={entry.userId} className={`border-b ${entry.userId === session.userId ? 'bg-primary/5' : ''}`}>
                       <td className="px-4 py-2.5 text-muted-foreground">{i + 1}</td>
                       <td className="px-4 py-2.5 font-medium truncate max-w-[140px]">

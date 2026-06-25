@@ -86,6 +86,7 @@ export default async function InfoPage() {
         <Section icon={Shield} title="For admins">
           <ul className="space-y-2">
             <li><strong className="text-foreground">Create a tournament</strong> to open registration, then <strong className="text-foreground">Close registration &amp; start</strong> to generate the schedule.</li>
+            <li><strong className="text-foreground">Schedule breaks</strong> (during registration) — choose weeks to leave matchday-free (holidays); generation skips them and resumes the next week.</li>
             <li><strong className="text-foreground">Add a player mid-season</strong> — rebuilds the unplayed schedule and creates catch-up games for them (above).</li>
             <li><strong className="text-foreground">Edit a future matchday</strong> from its page: change who plays whom, add/remove a game, reorder, or give a bye (even rosters).</li>
             <li><strong className="text-foreground">Regenerate schedule</strong> — rebuilds only the not-yet-played matchdays for the current roster. Played matchdays are never touched, and every pair still plays exactly twice.</li>

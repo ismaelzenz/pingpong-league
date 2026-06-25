@@ -14,8 +14,19 @@ import AdminResetPasswordButton from '@/components/AdminResetPasswordButton'
 import UnenrollButton from '@/components/UnenrollButton'
 import EliminatePlayerButton from '@/components/EliminatePlayerButton'
 import AddPlayerForm from '@/components/AddPlayerForm'
+import BreakWeeksForm from '@/components/BreakWeeksForm'
 
 export const dynamic = 'force-dynamic'
+
+function parseBreakWeeks(raw: string | null): string[] {
+  if (!raw) return []
+  try {
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
 
 export default async function AdminPage() {
   const session = await getSession()
@@ -112,6 +123,21 @@ export default async function AdminPage() {
               />
             </CardContent>
           </Card>
+
+          {activeTournament.status === 'registration' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Schedule breaks</CardTitle>
+                <CardDescription>
+                  Weeks to leave matchday-free (holidays, summer break…). Set these before starting —
+                  the generated schedule skips them.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BreakWeeksForm tournamentId={activeTournament.id} initialWeeks={parseBreakWeeks(activeTournament.breakWeeks)} />
+              </CardContent>
+            </Card>
+          )}
 
           {activeTournament.status === 'active' && (
             <Card>

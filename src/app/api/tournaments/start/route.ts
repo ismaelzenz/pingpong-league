@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { tournaments, participants, matchdays, games } from '@/lib/db/schema'
+import { tournaments, participants } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
 import { eq } from 'drizzle-orm'
-import { generateSchedule } from '@/lib/schedule'
-import { addDays, nextMonday, format } from 'date-fns'
+import { regenerateSchedule } from '@/lib/regenerateSchedule'
 
 export async function POST(req: NextRequest) {
   const session = await getSession()
@@ -19,38 +18,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Need at least 2 participants' }, { status: 400 })
   }
 
-  // Mark tournament active
-  await db.update(tournaments)
-    .set({ status: 'active', startedAt: new Date().toISOString() })
-    .where(eq(tournaments.id, tournamentId))
+  // Mark tournament active, then build the schedule (skipping any holiday break weeks).
+  const startedAt = new Date().toISOString()
+  await db.update(tournaments).set({ status: 'active', startedAt }).where(eq(tournaments.id, tournamentId))
 
-  // Generate schedule
-  const playerIds = pList.map(p => p.userId)
-  const schedule = generateSchedule(playerIds)
+  const result = await regenerateSchedule(tournamentId, startedAt)
 
-  let weekStart = nextMonday(new Date())
-
-  for (const matchday of schedule) {
-    const weekEnd = addDays(weekStart, 6)
-
-    const [md] = await db.insert(matchdays).values({
-      tournamentId,
-      number: matchday.number,
-      weekStart: format(weekStart, 'yyyy-MM-dd'),
-      weekEnd: format(weekEnd, 'yyyy-MM-dd'),
-    }).returning()
-
-    await db.insert(games).values(
-      matchday.games.map(g => ({
-        matchdayId: md.id,
-        tournamentId,
-        homePlayerId: g.home,
-        awayPlayerId: g.away,
-      }))
-    )
-
-    weekStart = addDays(weekStart, 7)
-  }
-
-  return NextResponse.json({ ok: true, matchdays: schedule.length })
+  return NextResponse.json({ ok: true, matchdays: result.matchdays })
 }

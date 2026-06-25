@@ -22,6 +22,7 @@ async function main() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'registration' CHECK(status IN ('registration','active','finished')),
+      break_weeks TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       started_at TEXT,
       finished_at TEXT
@@ -76,6 +77,7 @@ async function main() {
   // Add new columns to existing tables (safe to re-run)
   try { await client.execute('ALTER TABLE users ADD COLUMN avatar_color TEXT') } catch {}
   try { await client.execute('ALTER TABLE games ADD COLUMN is_catch_up INTEGER NOT NULL DEFAULT 0') } catch {}
+  try { await client.execute('ALTER TABLE tournaments ADD COLUMN break_weeks TEXT') } catch {}
 
   console.log('Database initialised:', process.env.TURSO_DATABASE_URL)
   client.close()

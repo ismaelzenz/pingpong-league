@@ -14,6 +14,8 @@ export const tournaments = sqliteTable('tournaments', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   status: text('status', { enum: ['registration', 'active', 'finished'] }).notNull().default('registration'),
+  // JSON array of Monday dates ('yyyy-MM-dd') to skip when scheduling (holiday breaks).
+  breakWeeks: text('break_weeks'),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
   startedAt: text('started_at'),
   finishedAt: text('finished_at'),
