@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { participants, tournaments, matchdays, games, users } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
-import { and, eq } from 'drizzle-orm'
-import { distributeNewPlayerGames } from '@/lib/schedule'
+import { and, eq, or } from 'drizzle-orm'
+import { regenerateSchedule } from '@/lib/regenerateSchedule'
 
 export async function POST(req: NextRequest) {
   const session = await getSession()
@@ -31,46 +31,29 @@ export async function POST(req: NextRequest) {
     .then(r => r[0])
   if (existing) return NextResponse.json({ error: 'Player is already in this tournament' }, { status: 409 })
 
-  // Everyone already in the tournament becomes an opponent of the newcomer.
-  const opponents = await db.select({ userId: participants.userId }).from(participants)
-    .where(eq(participants.tournamentId, tournamentId))
-  const opponentIds = opponents.map(o => o.userId)
-
-  const tournamentMatchdays = await db.select({ id: matchdays.id, weekStart: matchdays.weekStart, number: matchdays.number })
-    .from(matchdays)
-    .where(eq(matchdays.tournamentId, tournamentId))
-    .orderBy(matchdays.number)
-
-  if (tournamentMatchdays.length === 0) {
-    return NextResponse.json({ error: 'Tournament has no matchdays to schedule into' }, { status: 400 })
-  }
-
-  // Enroll, then graft the new player's double round-robin games onto existing matchdays.
+  // Enroll, then rebuild the whole schedule for the new roster. This re-applies already
+  // played results and lays out a clean double round-robin — so the newcomer gets games
+  // against everyone without double-booking anyone or breaking byes.
   await db.insert(participants).values({ tournamentId, userId })
+  await regenerateSchedule(tournamentId, tournament.startedAt)
 
-  const distributed = distributeNewPlayerGames(userId, opponentIds, tournamentMatchdays.map(m => m.id))
-
-  if (distributed.length > 0) {
-    await db.insert(games).values(distributed.map(g => ({
-      matchdayId: g.matchdayId,
-      tournamentId,
-      homePlayerId: g.home,
-      awayPlayerId: g.away,
-    })))
-  }
-
-  // Count how many landed in already-started matchdays — those are catch-up games.
+  // The newcomer's games that fall in already-started matchdays are catch-up games.
   const today = new Date().toISOString().split('T')[0]
-  const startedMatchdayIds = new Set(
-    tournamentMatchdays.filter(m => !m.weekStart || m.weekStart <= today).map(m => m.id)
-  )
-  const catchUp = distributed.filter(g => startedMatchdayIds.has(g.matchdayId)).length
+  const newGames = await db.select({ weekStart: matchdays.weekStart })
+    .from(games)
+    .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
+    .where(and(
+      eq(games.tournamentId, tournamentId),
+      or(eq(games.homePlayerId, userId), eq(games.awayPlayerId, userId)),
+    ))
+  const total = newGames.length
+  const catchUp = newGames.filter(g => g.weekStart && g.weekStart <= today).length
 
   return NextResponse.json({
     ok: true,
     name: user.name,
-    totalGames: distributed.length,
+    totalGames: total,
     catchUpGames: catchUp,
-    upcomingGames: distributed.length - catchUp,
+    upcomingGames: total - catchUp,
   })
 }

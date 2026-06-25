@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { games, matchdays } from '@/lib/db/schema'
+import { games, matchdays, participants } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
 import { eq } from 'drizzle-orm'
+
+// A matchday an admin may still restructure: it hasn't started yet.
+async function getEditableMatchday(matchdayId: number) {
+  const md = await db.select({ id: matchdays.id, weekStart: matchdays.weekStart }).from(matchdays).where(eq(matchdays.id, matchdayId)).then(r => r[0])
+  const today = new Date().toISOString().split('T')[0]
+  const isFuture = !!md?.weekStart && md.weekStart > today
+  return { md, isFuture }
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession()
@@ -71,6 +79,33 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updatedAt: new Date().toISOString(),
     }).where(eq(games.id, gameId))
 
+  } else if (action === 'edit-players') {
+    // Admin fixes the line-up of a not-yet-started matchday.
+    if (!session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+    if (['confirmed', 'forfeited', 'result_entered'].includes(game.status)) {
+      return NextResponse.json({ error: 'Cannot edit a game that already has a result' }, { status: 400 })
+    }
+    const { isFuture } = await getEditableMatchday(game.matchdayId)
+    if (!isFuture) return NextResponse.json({ error: 'Can only edit future matchdays' }, { status: 400 })
+
+    const homePlayerId = Number(body.homePlayerId)
+    const awayPlayerId = Number(body.awayPlayerId)
+    if (!homePlayerId || !awayPlayerId || homePlayerId === awayPlayerId) {
+      return NextResponse.json({ error: 'Pick two different players' }, { status: 400 })
+    }
+    const enrolled = await db.select({ userId: participants.userId }).from(participants)
+      .where(eq(participants.tournamentId, game.tournamentId))
+    const ids = new Set(enrolled.map(p => p.userId))
+    if (!ids.has(homePlayerId) || !ids.has(awayPlayerId)) {
+      return NextResponse.json({ error: 'Both players must be in this tournament' }, { status: 400 })
+    }
+
+    await db.update(games).set({
+      homePlayerId,
+      awayPlayerId,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(games.id, gameId))
+
   } else if (action === 'forfeit') {
     if (!session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
     if (['confirmed', 'forfeited'].includes(game.status)) {
@@ -87,6 +122,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   }
 
+  return NextResponse.json({ ok: true })
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession()
+  if (!session.userId || !session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+
+  const { id } = await params
+  const gameId = parseInt(id)
+  const game = await db.select().from(games).where(eq(games.id, gameId)).get()
+  if (!game) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  if (['confirmed', 'forfeited', 'result_entered'].includes(game.status)) {
+    return NextResponse.json({ error: 'Cannot remove a game that already has a result' }, { status: 400 })
+  }
+  const { isFuture } = await getEditableMatchday(game.matchdayId)
+  if (!isFuture) return NextResponse.json({ error: 'Can only edit future matchdays' }, { status: 400 })
+
+  await db.delete(games).where(eq(games.id, gameId))
   return NextResponse.json({ ok: true })
 }
 

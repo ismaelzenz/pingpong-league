@@ -53,6 +53,24 @@ export default function AdminActions({ tournamentId, status, participantCount }:
     setLoading(false)
   }
 
+  async function handleRegenerate() {
+    if (!confirm(
+      'Rebuild the upcoming schedule for the current roster?\n\n' +
+      'Matchdays that have already started are left untouched. Unplayed games in future ' +
+      'matchdays are reshuffled into a clean round-robin, and anything that no longer fits ' +
+      'becomes a catch-up game. Use this to fix the schedule after adding players.'
+    )) return
+    setLoading(true)
+    try {
+      const data = await callApi('/api/tournaments/regenerate', { tournamentId })
+      toast.success(`Schedule rebuilt — ${data.matchdays} matchdays, ${data.games} games`)
+      router.refresh()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error')
+    }
+    setLoading(false)
+  }
+
   async function handleFinish() {
     if (!confirm('Mark this tournament as finished?')) return
     setLoading(true)
@@ -106,6 +124,9 @@ export default function AdminActions({ tournamentId, status, participantCount }:
       <div className="flex flex-wrap gap-3">
         <Button variant="outline" onClick={handleForfeit} disabled={loading}>
           Forfeit unplayed games
+        </Button>
+        <Button variant="outline" onClick={handleRegenerate} disabled={loading}>
+          Regenerate schedule
         </Button>
         <Button variant="destructive" onClick={handleFinish} disabled={loading}>
           End tournament

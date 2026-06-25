@@ -5,7 +5,9 @@ import { db } from '@/lib/db'
 import { matchdays, games, users, participants } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import GameCard from '@/components/GameCard'
+import MatchdayEditor from '@/components/MatchdayEditor'
 import { format } from 'date-fns'
 import { ChevronLeft } from 'lucide-react'
 
@@ -40,6 +42,12 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
   const playingIds = new Set(dayGames.flatMap(g => [g.homePlayerId, g.awayPlayerId]))
   const byePlayers = roster.filter(p => p.id != null && !playingIds.has(p.id))
 
+  // Admins can restructure a matchday's line-up until its week starts.
+  const today = new Date().toISOString().split('T')[0]
+  const isFuture = !!matchday.weekStart && matchday.weekStart > today
+  const canEdit = session.isAdmin && isFuture
+  const rosterPlayers = roster.filter(p => p.id != null).map(p => ({ id: p.id!, name: p.name ?? '—' }))
+
   return (
     <div className="space-y-6">
       <div>
@@ -71,6 +79,24 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
           <span className="font-medium">Bye this matchday:</span>{' '}
           {byePlayers.map(p => p.name).join(', ')}
         </p>
+      )}
+
+      {canEdit && (
+        <Card className="border-orange-200 bg-orange-50/40">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Admin: edit line-up</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Change who plays whom, add or remove games, and reorder — only while this matchday hasn&apos;t started.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <MatchdayEditor
+              matchdayId={matchday.id}
+              games={dayGames.map(g => ({ id: g.id, homePlayerId: g.homePlayerId, awayPlayerId: g.awayPlayerId }))}
+              roster={rosterPlayers}
+            />
+          </CardContent>
+        </Card>
       )}
     </div>
   )

@@ -221,7 +221,7 @@ export default async function DashboardPage() {
                 </thead>
                 <tbody>
                   {scores.slice(0, 8).map((entry, i) => (
-                    <tr key={entry.userId} className={`border-b last:border-0 ${entry.userId === session.userId ? 'bg-primary/5' : ''}`}>
+                    <tr key={entry.userId} className={`border-b ${entry.userId === session.userId ? 'bg-primary/5' : ''}`}>
                       <td className="px-4 py-2.5 text-muted-foreground">{i + 1}</td>
                       <td className="px-4 py-2.5 font-medium truncate max-w-[140px]">
                         {entry.userId === session.userId

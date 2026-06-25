@@ -32,9 +32,9 @@ export default function AddPlayerForm({ tournamentId, eligibleUsers }: Props) {
     const player = eligibleUsers.find(u => String(u.id) === userId)
     if (!confirm(
       `Add ${player?.name} to the tournament mid-season?\n\n` +
-      `They'll get games against every current player (home and away). Games in matchdays ` +
-      `that have already started become catch-up games they need to play to catch up; the rest ` +
-      `are scheduled into upcoming matchdays.`
+      `The schedule is rebuilt as a fresh double round-robin for the new roster — already-played ` +
+      `results are kept. ${player?.name} gets games against everyone; those in matchdays that have ` +
+      `already started become catch-up games, the rest are upcoming.`
     )) return
 
     setLoading(true)
