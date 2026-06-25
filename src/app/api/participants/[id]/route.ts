@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { participants, tournaments, matchdays, games } from '@/lib/db/schema'
+import { participants, tournaments, games } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
 import { eq, and, or } from 'drizzle-orm'
+import { regenerateSchedule } from '@/lib/regenerateSchedule'
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession()
@@ -32,8 +33,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 
   // Active tournament: eliminate the player mid-season.
-  // Deleting every game they took part in (past and future) makes the live-computed
-  // scoreboard automatically deduct any points/victories/sets others earned against them.
+  // 1) Drop every game they were in (so they vanish from played matchdays too, and the
+  //    live scoreboard deducts any points others earned against them).
+  // 2) Remove them from the roster.
+  // 3) Regenerate so the schedule is resized to the new roster — correct matchday count,
+  //    games-per-matchday, and byes — preserving the remaining players' played results.
   const { userId, tournamentId } = participant
 
   const deletedGames = await db.delete(games)
@@ -43,25 +47,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     ))
     .returning({ id: games.id })
 
-  // Remove any matchday left with no games (e.g. a round that was only this player's game).
-  const tournamentMatchdays = await db.select({ id: matchdays.id }).from(matchdays)
-    .where(eq(matchdays.tournamentId, tournamentId))
-  let deletedMatchdays = 0
-  for (const md of tournamentMatchdays) {
-    const remaining = await db.select({ id: games.id }).from(games)
-      .where(eq(games.matchdayId, md.id))
-      .then(r => r.length)
-    if (remaining === 0) {
-      await db.delete(matchdays).where(eq(matchdays.id, md.id))
-      deletedMatchdays++
-    }
-  }
-
   await db.delete(participants).where(eq(participants.id, participantId))
+
+  const result = await regenerateSchedule(tournamentId, tournament.startedAt)
 
   return NextResponse.json({
     ok: true,
     deletedGames: deletedGames.length,
-    deletedMatchdays,
+    matchdays: result.matchdays,
   })
 }
