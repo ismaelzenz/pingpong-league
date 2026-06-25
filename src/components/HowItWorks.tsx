@@ -33,7 +33,7 @@ export default function HowItWorks({ collapsible = false }: { collapsible?: bool
       <Card className="py-0 gap-0">
         <details className="group">
           <summary className="flex items-center justify-between cursor-pointer list-none px-4 py-4 text-base font-medium [&::-webkit-details-marker]:hidden">
-            How it works
+            Format
             <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
           </summary>
           <div className="px-4 pb-4">
@@ -47,7 +47,7 @@ export default function HowItWorks({ collapsible = false }: { collapsible?: bool
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">How it works</CardTitle>
+        <CardTitle className="text-base">Format</CardTitle>
       </CardHeader>
       <CardContent>
         <RulesList />
