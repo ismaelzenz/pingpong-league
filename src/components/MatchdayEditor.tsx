@@ -21,6 +21,11 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
   const [busy, setBusy] = useState(false)
   const [addHome, setAddHome] = useState('')
   const [addAway, setAddAway] = useState('')
+  const [byeSel, setByeSel] = useState('')
+
+  // With an odd roster a bye happens automatically every matchday, so the manual control
+  // is only useful (and only shown) when the roster is even.
+  const evenRoster = roster.length % 2 === 0
 
   const nameOf = (id: number) => roster.find(p => p.id === id)?.name ?? '—'
 
@@ -31,6 +36,7 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
     counts.set(g.awayPlayerId, (counts.get(g.awayPlayerId) ?? 0) + 1)
   }
   const doubled = roster.filter(p => (counts.get(p.id) ?? 0) > 1)
+  const unassigned = roster.filter(p => !counts.has(p.id))
 
   async function call(url: string, method: string, body?: object) {
     setBusy(true)
@@ -73,6 +79,14 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
     }).then(ok => { if (ok) { setAddHome(''); setAddAway('') } })
   }
 
+  function giveBye() {
+    const pid = Number(byeSel)
+    if (!pid) { toast.error('Pick a player'); return }
+    const game = games.find(g => g.homePlayerId === pid || g.awayPlayerId === pid)
+    if (!game) { toast.error('That player is already on a bye'); return }
+    call(`/api/games/${game.id}`, 'DELETE').then(ok => { if (ok) setByeSel('') })
+  }
+
   function move(index: number, dir: -1 | 1) {
     const target = index + dir
     if (target < 0 || target >= games.length) return
@@ -101,6 +115,12 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
       {doubled.length > 0 && (
         <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
           ⚠️ Playing more than once this matchday: {doubled.map(p => p.name).join(', ')}
+        </p>
+      )}
+
+      {unassigned.length > 0 && (
+        <p className="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+          🪑 No game this matchday (bye): {unassigned.map(p => p.name).join(', ')}
         </p>
       )}
 
@@ -144,6 +164,29 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
           <Plus className="w-4 h-4 mr-1" /> Add
         </Button>
       </div>
+
+      {evenRoster && (
+        <div className="flex items-center gap-2 pt-1">
+          <Select value={byeSel} onValueChange={v => setByeSel(v ?? '')} disabled={busy}>
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder="Give a bye to…">{(v: string | null) => (v ? nameOf(Number(v)) : 'Give a bye to…')}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {roster.filter(p => counts.has(p.id)).map(p => (
+                <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={giveBye} disabled={busy || !byeSel}>
+            🪑 Bye
+          </Button>
+        </div>
+      )}
+      {evenRoster && (
+        <p className="text-xs text-muted-foreground -mt-1">
+          Giving a bye removes that game, so both players sit out — re-pair the other player if you still want them to play.
+        </p>
+      )}
     </div>
   )
 }
