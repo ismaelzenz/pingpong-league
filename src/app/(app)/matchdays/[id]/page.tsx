@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import GameCard from '@/components/GameCard'
 import MatchdayEditor from '@/components/MatchdayEditor'
+import { analyzeSchedule } from '@/lib/scheduleHealth'
 import { format } from 'date-fns'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, AlertTriangle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,6 +51,26 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
   const canEdit = session.isAdmin && isFuture
   const rosterPlayers = roster.filter(p => p.id != null).map(p => ({ id: p.id!, name: p.name ?? '—' }))
 
+  // Schedule-health check across the whole tournament, narrowed to pairs that appear in
+  // this matchday — so an editing admin sees exactly which games here are over-scheduled.
+  let localOverIssues: { aName: string; bName: string; count: number; matchdayNumbers: number[] }[] = []
+  if (session.isAdmin) {
+    const tournamentGames = await db.select().from(games).where(eq(games.tournamentId, matchday.tournamentId))
+    const tournamentMatchdays = await db.select({ id: matchdays.id, number: matchdays.number })
+      .from(matchdays).where(eq(matchdays.tournamentId, matchday.tournamentId))
+    const health = analyzeSchedule(
+      tournamentGames,
+      new Map(tournamentMatchdays.map(m => [m.id, m.number])),
+      rosterPlayers,
+    )
+    const nameById = new Map(rosterPlayers.map(p => [p.id, p.name]))
+    const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`)
+    const pairsHere = new Set(dayGames.map(g =>
+      pairKey(nameById.get(g.homePlayerId) ?? '', nameById.get(g.awayPlayerId) ?? '')))
+    localOverIssues = health.issues.filter(iss =>
+      iss.kind === 'over' && pairsHere.has(pairKey(iss.aName, iss.bName)))
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -81,6 +102,25 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
           <span className="font-medium">Bye this matchday:</span>{' '}
           {byePlayers.map(p => p.name).join(', ')}
         </p>
+      )}
+
+      {session.isAdmin && localOverIssues.length > 0 && (
+        <Card className="border-yellow-300 bg-yellow-50">
+          <CardContent className="py-4 space-y-1.5">
+            <p className="text-sm font-semibold text-yellow-800 flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4" /> Duplicate pairing in this matchday
+            </p>
+            <ul className="text-xs text-yellow-800 space-y-1 list-disc pl-4">
+              {localOverIssues.map((iss, i) => (
+                <li key={i}>
+                  <span className="font-medium">{iss.aName} vs {iss.bName}</span> meet {iss.count}× across the tournament
+                  {iss.matchdayNumbers.length > 0 && <span className="text-yellow-700"> (MD {iss.matchdayNumbers.join(', ')})</span>}
+                  {' '}— they should meet twice. Change one of these games below.
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
       {canEdit && (

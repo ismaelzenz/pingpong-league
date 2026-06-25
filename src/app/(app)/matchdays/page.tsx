@@ -2,10 +2,12 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { db } from '@/lib/db'
-import { tournaments, matchdays, games } from '@/lib/db/schema'
+import { tournaments, matchdays, games, participants, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Card, CardContent } from '@/components/ui/card'
+import { analyzeSchedule } from '@/lib/scheduleHealth'
 import { format } from 'date-fns'
+import { AlertTriangle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,9 +34,18 @@ export default async function MatchdaysPage() {
     .where(eq(matchdays.tournamentId, tournament.id))
     .orderBy(matchdays.number)
 
-  const allGames = await db.select().from(games)
+  const allGamesRaw = await db.select().from(games)
     .where(eq(games.tournamentId, tournament.id))
-    .then(rows => rows.filter(g => !g.isCatchUp)) // catch-up games aren't part of any matchday line-up
+  const allGames = allGamesRaw.filter(g => !g.isCatchUp) // catch-up games aren't part of any matchday line-up
+
+  // Schedule-health check: did manual edits break the "each pair exactly twice" rule?
+  const roster = (await db.select({ id: users.id, name: users.name })
+    .from(participants)
+    .leftJoin(users, eq(users.id, participants.userId))
+    .where(eq(participants.tournamentId, tournament.id)))
+    .filter((p): p is { id: number; name: string } => p.id != null)
+  const matchdayNumberById = new Map(allMatchdays.map(m => [m.id, m.number]))
+  const health = analyzeSchedule(allGamesRaw, matchdayNumberById, roster)
 
   return (
     <div className="space-y-6">
@@ -42,6 +53,39 @@ export default async function MatchdaysPage() {
         <h1 className="text-2xl font-bold">Matchdays</h1>
         <p className="text-muted-foreground">{tournament.name}</p>
       </div>
+
+      {session.isAdmin && !health.ok && (
+        <Card className="border-yellow-300 bg-yellow-50">
+          <CardContent className="py-4 space-y-2">
+            <p className="text-sm font-semibold text-yellow-800 flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4" /> Schedule needs attention
+            </p>
+            <p className="text-xs text-yellow-700">
+              Every pair should meet exactly twice. Editing a future matchday to fix one of these
+              will usually resolve a matching “{`over`}” and “{`under`}” at once.
+            </p>
+            <ul className="text-xs text-yellow-800 space-y-1 list-disc pl-4">
+              {health.issues.map((iss, idx) => (
+                <li key={idx}>
+                  <span className="font-medium">{iss.aName} vs {iss.bName}</span>{' '}
+                  {iss.kind === 'over'
+                    ? `is scheduled ${iss.count}× (should be 2)`
+                    : iss.count === 0
+                      ? `is never scheduled (should be 2)`
+                      : `is only scheduled ${iss.count}× (should be 2)`}
+                  {(iss.matchdayNumbers.length > 0 || iss.catchUpCount > 0) && (
+                    <span className="text-yellow-700">
+                      {' — '}
+                      {iss.matchdayNumbers.map(n => `MD${n}`).join(', ')}
+                      {iss.catchUpCount > 0 ? `${iss.matchdayNumbers.length ? ', ' : ''}${iss.catchUpCount} catch-up` : ''}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="flex flex-col gap-4">
         {allMatchdays.map(matchday => {
@@ -57,6 +101,11 @@ export default async function MatchdaysPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold">Matchday {matchday.number}</h3>
+                        {health.matchdayIdsWithIssue.has(matchday.id) && (
+                          <span title="Scheduling conflict — a pairing here happens more than twice, or a player is double-booked">
+                            <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                          </span>
+                        )}
                       </div>
                       {matchday.weekStart && matchday.weekEnd && (
                         <p className="text-xs text-muted-foreground mt-0.5">
