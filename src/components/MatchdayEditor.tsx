@@ -5,18 +5,20 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Trash2, ChevronUp, ChevronDown, Plus } from 'lucide-react'
+import { Trash2, ChevronUp, ChevronDown, Plus, Lightbulb } from 'lucide-react'
 
 interface Player { id: number; name: string }
 interface GameRow { id: number; homePlayerId: number; awayPlayerId: number }
+interface Suggestion { gameId: number; toHomeId: number; toAwayId: number; toAName: string; toBName: string }
 
 interface Props {
   matchdayId: number
   games: GameRow[]
   roster: Player[]
+  suggestions?: Suggestion[]
 }
 
-export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
+export default function MatchdayEditor({ matchdayId, games, roster, suggestions = [] }: Props) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [addHome, setAddHome] = useState('')
@@ -87,6 +89,14 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
     call(`/api/games/${game.id}`, 'DELETE').then(ok => { if (ok) setByeSel('') })
   }
 
+  function applySuggestion(s: Suggestion) {
+    call(`/api/games/${s.gameId}`, 'PATCH', {
+      action: 'edit-players',
+      homePlayerId: s.toHomeId,
+      awayPlayerId: s.toAwayId,
+    })
+  }
+
   function move(index: number, dir: -1 | 1) {
     const target = index + dir
     if (target < 0 || target >= games.length) return
@@ -124,29 +134,47 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
         </p>
       )}
 
-      {games.map((game, i) => (
-        <div key={game.id} className="flex items-center gap-2">
-          <div className="flex flex-col">
-            <button type="button" onClick={() => move(i, -1)} disabled={busy || i === 0}
-              className="text-muted-foreground hover:text-foreground disabled:opacity-30">
-              <ChevronUp className="w-4 h-4" />
-            </button>
-            <button type="button" onClick={() => move(i, 1)} disabled={busy || i === games.length - 1}
-              className="text-muted-foreground hover:text-foreground disabled:opacity-30">
-              <ChevronDown className="w-4 h-4" />
-            </button>
+      {games.map((game, i) => {
+        const suggestion = suggestions.find(s => s.gameId === game.id)
+        return (
+          <div key={game.id} className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col">
+                <button type="button" onClick={() => move(i, -1)} disabled={busy || i === 0}
+                  className="text-muted-foreground hover:text-foreground disabled:opacity-30">
+                  <ChevronUp className="w-4 h-4" />
+                </button>
+                <button type="button" onClick={() => move(i, 1)} disabled={busy || i === games.length - 1}
+                  className="text-muted-foreground hover:text-foreground disabled:opacity-30">
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 flex-1">
+                <PlayerSelect value={game.homePlayerId} onChange={v => setPlayer(game, 'home', v)} />
+                <span className="text-xs text-muted-foreground">vs</span>
+                <PlayerSelect value={game.awayPlayerId} onChange={v => setPlayer(game, 'away', v)} />
+              </div>
+              <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 px-2"
+                onClick={() => removeGame(game.id)} disabled={busy}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+            {suggestion && (
+              <div className="ml-8 flex items-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                <Lightbulb className="w-3.5 h-3.5 shrink-0" />
+                <span className="flex-1">
+                  This pairing is over-scheduled. Fix: play{' '}
+                  <strong>{suggestion.toAName} vs {suggestion.toBName}</strong> here instead.
+                </span>
+                <Button variant="outline" size="sm" className="h-6 px-2 text-xs"
+                  onClick={() => applySuggestion(suggestion)} disabled={busy}>
+                  Apply
+                </Button>
+              </div>
+            )}
           </div>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 flex-1">
-            <PlayerSelect value={game.homePlayerId} onChange={v => setPlayer(game, 'home', v)} />
-            <span className="text-xs text-muted-foreground">vs</span>
-            <PlayerSelect value={game.awayPlayerId} onChange={v => setPlayer(game, 'away', v)} />
-          </div>
-          <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 px-2"
-            onClick={() => removeGame(game.id)} disabled={busy}>
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      ))}
+        )
+      })}
 
       <div className="flex items-center gap-2 pt-1 border-t">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 flex-1">

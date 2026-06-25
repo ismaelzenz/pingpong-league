@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Shield, Home, Trophy, CalendarDays } from 'lucide-react'
+import { LogOut, User, Shield, Home, Trophy, CalendarDays, BookOpen } from 'lucide-react'
 
 interface Props {
   name: string
@@ -97,6 +97,10 @@ export default function AppNav({ name, email, isAdmin, avatarColor }: Props) {
             <DropdownMenuItem render={<Link href="/profile" />}>
               <User className="mr-2 h-4 w-4" />
               My profile
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link href="/info" />}>
+              <BookOpen className="mr-2 h-4 w-4" />
+              How it works
             </DropdownMenuItem>
             {isAdmin && (
               <DropdownMenuItem render={<Link href="/admin" />} className="sm:hidden">
