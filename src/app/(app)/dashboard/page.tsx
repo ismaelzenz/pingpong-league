@@ -2,17 +2,17 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { db } from '@/lib/db'
-import { tournaments, participants, games, users, matchdays } from '@/lib/db/schema'
+import { participants, games, users, matchdays } from '@/lib/db/schema'
 import { eq, or, inArray, and } from 'drizzle-orm'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import PlayerLink from '@/components/PlayerLink'
-import JoinTournamentButton from '@/components/JoinTournamentButton'
 import GameCard from '@/components/GameCard'
 import HowItWorks from '@/components/HowItWorks'
 import { computeScoreboard } from '@/lib/scoreboard'
+import { getLiveTournament } from '@/lib/tournament'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,11 +20,7 @@ export default async function DashboardPage() {
   const session = await getSession()
   if (!session.userId) redirect('/login')
 
-  const tournament = await db.select().from(tournaments)
-    .where(inArray(tournaments.status, ['registration', 'active']))
-    .orderBy(tournaments.createdAt)
-    .limit(1)
-    .then(r => r[0] ?? null)
+  const tournament = await getLiveTournament()
 
   if (!tournament) {
     return (
@@ -79,7 +75,9 @@ export default async function DashboardPage() {
                 ✓ You&apos;re in! Waiting for the tournament to start…
               </div>
             ) : (
-              <JoinTournamentButton tournamentId={tournament.id} />
+              <p className="text-sm text-muted-foreground">
+                You&apos;re not in this tournament yet. Ask an admin to add you.
+              </p>
             )}
           </CardContent>
         </Card>
@@ -184,17 +182,19 @@ export default async function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">My upcoming games</h2>
-            <Link href="/matchdays" className="text-sm text-primary hover:underline">View all</Link>
+            <Link href="/my-games" className="text-sm text-primary hover:underline">View all</Link>
           </div>
           {upcomingGames.length > 0 ? (
-            upcomingGames.map(game => (
-              <GameCard key={game.id} game={game} currentUserId={session.userId} />
-            ))
+            <div className="flex-1 flex flex-col gap-3">
+              {upcomingGames.map(game => (
+                <GameCard key={game.id} game={game} currentUserId={session.userId} className="flex-1" />
+              ))}
+            </div>
           ) : (
-            <Card>
+            <Card className="flex-1">
               <CardContent className="pt-6 text-center text-muted-foreground text-sm py-8">
                 No upcoming games scheduled.
               </CardContent>
@@ -235,6 +235,14 @@ export default async function DashboardPage() {
                   ))}
                 </tbody>
               </table>
+              {scores.length > 8 && (
+                <Link
+                  href="/scoreboard"
+                  className="block border-t px-4 py-2.5 text-center text-sm font-medium text-primary hover:bg-accent transition-colors"
+                >
+                  View all {scores.length} players →
+                </Link>
+              )}
             </CardContent>
           </Card>
         </div>

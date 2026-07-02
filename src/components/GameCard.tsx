@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import PlayerLink from '@/components/PlayerLink'
+import { cn } from '@/lib/utils'
 import type { GameStatus } from '@/lib/db/schema'
 
 const statusConfig: Record<GameStatus, { label: string; className: string }> = {
@@ -29,18 +30,19 @@ interface GameWithPlayers {
 interface Props {
   game: GameWithPlayers
   currentUserId: number
+  className?: string
 }
 
-export default function GameCard({ game, currentUserId }: Props) {
+export default function GameCard({ game, currentUserId, className }: Props) {
   const config = statusConfig[game.status] ?? statusConfig.pending
   const hasResult = game.homeSets !== null && game.awaySets !== null
 
   return (
-    <Card className="relative hover:shadow-md transition-shadow">
+    <Card className={cn('relative hover:shadow-md transition-shadow flex flex-col', className)}>
       {/* Stretched overlay link makes the whole card open the game, while the
           player name links below sit above it (z-10) and navigate to profiles. */}
       <Link href={`/games/${game.id}`} className="absolute inset-0 z-0" aria-label="View game" />
-      <CardContent className="pt-4 pb-3">
+      <CardContent className="pt-4 pb-3 flex-1 flex flex-col justify-center">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="font-medium text-sm truncate">

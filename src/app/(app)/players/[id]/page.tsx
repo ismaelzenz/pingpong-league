@@ -2,13 +2,15 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { db } from '@/lib/db'
-import { tournaments, games, users, matchdays } from '@/lib/db/schema'
+import { games, users, matchdays } from '@/lib/db/schema'
 import { eq, inArray, or, and } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
+import { getDisplayTournament } from '@/lib/tournament'
 import { computePlayerForm } from '@/lib/playerStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
+import GameCard from '@/components/GameCard'
 import { ChevronLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -27,11 +29,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     .from(users).where(eq(users.id, playerId)).then(r => r[0] ?? null)
   if (!player) notFound()
 
-  const tournament = await db.select().from(tournaments)
-    .where(inArray(tournaments.status, ['active', 'finished']))
-    .orderBy(tournaments.createdAt)
-    .limit(1)
-    .then(r => r[0] ?? null)
+  const tournament = await getDisplayTournament()
 
   const scores = tournament ? await computeScoreboard(tournament.id) : []
   const stats = scores.find(s => s.userId === playerId)
@@ -107,6 +105,29 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     const extra = await db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays).where(inArray(matchdays.id, missingMdIds))
     for (const m of extra) matchdayMap[m.id] = m.number
   }
+
+  // This player's catch-up games (owed games that live outside the regular matchday grid, so
+  // they never appear in any matchday). Surfacing them here lets an admin open one and
+  // forfeit/postpone it — otherwise there's no way to reach a catch-up game.
+  const catchUpRows = tournament
+    ? await db.select().from(games)
+        .where(and(
+          eq(games.tournamentId, tournament.id),
+          eq(games.isCatchUp, true),
+          or(eq(games.homePlayerId, playerId), eq(games.awayPlayerId, playerId)),
+        ))
+        .orderBy(games.id)
+    : []
+  const catchUpOppIds = [...new Set(catchUpRows.map(g => g.homePlayerId === playerId ? g.awayPlayerId : g.homePlayerId))]
+  const catchUpOpps = catchUpOppIds.length
+    ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, catchUpOppIds))
+    : []
+  const catchUpNames = new Map(catchUpOpps.map(o => [o.id, o.name]))
+  const catchUpGames = catchUpRows.map(g => ({
+    ...g,
+    homePlayer: { id: g.homePlayerId, name: g.homePlayerId === playerId ? player.name : (catchUpNames.get(g.homePlayerId) ?? '—') },
+    awayPlayer: { id: g.awayPlayerId, name: g.awayPlayerId === playerId ? player.name : (catchUpNames.get(g.awayPlayerId) ?? '—') },
+  }))
 
   const playerForm = computePlayerForm(playerGames, playerId)
   const initials = player.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -287,6 +308,22 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           )}
         </CardContent>
       </Card>
+
+      {catchUpGames.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Catch-up games</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Owed games outside the regular matchdays. Open one to see or change its result.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {catchUpGames.map(g => (
+              <GameCard key={g.id} game={g} currentUserId={session.userId} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-3">

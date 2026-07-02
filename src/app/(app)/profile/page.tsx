@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { db } from '@/lib/db'
-import { tournaments, games, users, matchdays } from '@/lib/db/schema'
+import { games, users, matchdays } from '@/lib/db/schema'
 import { eq, inArray, or, and } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
+import { getDisplayTournament } from '@/lib/tournament'
 import { computePlayerForm } from '@/lib/playerStats'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -19,11 +20,7 @@ export default async function ProfilePage() {
   const session = await getSession()
   if (!session.userId) redirect('/login')
 
-  const tournament = await db.select().from(tournaments)
-    .where(inArray(tournaments.status, ['active', 'finished']))
-    .orderBy(tournaments.createdAt)
-    .limit(1)
-    .then(r => r[0] ?? null)
+  const tournament = await getDisplayTournament()
 
   const scores = tournament ? await computeScoreboard(tournament.id) : []
   const myStats = scores.find(s => s.userId === session.userId)

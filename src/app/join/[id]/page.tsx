@@ -5,7 +5,6 @@ import { tournaments, participants } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { Card, CardContent } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
-import JoinTournamentButton from '@/components/JoinTournamentButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,7 +63,9 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
                   )
                 ) : !loggedIn ? (
                   <>
-                    <p className="text-sm text-muted-foreground">Sign in or create an account to join.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Create an account or sign in. An admin will then add you to the tournament.
+                    </p>
                     <div className="flex flex-col gap-2">
                       <Link href="/register" className={buttonVariants()}>Create account</Link>
                       <Link href="/login" className={buttonVariants({ variant: 'outline' })}>Sign in</Link>
@@ -78,7 +79,13 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
                     <div><Link href="/dashboard" className={buttonVariants({ variant: 'outline' })}>Go to dashboard</Link></div>
                   </>
                 ) : (
-                  <JoinTournamentButton tournamentId={tournament.id} />
+                  <>
+                    <p className="text-sm text-muted-foreground">
+                      You&apos;re signed in. An admin needs to add you to this tournament — ask them and
+                      you&apos;ll be slotted in.
+                    </p>
+                    <Link href="/dashboard" className={buttonVariants({ variant: 'outline' })}>Go to dashboard</Link>
+                  </>
                 )}
               </>
             )}

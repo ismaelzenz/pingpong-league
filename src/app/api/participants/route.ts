@@ -18,9 +18,8 @@ export async function POST(req: NextRequest) {
 
   const tournament = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).then(r => r[0])
   if (!tournament) return NextResponse.json({ error: 'Tournament not found' }, { status: 404 })
-  if (tournament.status !== 'active') {
-    // Registration uses the self-serve join flow; finished tournaments are read-only.
-    return NextResponse.json({ error: 'Players can only be added to an active tournament here' }, { status: 400 })
+  if (tournament.status === 'finished') {
+    return NextResponse.json({ error: 'Finished tournaments are read-only' }, { status: 400 })
   }
 
   const user = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, userId)).then(r => r[0])
@@ -31,10 +30,16 @@ export async function POST(req: NextRequest) {
     .then(r => r[0])
   if (existing) return NextResponse.json({ error: 'Player is already in this tournament' }, { status: 409 })
 
-  // Enroll, then rebuild the whole schedule for the new roster. This re-applies already
-  // played results and lays out a clean double round-robin — so the newcomer gets games
-  // against everyone without double-booking anyone or breaking byes.
   await db.insert(participants).values({ tournamentId, userId })
+
+  // During registration the schedule doesn't exist yet — a plain enrollment is enough.
+  if (tournament.status === 'registration') {
+    return NextResponse.json({ ok: true, name: user.name, totalGames: 0, catchUpGames: 0, upcomingGames: 0 })
+  }
+
+  // Active: rebuild the whole schedule for the new roster. This re-applies already played
+  // results and lays out a clean double round-robin — so the newcomer gets games against
+  // everyone without double-booking anyone or breaking byes.
   await regenerateSchedule(tournamentId, tournament.startedAt)
 
   // Tally the newcomer's games: catch-up backlog vs games slotted into matchdays.

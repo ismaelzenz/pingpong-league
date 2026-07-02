@@ -17,6 +17,7 @@ function urlBase64ToUint8Array(base64: string) {
 }
 
 export default function NotificationToggle() {
+  const [isPhone, setIsPhone] = useState(false)
   const [supported, setSupported] = useState(true)
   const [subscribed, setSubscribed] = useState(false)
   const [ready, setReady] = useState(false)
@@ -24,7 +25,14 @@ export default function NotificationToggle() {
 
   useEffect(() => {
     void (async () => {
-      if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window) || !VAPID_PUBLIC) {
+      const ua = navigator.userAgent
+      // Phones + iPads (iPadOS 13+ reports as "Macintosh" but is touch-capable).
+      const phone = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+        || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
+      setIsPhone(phone)
+      if (!phone) { setReady(true); return }
+
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !VAPID_PUBLIC) {
         setSupported(false); setReady(true); return
       }
       try {
@@ -75,6 +83,17 @@ export default function NotificationToggle() {
       toast.error(e instanceof Error ? e.message : 'Error')
     }
     setBusy(false)
+  }
+
+  if (!ready) return null
+
+  if (!isPhone) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        📱 Notifications are available on the <strong className="text-foreground">phone version</strong>.
+        Open the league on your phone (on iPhone, install it to your Home Screen first) and enable them there.
+      </p>
+    )
   }
 
   if (!supported) {

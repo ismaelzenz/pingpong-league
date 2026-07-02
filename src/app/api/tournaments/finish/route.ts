@@ -11,8 +11,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { tournamentId } = await req.json()
+  // Finished tournaments are never live — players fall back to "no active tournament"
+  // until an admin promotes another one.
   await db.update(tournaments)
-    .set({ status: 'finished', finishedAt: new Date().toISOString() })
+    .set({ status: 'finished', finishedAt: new Date().toISOString(), isLive: false })
     .where(eq(tournaments.id, tournamentId))
 
   return NextResponse.json({ ok: true })

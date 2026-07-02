@@ -16,9 +16,12 @@ interface EligibleUser {
 interface Props {
   tournamentId: number
   eligibleUsers: EligibleUser[]
+  // 'registration' = tournament not started yet (plain enroll); 'active' = mid-season add
+  // that rebuilds the schedule.
+  phase?: 'registration' | 'active'
 }
 
-export default function AddPlayerForm({ tournamentId, eligibleUsers }: Props) {
+export default function AddPlayerForm({ tournamentId, eligibleUsers, phase = 'active' }: Props) {
   const router = useRouter()
   const [userId, setUserId] = useState('')
   const [loading, setLoading] = useState(false)
@@ -30,7 +33,7 @@ export default function AddPlayerForm({ tournamentId, eligibleUsers }: Props) {
   async function handleAdd() {
     if (!userId) { toast.error('Pick a player to add'); return }
     const player = eligibleUsers.find(u => String(u.id) === userId)
-    if (!confirm(
+    if (phase === 'active' && !confirm(
       `Add ${player?.name} to the tournament mid-season?\n\n` +
       `The schedule is rebuilt as a fresh double round-robin for the new roster — already-played ` +
       `results are kept. ${player?.name} gets games against everyone; those in matchdays that have ` +
@@ -47,8 +50,10 @@ export default function AddPlayerForm({ tournamentId, eligibleUsers }: Props) {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error ?? 'Failed to add player')
       toast.success(
-        `${data.name} added — ${data.totalGames} games created ` +
-        `(${data.catchUpGames} catch-up, ${data.upcomingGames} upcoming)`
+        phase === 'registration'
+          ? `${data.name} added to the tournament`
+          : `${data.name} added — ${data.totalGames} games created ` +
+            `(${data.catchUpGames} catch-up, ${data.upcomingGames} upcoming)`
       )
       setUserId('')
       router.refresh()

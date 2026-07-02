@@ -1,9 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
-import { db } from '@/lib/db'
-import { tournaments } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
+import { getLiveTournament } from '@/lib/tournament'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import PlayerLink from '@/components/PlayerLink'
@@ -14,11 +12,8 @@ export default async function ScoreboardPage() {
   const session = await getSession()
   if (!session.userId) redirect('/login')
 
-  const tournament = await db.select().from(tournaments)
-    .where(eq(tournaments.status, 'active'))
-    .orderBy(tournaments.createdAt)
-    .limit(1)
-    .then(r => r[0] ?? null)
+  const live = await getLiveTournament()
+  const tournament = live?.status === 'active' ? live : null
 
   if (!tournament) {
     return (

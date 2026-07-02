@@ -87,6 +87,18 @@ async function main() {
   try { await client.execute('ALTER TABLE users ADD COLUMN avatar_color TEXT') } catch {}
   try { await client.execute('ALTER TABLE games ADD COLUMN is_catch_up INTEGER NOT NULL DEFAULT 0') } catch {}
   try { await client.execute('ALTER TABLE tournaments ADD COLUMN break_weeks TEXT') } catch {}
+  try { await client.execute('ALTER TABLE tournaments ADD COLUMN is_live INTEGER NOT NULL DEFAULT 0') } catch {}
+  try { await client.execute('ALTER TABLE tournaments ADD COLUMN start_date TEXT') } catch {}
+
+  // Backfill: if no tournament is marked live yet, promote the current one players would
+  // have been seeing (the oldest non-finished) so existing installs keep working seamlessly.
+  const { rows } = await client.execute("SELECT COUNT(*) AS n FROM tournaments WHERE is_live = 1")
+  if (Number(rows[0]?.n ?? 0) === 0) {
+    await client.execute(
+      "UPDATE tournaments SET is_live = 1 WHERE id = (" +
+      "SELECT id FROM tournaments WHERE status != 'finished' ORDER BY created_at LIMIT 1)"
+    )
+  }
 
   console.log('Database initialised:', process.env.TURSO_DATABASE_URL)
   client.close()

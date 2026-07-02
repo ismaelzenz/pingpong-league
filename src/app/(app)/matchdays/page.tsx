@@ -2,10 +2,13 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { db } from '@/lib/db'
-import { tournaments, matchdays, games, participants, users } from '@/lib/db/schema'
+import { matchdays, games, participants, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import GameCard from '@/components/GameCard'
 import { analyzeSchedule } from '@/lib/scheduleHealth'
+import { getLiveTournament } from '@/lib/tournament'
 import { format } from 'date-fns'
 import { AlertTriangle } from 'lucide-react'
 
@@ -15,11 +18,8 @@ export default async function MatchdaysPage() {
   const session = await getSession()
   if (!session.userId) redirect('/login')
 
-  const tournament = await db.select().from(tournaments)
-    .where(eq(tournaments.status, 'active'))
-    .orderBy(tournaments.createdAt)
-    .limit(1)
-    .then(r => r[0] ?? null)
+  const live = await getLiveTournament()
+  const tournament = live?.status === 'active' ? live : null
 
   if (!tournament) {
     return (
@@ -46,6 +46,22 @@ export default async function MatchdaysPage() {
     .filter((p): p is { id: number; name: string } => p.id != null)
   const matchdayNumberById = new Map(allMatchdays.map(m => [m.id, m.number]))
   const health = analyzeSchedule(allGamesRaw, matchdayNumberById, roster)
+
+  // Catch-up games live outside the regular matchday grid, so they never show inside a
+  // matchday. List them here so everyone (and especially admins, who can forfeit them from
+  // the game page) can find them. Unplayed first, then any already settled.
+  const nameById = new Map(roster.map(p => [p.id, p.name]))
+  const catchUpGames = allGamesRaw
+    .filter(g => g.isCatchUp)
+    .map(g => ({
+      ...g,
+      homePlayer: { id: g.homePlayerId, name: nameById.get(g.homePlayerId) ?? '—' },
+      awayPlayer: { id: g.awayPlayerId, name: nameById.get(g.awayPlayerId) ?? '—' },
+    }))
+    .sort((a, b) => {
+      const done = (s: string) => (s === 'confirmed' || s === 'forfeited' ? 1 : 0)
+      return done(a.status) - done(b.status)
+    })
 
   return (
     <div className="space-y-6">
@@ -89,6 +105,24 @@ export default async function MatchdaysPage() {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {catchUpGames.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold text-yellow-700 dark:text-yellow-400">⏳ Catch-up games</h2>
+            <Badge variant="outline" className="text-xs border-yellow-400 text-yellow-700 dark:text-yellow-400">{catchUpGames.length}</Badge>
+          </div>
+          <p className="text-sm text-muted-foreground -mt-1">
+            Owed games that sit outside the regular matchdays (a newcomer&apos;s backlog). They&apos;re
+            playable anytime{session.isAdmin ? ' — open one to enter a result, postpone, or forfeit it' : ''}.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {catchUpGames.map(game => (
+              <GameCard key={game.id} game={game} currentUserId={session.userId} />
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="flex flex-col gap-4">

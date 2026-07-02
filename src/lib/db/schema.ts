@@ -14,6 +14,11 @@ export const tournaments = sqliteTable('tournaments', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   status: text('status', { enum: ['registration', 'active', 'finished'] }).notNull().default('registration'),
+  // Exactly one non-finished tournament is "live" — the one players see on their pages.
+  // Others (e.g. an admin's test/bug-repro copy) stay invisible to players until promoted.
+  isLive: integer('is_live', { mode: 'boolean' }).notNull().default(false),
+  // Chosen first week of play ('yyyy-MM-dd'). Anchors matchday 1 when the schedule is built.
+  startDate: text('start_date'),
   // JSON array of Monday dates ('yyyy-MM-dd') to skip when scheduling (holiday breaks).
   breakWeeks: text('break_weeks'),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
