@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import ProfileEditForm from '@/components/ProfileEditForm'
 import ProfileColorForm from '@/components/ProfileColorForm'
 import ChangePasswordForm from '@/components/ChangePasswordForm'
+import NotificationToggle from '@/components/NotificationToggle'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,6 +92,15 @@ export default async function ProfilePage() {
             <Separator />
             <ProfileColorForm currentColor={userRecord?.avatarColor ?? null} />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Notifications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <NotificationToggle />
         </CardContent>
       </Card>
 

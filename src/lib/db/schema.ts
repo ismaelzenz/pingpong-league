@@ -66,6 +66,15 @@ export const passwordResetTokens = sqliteTable('password_reset_tokens', {
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 })
 
+export const pushSubscriptions = sqliteTable('push_subscriptions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: integer('user_id').notNull().references(() => users.id),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+})
+
 // ─── TypeScript types ────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect
 export type Tournament = typeof tournaments.$inferSelect

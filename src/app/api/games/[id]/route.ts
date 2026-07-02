@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { games, matchdays, participants } from '@/lib/db/schema'
 import { getSession } from '@/lib/session'
+import { sendPush } from '@/lib/push'
 import { eq } from 'drizzle-orm'
 
 // A matchday an admin may still restructure: it hasn't started yet.
@@ -47,6 +48,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updatedAt: new Date().toISOString(),
     }).where(eq(games.id, gameId))
 
+    // Nudge the opponent to confirm.
+    const opponentId = game.homePlayerId === session.userId ? game.awayPlayerId : game.homePlayerId
+    await sendPush(opponentId, {
+      title: 'Confirm a result',
+      body: `${session.name} entered ${homeSets}–${awaySets}. Tap to confirm.`,
+      url: `/games/${gameId}`,
+    })
+
   } else if (action === 'confirm') {
     if (game.status !== 'result_entered') return NextResponse.json({ error: 'Nothing to confirm' }, { status: 400 })
     if (session.userId === game.submittedBy) return NextResponse.json({ error: 'Cannot confirm your own result' }, { status: 403 })
@@ -57,6 +66,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       confirmedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }).where(eq(games.id, gameId))
+
+    if (game.submittedBy) {
+      await sendPush(game.submittedBy, {
+        title: 'Result confirmed',
+        body: `${session.name} confirmed your result.`,
+        url: `/games/${gameId}`,
+      })
+    }
 
   } else if (action === 'dispute') {
     if (game.status !== 'result_entered') return NextResponse.json({ error: 'Nothing to dispute' }, { status: 400 })
@@ -70,6 +87,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       submittedAt: null,
       updatedAt: new Date().toISOString(),
     }).where(eq(games.id, gameId))
+
+    if (game.submittedBy) {
+      await sendPush(game.submittedBy, {
+        title: 'Result disputed',
+        body: `${session.name} disputed the result — please re-enter the score.`,
+        url: `/games/${gameId}`,
+      })
+    }
 
   } else if (action === 'postpone') {
     if (!['pending', 'postponed'].includes(game.status)) return NextResponse.json({ error: 'Cannot postpone' }, { status: 400 })

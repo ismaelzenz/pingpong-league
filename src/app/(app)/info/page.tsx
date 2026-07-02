@@ -51,6 +51,7 @@ export default async function InfoPage() {
         </ol>
         <p>That&apos;s the whole loop: play → report → confirm → repeat.</p>
         <p className="text-xs">📱 Tip: on your phone you can install this as an app — open the browser menu and choose <strong className="text-foreground">Add to Home Screen</strong>.</p>
+        <p className="text-xs">🔔 Turn on notifications in <strong className="text-foreground">My profile → Notifications</strong> to get nudged when it&apos;s your turn to confirm a result. (On iPhone, install the app first.)</p>
       </Section>
 
       <Section icon={ClipboardCheck} title="Entering & confirming results">

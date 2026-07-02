@@ -211,6 +211,16 @@ another"), so Regenerate is the reliable one-click repair.
 
 ---
 
+## Notifications (web push)
+
+Players can enable push notifications from **My profile → Notifications**. They get a nudge when:
+an opponent enters a result to confirm, their result is confirmed, or a result is disputed.
+It's web push (no email) — works on desktop/Android browsers, and on iPhone **once the app is
+installed to the Home Screen** (iOS 16.4+). Requires `VAPID_PUBLIC_KEY`,
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` env vars (generate keys
+with web-push; subscriptions live in the `push_subscriptions` table). Sending logic:
+`src/lib/push.ts`; service-worker handlers in `public/sw.js`.
+
 ## Install on phones (PWA)
 
 The app is an installable PWA — on a phone, open the browser menu and **Add to Home Screen**
