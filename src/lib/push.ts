@@ -1,7 +1,7 @@
 import webpush from 'web-push'
 import { db } from '@/lib/db'
 import { pushSubscriptions, notificationPrefs } from '@/lib/db/schema'
-import type { NotificationType } from '@/lib/notificationTypes'
+import { isConfigurable, type NotificationType } from '@/lib/notificationTypes'
 import { eq, inArray } from 'drizzle-orm'
 
 let configured: boolean | null = null
@@ -32,11 +32,14 @@ export interface PushPayload {
 export async function sendPush(userId: number, payload: PushPayload, type: NotificationType): Promise<void> {
   if (!ready()) return
 
-  // Honour the recipient's per-type preference. On any lookup error, default to sending.
-  try {
-    const pref = await db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, userId)).then(r => r[0])
-    if (pref && pref[type] === false) return
-  } catch { /* ignore — fall through and send */ }
+  // Honour the recipient's per-type preference for configurable kinds. Always-on kinds
+  // (e.g. tournamentStarted) skip this check. On any lookup error, default to sending.
+  if (isConfigurable(type)) {
+    try {
+      const pref = await db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, userId)).then(r => r[0])
+      if (pref && pref[type] === false) return
+    } catch { /* ignore — fall through and send */ }
+  }
 
   let subs
   try {

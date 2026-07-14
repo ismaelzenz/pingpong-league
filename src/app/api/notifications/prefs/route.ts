@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { notificationPrefs } from '@/lib/db/schema'
 import { requireUser } from '@/lib/apiAuth'
-import { NOTIFICATION_TYPES, withDefaults, type NotificationType } from '@/lib/notificationTypes'
+import { NOTIFICATION_TYPES, withDefaults, type ConfigurableNotificationType } from '@/lib/notificationTypes'
 import { eq } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
@@ -27,7 +27,7 @@ export async function PUT(req: NextRequest) {
 
   const body = await req.json().catch(() => ({})) as Record<string, unknown>
 
-  const updates: Partial<Record<NotificationType, boolean>> = {}
+  const updates: Partial<Record<ConfigurableNotificationType, boolean>> = {}
   for (const t of NOTIFICATION_TYPES) {
     if (typeof body[t.key] === 'boolean') updates[t.key] = body[t.key] as boolean
   }

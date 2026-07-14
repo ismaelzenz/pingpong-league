@@ -101,10 +101,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   } else if (action === 'postpone') {
     if (!['pending', 'postponed'].includes(game.status)) return NextResponse.json({ error: 'Cannot postpone' }, { status: 400 })
 
+    const becomingPostponed = game.status !== 'postponed'
     await db.update(games).set({
-      status: game.status === 'postponed' ? 'pending' : 'postponed',
+      status: becomingPostponed ? 'postponed' : 'pending',
       updatedAt: new Date().toISOString(),
     }).where(eq(games.id, gameId))
+
+    // Notify the other player(s) when a game is postponed (not when it's un-postponed).
+    // If an admin who isn't in the game postpones it, both players are notified.
+    if (becomingPostponed) {
+      const recipients = [game.homePlayerId, game.awayPlayerId].filter(id => id !== session.userId)
+      await Promise.all(recipients.map(id => sendPush(id, {
+        title: 'Game postponed',
+        body: `${session.name} postponed your game — it'll still need to be played.`,
+        url: `/games/${gameId}`,
+      }, 'gamePostponed')))
+    }
 
   } else if (action === 'edit-players') {
     // Admin fixes the line-up of a not-yet-started matchday.

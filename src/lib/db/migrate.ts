@@ -87,6 +87,7 @@ async function main() {
       result_to_confirm INTEGER NOT NULL DEFAULT 1,
       result_confirmed INTEGER NOT NULL DEFAULT 1,
       result_disputed INTEGER NOT NULL DEFAULT 1,
+      game_postponed INTEGER NOT NULL DEFAULT 1,
       weekly_reminder INTEGER NOT NULL DEFAULT 1
     );
   `)
@@ -97,6 +98,7 @@ async function main() {
   try { await client.execute('ALTER TABLE tournaments ADD COLUMN break_weeks TEXT') } catch {}
   try { await client.execute('ALTER TABLE tournaments ADD COLUMN is_live INTEGER NOT NULL DEFAULT 0') } catch {}
   try { await client.execute('ALTER TABLE tournaments ADD COLUMN start_date TEXT') } catch {}
+  try { await client.execute('ALTER TABLE notification_prefs ADD COLUMN game_postponed INTEGER NOT NULL DEFAULT 1') } catch {}
 
   // Backfill: if no tournament is marked live yet, promote the current one players would
   // have been seeing (the oldest non-finished) so existing installs keep working seamlessly.

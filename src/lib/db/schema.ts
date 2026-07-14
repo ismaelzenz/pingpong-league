@@ -87,6 +87,7 @@ export const notificationPrefs = sqliteTable('notification_prefs', {
   resultToConfirm: integer('result_to_confirm', { mode: 'boolean' }).notNull().default(true),
   resultConfirmed: integer('result_confirmed', { mode: 'boolean' }).notNull().default(true),
   resultDisputed: integer('result_disputed', { mode: 'boolean' }).notNull().default(true),
+  gamePostponed: integer('game_postponed', { mode: 'boolean' }).notNull().default(true),
   weeklyReminder: integer('weekly_reminder', { mode: 'boolean' }).notNull().default(true),
 })
 
