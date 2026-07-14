@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { tournaments } from '@/lib/db/schema'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
-import { startOfWeek, format, isValid } from 'date-fns'
+import { isValid } from 'date-fns'
+import { mondayOf } from '@/lib/dates'
 
 // Set the holiday break weeks (weeks left matchday-free) while registration is open.
 export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session.userId || !session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+  const guard = await requireAdmin()
+  if (guard instanceof NextResponse) return guard
 
   const { tournamentId, weeks } = await req.json() as { tournamentId: number; weeks: string[] }
 
@@ -21,9 +22,8 @@ export async function POST(req: NextRequest) {
   // Normalise every chosen date to its Monday, dedupe, and sort.
   const mondays = [...new Set(
     (Array.isArray(weeks) ? weeks : [])
-      .map(w => new Date(w))
-      .filter(d => isValid(d))
-      .map(d => format(startOfWeek(d, { weekStartsOn: 1 }), 'yyyy-MM-dd'))
+      .filter(w => isValid(new Date(w)))
+      .map(w => mondayOf(w))
   )].sort()
 
   await db.update(tournaments).set({ breakWeeks: JSON.stringify(mondays) }).where(eq(tournaments.id, tournamentId))

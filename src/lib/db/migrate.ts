@@ -81,6 +81,14 @@ async function main() {
       used_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS notification_prefs (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id),
+      result_to_confirm INTEGER NOT NULL DEFAULT 1,
+      result_confirmed INTEGER NOT NULL DEFAULT 1,
+      result_disputed INTEGER NOT NULL DEFAULT 1,
+      weekly_reminder INTEGER NOT NULL DEFAULT 1
+    );
   `)
 
   // Add new columns to existing tables (safe to re-run)

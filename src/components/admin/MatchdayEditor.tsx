@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Trash2, ChevronUp, ChevronDown, Plus } from 'lucide-react'
+import { useApiAction } from '@/hooks/useApiAction'
 
 interface Player { id: number; name: string }
 interface GameRow { id: number; homePlayerId: number; awayPlayerId: number }
@@ -17,8 +17,7 @@ interface Props {
 }
 
 export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
-  const router = useRouter()
-  const [busy, setBusy] = useState(false)
+  const { run, loading: busy } = useApiAction()
   const [addHome, setAddHome] = useState('')
   const [addAway, setAddAway] = useState('')
   const [byeSel, setByeSel] = useState('')
@@ -38,24 +37,8 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
   const doubled = roster.filter(p => (counts.get(p.id) ?? 0) > 1)
   const unassigned = roster.filter(p => !counts.has(p.id))
 
-  async function call(url: string, method: string, body?: object) {
-    setBusy(true)
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: body ? JSON.stringify(body) : undefined,
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? 'Request failed')
-      router.refresh()
-      return true
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error')
-      return false
-    } finally {
-      setBusy(false)
-    }
+  async function call(url: string, method: 'POST' | 'PATCH' | 'DELETE', body?: object) {
+    return (await run(url, { method, body })) !== null
   }
 
   function setPlayer(game: GameRow, side: 'home' | 'away', value: string) {

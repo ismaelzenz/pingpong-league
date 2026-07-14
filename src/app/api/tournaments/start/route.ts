@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { tournaments, participants } from '@/lib/db/schema'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
 import { regenerateSchedule } from '@/lib/regenerateSchedule'
 
 export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session.userId || !session.isAdmin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const guard = await requireAdmin()
+  if (guard instanceof NextResponse) return guard
 
   const { tournamentId } = await req.json()
 

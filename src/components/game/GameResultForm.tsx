@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { useApiAction } from '@/hooks/useApiAction'
 
 interface Props {
   gameId: number
@@ -14,70 +14,31 @@ interface Props {
 }
 
 export default function GameResultForm({ gameId, mode, isPostponed }: Props) {
-  const router = useRouter()
+  const { run, loading } = useApiAction()
   const [homeSets, setHomeSets] = useState('')
   const [awaySets, setAwaySets] = useState('')
-  const [loading, setLoading] = useState(false)
 
-  async function callApi(action: string, extra?: object) {
-    const res = await fetch(`/api/games/${gameId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ...extra }),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error ?? 'Request failed')
+  function act(action: string, opts: { extra?: object; success?: string } = {}) {
+    return run(`/api/games/${gameId}`, { method: 'PATCH', body: { action, ...opts.extra }, success: opts.success })
   }
 
   async function handleEnter() {
     const h = parseInt(homeSets)
     const a = parseInt(awaySets)
     if (isNaN(h) || isNaN(a)) { toast.error('Please select both scores'); return }
-    setLoading(true)
-    try {
-      await callApi('enter', { homeSets: h, awaySets: a })
-      toast.success('Result submitted — waiting for opponent to confirm')
-      router.refresh()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error')
-    }
-    setLoading(false)
+    await act('enter', { extra: { homeSets: h, awaySets: a }, success: 'Result submitted — waiting for opponent to confirm' })
   }
 
-  async function handleConfirm() {
-    setLoading(true)
-    try {
-      await callApi('confirm')
-      toast.success('Result confirmed! Scoreboard updated.')
-      router.refresh()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error')
-    }
-    setLoading(false)
+  function handleConfirm() {
+    return act('confirm', { success: 'Result confirmed! Scoreboard updated.' })
   }
 
   async function handleDispute() {
-    setLoading(true)
-    try {
-      await callApi('dispute')
-      toast.warning('Result rejected. Opponent can re-enter the correct score.')
-      router.refresh()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error')
-    }
-    setLoading(false)
+    if (await act('dispute')) toast.warning('Result rejected. Opponent can re-enter the correct score.')
   }
 
   async function handlePostpone() {
-    setLoading(true)
-    try {
-      await callApi('postpone')
-      toast.info(isPostponed ? 'Game is active again' : 'Game marked as postponed')
-      router.refresh()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error')
-    }
-    setLoading(false)
+    if (await act('postpone')) toast.info(isPostponed ? 'Game is active again' : 'Game marked as postponed')
   }
 
   if (mode === 'postpone') {

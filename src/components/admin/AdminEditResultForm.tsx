@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { isValidResult } from '@/lib/gameResult'
+import { useApiAction } from '@/hooks/useApiAction'
 
 interface Props {
   gameId: number
@@ -13,32 +14,21 @@ interface Props {
 }
 
 export default function AdminEditResultForm({ gameId, homeSets, awaySets }: Props) {
-  const router = useRouter()
+  const { run, loading } = useApiAction()
   const [home, setHome] = useState(homeSets != null ? String(homeSets) : '')
   const [away, setAway] = useState(awaySets != null ? String(awaySets) : '')
-  const [loading, setLoading] = useState(false)
 
   async function save() {
     const h = parseInt(home), a = parseInt(away)
     if (isNaN(h) || isNaN(a)) { toast.error('Pick both scores'); return }
-    if (!((h === 2 && (a === 0 || a === 1)) || (a === 2 && (h === 0 || h === 1)))) {
+    if (!isValidResult(h, a)) {
       toast.error('A valid result is 2–0, 2–1, 0–2 or 1–2'); return
     }
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/games/${gameId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'admin-set-result', homeSets: h, awaySets: a }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? 'Failed to save')
-      toast.success('Result updated')
-      router.refresh()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error')
-    }
-    setLoading(false)
+    await run(`/api/games/${gameId}`, {
+      method: 'PATCH',
+      body: { action: 'admin-set-result', homeSets: h, awaySets: a },
+      success: 'Result updated',
+    })
   }
 
   return (

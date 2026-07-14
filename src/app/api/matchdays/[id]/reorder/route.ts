@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { matchdays, games } from '@/lib/db/schema'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
+import { todayISO } from '@/lib/dates'
 
 const HAS_RESULT = ['confirmed', 'forfeited', 'result_entered']
 
@@ -12,15 +13,15 @@ const HAS_RESULT = ['confirmed', 'forfeited', 'result_entered']
  * in the requested sequence. Safe because future-matchday games have no results.
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession()
-  if (!session.userId || !session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+  const guard = await requireAdmin()
+  if (guard instanceof NextResponse) return guard
 
   const { id } = await params
   const matchdayId = parseInt(id)
   const matchday = await db.select().from(matchdays).where(eq(matchdays.id, matchdayId)).then(r => r[0])
   if (!matchday) return NextResponse.json({ error: 'Matchday not found' }, { status: 404 })
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
   if (!matchday.weekStart || matchday.weekStart <= today) {
     return NextResponse.json({ error: 'Can only edit future matchdays' }, { status: 400 })
   }

@@ -1,22 +1,20 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { getSession } from '@/lib/session'
+import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { matchdays, games, participants, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import GameCard from '@/components/GameCard'
+import GameCard from '@/components/game/GameCard'
 import { analyzeSchedule } from '@/lib/scheduleHealth'
 import { getLiveTournament } from '@/lib/tournament'
-import { format } from 'date-fns'
+import { formatWeekRange } from '@/lib/dates'
 import { AlertTriangle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function MatchdaysPage() {
-  const session = await getSession()
-  if (!session.userId) redirect('/login')
+  const session = await requireSession()
 
   const live = await getLiveTournament()
   const tournament = live?.status === 'active' ? live : null
@@ -147,7 +145,7 @@ export default async function MatchdaysPage() {
                       </div>
                       {matchday.weekStart && matchday.weekEnd && (
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {format(new Date(matchday.weekStart), 'MMM d')} – {format(new Date(matchday.weekEnd), 'MMM d, yyyy')}
+                          {formatWeekRange(matchday.weekStart, matchday.weekEnd)}
                         </p>
                       )}
                     </div>

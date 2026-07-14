@@ -1,24 +1,23 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { getSession } from '@/lib/session'
+import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { participants, games, users, matchdays } from '@/lib/db/schema'
 import { eq, or, inArray, and } from 'drizzle-orm'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import PlayerLink from '@/components/PlayerLink'
-import GameCard from '@/components/GameCard'
-import HowItWorks from '@/components/HowItWorks'
+import PlayerLink from '@/components/player/PlayerLink'
+import PlayerAvatar from '@/components/player/PlayerAvatar'
+import GameCard from '@/components/game/GameCard'
+import HowItWorks from '@/components/common/HowItWorks'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { getLiveTournament } from '@/lib/tournament'
+import { todayISO } from '@/lib/dates'
 
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
-  const session = await getSession()
-  if (!session.userId) redirect('/login')
+  const session = await requireSession()
 
   const tournament = await getLiveTournament()
 
@@ -92,17 +91,12 @@ export default async function DashboardPage() {
                 <p className="text-sm text-muted-foreground">No players yet.</p>
               )}
               {enrolledPlayers.map((player, i) => {
-                const initials = (player.name ?? '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
                 const isMe = player.id === session.userId
                 return (
                   <div key={player.id} className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground w-4">{i + 1}</span>
                     <PlayerLink userId={player.id!} currentUserId={session.userId} className="flex items-center gap-3 w-fit">
-                      <Avatar className="h-7 w-7">
-                        <AvatarFallback className="text-xs text-white" style={{ backgroundColor: player.avatarColor ?? undefined }}>
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
+                      <PlayerAvatar name={player.name} avatarColor={player.avatarColor} className="h-7 w-7" fallbackClassName="text-xs" />
                       <span className={`text-sm font-medium ${isMe ? 'text-primary' : 'hover:underline'}`}>
                         {player.name}{isMe && ' (you)'}
                       </span>
@@ -143,7 +137,7 @@ export default async function DashboardPage() {
 
   // Catch-up = explicit backlog games (a newcomer's owed games) plus any regular game
   // whose matchday week has already started but is still unplayed (overdue).
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
   const catchUpGames = enrichedGames
     .filter(g => g.isCatchUp || (g.weekStart && g.weekStart <= today))
     .sort((a, b) => (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0))

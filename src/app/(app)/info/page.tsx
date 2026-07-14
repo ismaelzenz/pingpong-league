@@ -44,14 +44,14 @@ export default async function InfoPage() {
 
       <Section icon={CalendarDays} title="Your week, step by step">
         <ol className="list-decimal pl-5 space-y-1.5">
-          <li>Open your <strong className="text-foreground">dashboard</strong> — it shows your <strong className="text-foreground">catch-up games</strong> (overdue/backlog) and your <strong className="text-foreground">upcoming games</strong>.</li>
-          <li><strong className="text-foreground">Play your match</strong> during its week. Catch-up games can be played anytime.</li>
+          <li>Open your <strong className="text-foreground">dashboard</strong> — it shows your <strong className="text-foreground">catch-up games</strong> (overdue/backlog) and your <strong className="text-foreground">upcoming games</strong>. For the full list of your games, use <strong className="text-foreground">My games</strong> (in the account menu).</li>
+          <li><strong className="text-foreground">Play your match</strong> Monday–Friday, its matchday week. Catch-up games can be played anytime.</li>
           <li>One player <strong className="text-foreground">enters the score</strong>; the other <strong className="text-foreground">confirms</strong> it.</li>
           <li>Check the <strong className="text-foreground">Scoreboard</strong>, and tap any player&apos;s avatar to see their stats and your head-to-head.</li>
         </ol>
         <p>That&apos;s the whole loop: play → report → confirm → repeat.</p>
         <p className="text-xs">📱 Tip: on your phone you can install this as an app — open the browser menu and choose <strong className="text-foreground">Add to Home Screen</strong>.</p>
-        <p className="text-xs">🔔 Turn on notifications in <strong className="text-foreground">My profile → Notifications</strong> to get nudged when it&apos;s your turn to confirm a result. (On iPhone, install the app first.)</p>
+        <p className="text-xs">🔔 Turn on notifications in <strong className="text-foreground">My profile → Notifications</strong> to get nudged when it&apos;s your turn to confirm a result, plus a <strong className="text-foreground">Thursday reminder</strong> if you still haven&apos;t played that week&apos;s game. (On iPhone, install the app first.)</p>
       </Section>
 
       <Section icon={ClipboardCheck} title="Entering & confirming results">
@@ -65,13 +65,13 @@ export default async function InfoPage() {
       </Section>
 
       <Section icon={Timer} title="Catch-up games">
-        <p>A <strong className="text-foreground">catch-up game</strong> is one owed outside the normal weekly grid. It shows in the <strong className="text-foreground">Catch-up</strong> section of your dashboard and is visible to <strong className="text-foreground">both</strong> players, so everyone knows a game is outstanding. Play it anytime — it counts toward the scoreboard once confirmed.</p>
+        <p>A <strong className="text-foreground">catch-up game</strong> is one owed outside the normal weekly grid. It shows in the <strong className="text-foreground">Catch-up</strong> section of your dashboard, under <strong className="text-foreground">My games</strong>, on the <strong className="text-foreground">Matchdays</strong> page, and on the players&apos; profiles — so everyone (and admins) can find an outstanding game. Play it anytime — it counts toward the scoreboard once confirmed.</p>
         <p>You&apos;ll see them when a game is <strong className="text-foreground">overdue</strong> (its week passed unplayed) or as a newcomer&apos;s <strong className="text-foreground">backlog</strong> (see below). They aren&apos;t part of any matchday&apos;s line-up, so they don&apos;t change a matchday&apos;s played count or byes.</p>
       </Section>
 
       <Section icon={Users} title="Matchdays & byes">
-        <p>Each matchday is one week. When the number of players is <strong className="text-foreground">odd</strong>, one player sits out each matchday — a <strong className="text-foreground">bye</strong> — and byes rotate so everyone sits out the same number of times. A matchday page shows who&apos;s on a bye that week.</p>
-        <p className="text-xs">Matchdays total <strong className="text-foreground">2 × (players − 1)</strong> for an even roster, or <strong className="text-foreground">2 × players</strong> for an odd roster (with the rotating byes).</p>
+        <p>Each matchday is one week, played <strong className="text-foreground">Monday to Friday</strong> — weekends are left free. When the number of players is <strong className="text-foreground">odd</strong>, one player sits out each matchday — a <strong className="text-foreground">bye</strong> — and byes are spread <strong className="text-foreground">as evenly as possible</strong>. A matchday page shows who&apos;s on a bye that week.</p>
+        <p className="text-xs">Matchdays total <strong className="text-foreground">2 × (players − 1)</strong> for an even roster, or <strong className="text-foreground">2 × players</strong> for an odd roster (with the rotating byes). Someone who joins mid-season may bye a bit more than everyone else — they can&apos;t play the weeks they missed — but every pair still meets exactly twice.</p>
       </Section>
 
       <Section icon={UserPlus} title="When someone joins mid-season">
@@ -87,14 +87,15 @@ export default async function InfoPage() {
       {session.isAdmin && (
         <Section icon={Shield} title="For admins">
           <ul className="space-y-2">
-            <li><strong className="text-foreground">Create a tournament</strong> to open registration, then <strong className="text-foreground">Close registration &amp; start</strong> to generate the schedule.</li>
-            <li><strong className="text-foreground">Invite players</strong> (during registration) — share a join link so colleagues can sign up themselves.</li>
+            <li><strong className="text-foreground">Create a tournament</strong> to open registration, optionally set a <strong className="text-foreground">start date</strong>, then <strong className="text-foreground">Close registration &amp; start</strong> to generate the schedule.</li>
+            <li><strong className="text-foreground">Add players yourself</strong> — players don&apos;t self-join. Share the invite link so colleagues create an account, then add each one from the Admin panel (works during registration and mid-season).</li>
+            <li><strong className="text-foreground">Run more than one tournament</strong> — only the one marked <strong className="text-foreground">Live</strong> is visible to players; use extra ones to test or fix things without touching the live season. <strong className="text-foreground">Set as live</strong> promotes one for everyone to see.</li>
             <li><strong className="text-foreground">Schedule breaks</strong> (during registration) — choose weeks to leave matchday-free (holidays); generation skips them and resumes the next week.</li>
             <li><strong className="text-foreground">Correct a confirmed result</strong> from a game&apos;s page if a score was wrong.</li>
             <li><strong className="text-foreground">Add a player mid-season</strong> — rebuilds the unplayed schedule and creates catch-up games for them (above).</li>
             <li><strong className="text-foreground">Edit a future matchday</strong> from its page: change who plays whom, add/remove a game, reorder, or give a bye (even rosters).</li>
             <li><strong className="text-foreground">Regenerate schedule</strong> — rebuilds only the not-yet-played matchdays for the current roster. Played matchdays are never touched, and every pair still plays exactly twice.</li>
-            <li><strong className="text-foreground">Forfeit unplayed games</strong>, <strong className="text-foreground">eliminate a player</strong>, <strong className="text-foreground">reset a password</strong>, and <strong className="text-foreground">end the tournament</strong>.</li>
+            <li><strong className="text-foreground">Forfeit unplayed games</strong> (including catch-up games, from the game&apos;s page), <strong className="text-foreground">eliminate a player</strong>, <strong className="text-foreground">reset a password</strong>, and <strong className="text-foreground">end the tournament</strong>.</li>
           </ul>
         </Section>
       )}

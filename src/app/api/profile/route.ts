@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { getSession } from '@/lib/session'
+import { requireUser } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
 
 export async function PATCH(req: NextRequest) {
-  const session = await getSession()
-  if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await requireUser()
+  if (session instanceof NextResponse) return session
 
   const { name, avatarColor } = await req.json()
 

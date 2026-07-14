@@ -1,23 +1,22 @@
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getSession } from '@/lib/session'
+import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { matchdays, games, users, participants } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import GameCard from '@/components/GameCard'
-import MatchdayEditor from '@/components/MatchdayEditor'
+import GameCard from '@/components/game/GameCard'
+import MatchdayEditor from '@/components/admin/MatchdayEditor'
 import { analyzeSchedule } from '@/lib/scheduleHealth'
-import { format } from 'date-fns'
+import { todayISO, formatWeekRange } from '@/lib/dates'
 import { ChevronLeft, AlertTriangle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function MatchdayDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const session = await getSession()
-  if (!session.userId) redirect('/login')
+  const session = await requireSession()
 
   const matchday = await db.select().from(matchdays).where(eq(matchdays.id, parseInt(id))).then(r => r[0] ?? null)
   if (!matchday) notFound()
@@ -46,7 +45,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
   const byePlayers = roster.filter(p => p.id != null && !playingIds.has(p.id))
 
   // Admins can restructure a matchday's line-up until its week starts.
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
   const isFuture = !!matchday.weekStart && matchday.weekStart > today
   const canEdit = session.isAdmin && isFuture
   const rosterPlayers = roster.filter(p => p.id != null).map(p => ({ id: p.id!, name: p.name ?? '—' }))
@@ -80,7 +79,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
             <h1 className="text-2xl font-bold">Matchday {matchday.number}</h1>
             {matchday.weekStart && matchday.weekEnd && (
               <p className="text-muted-foreground text-sm">
-                {format(new Date(matchday.weekStart), 'MMM d')} – {format(new Date(matchday.weekEnd), 'MMM d, yyyy')}
+                {formatWeekRange(matchday.weekStart, matchday.weekEnd)}
               </p>
             )}
           </div>

@@ -1,39 +1,31 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { toast } from 'sonner'
+import { useApiAction } from '@/hooks/useApiAction'
 
 export default function CreateTournamentForm() {
-  const router = useRouter()
+  const { run, loading, router } = useApiAction()
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState('')
-  const [loading, setLoading] = useState(false)
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    setLoading(true)
-    const res = await fetch('/api/tournaments/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, startDate: startDate || null }),
+    const data = await run<{ tournament?: { id: number } }>('/api/tournaments/create', {
+      body: { name, startDate: startDate || null },
+      success: 'Tournament created!',
+      refresh: false,
     })
-    const data = await res.json()
-    if (!res.ok) {
-      toast.error(data.error ?? 'Failed to create')
-    } else {
-      toast.success('Tournament created!')
+    if (data) {
       setName('')
       setStartDate('')
       // Jump straight to managing the new tournament.
       if (data.tournament?.id) router.push(`/admin?t=${data.tournament.id}`)
       router.refresh()
     }
-    setLoading(false)
   }
 
   return (

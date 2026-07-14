@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { games, participants, users } from '@/lib/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
+import { perspective, pointsFor } from '@/lib/gameResult'
 
 export interface ScoreboardEntry {
   userId: number
@@ -35,14 +36,12 @@ export async function computeScoreboard(tournamentId: number): Promise<Scoreboar
     let points = 0, setsWon = 0, setsLost = 0, victories = 0, losses = 0
 
     for (const g of myGames) {
-      const isHome = g.homePlayerId === p.userId
-      const mySets = isHome ? (g.homeSets ?? 0) : (g.awaySets ?? 0)
-      const oppSets = isHome ? (g.awaySets ?? 0) : (g.homeSets ?? 0)
+      const { mySets, oppSets, won } = perspective(g, p.userId!)
       setsWon += mySets
       setsLost += oppSets
       if (g.status === 'confirmed') {
-        points += mySets + (mySets > oppSets ? 1 : 0)
-        if (mySets > oppSets) victories++
+        points += pointsFor(mySets, oppSets)
+        if (won) victories++
         else losses++
       }
       // forfeited: 0 points, counts as a loss

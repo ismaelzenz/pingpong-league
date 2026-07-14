@@ -1,25 +1,25 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { getSession } from '@/lib/session'
+import { requireAdminSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { tournaments, participants, users, matchdays, games } from '@/lib/db/schema'
 import { eq, and, lt, inArray } from 'drizzle-orm'
+import { todayISO } from '@/lib/dates'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import AdminActions from '@/components/AdminActions'
-import CreateTournamentForm from '@/components/CreateTournamentForm'
-import DeleteTournamentButton from '@/components/DeleteTournamentButton'
-import AdminResetPasswordButton from '@/components/AdminResetPasswordButton'
-import UnenrollButton from '@/components/UnenrollButton'
-import EliminatePlayerButton from '@/components/EliminatePlayerButton'
-import AddPlayerForm from '@/components/AddPlayerForm'
-import BreakWeeksForm from '@/components/BreakWeeksForm'
-import StartDateForm from '@/components/StartDateForm'
-import SetLiveButton from '@/components/SetLiveButton'
-import InviteLink from '@/components/InviteLink'
+import AdminActions from '@/components/admin/AdminActions'
+import CreateTournamentForm from '@/components/admin/CreateTournamentForm'
+import DeleteTournamentButton from '@/components/admin/DeleteTournamentButton'
+import AdminResetPasswordButton from '@/components/admin/AdminResetPasswordButton'
+import UnenrollButton from '@/components/admin/UnenrollButton'
+import EliminatePlayerButton from '@/components/admin/EliminatePlayerButton'
+import AddPlayerForm from '@/components/admin/AddPlayerForm'
+import BreakWeeksForm from '@/components/admin/BreakWeeksForm'
+import StartDateForm from '@/components/admin/StartDateForm'
+import SetLiveButton from '@/components/admin/SetLiveButton'
+import InviteLink from '@/components/admin/InviteLink'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,8 +34,7 @@ function parseBreakWeeks(raw: string | null): string[] {
 }
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<{ t?: string }> }) {
-  const session = await getSession()
-  if (!session.userId || !session.isAdmin) redirect('/dashboard')
+  await requireAdminSession()
 
   const { t } = await searchParams
 
@@ -53,7 +52,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     null
 
   // Check for matchdays that have ended but still have unplayed games (selected tournament).
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
   const overdueMatchdays: { id: number; number: number; count: number }[] = []
   if (selected?.status === 'active') {
     const pastMatchdays = await db.select({ id: matchdays.id, number: matchdays.number })

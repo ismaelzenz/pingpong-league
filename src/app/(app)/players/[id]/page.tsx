@@ -1,24 +1,24 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getSession } from '@/lib/session'
+import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { games, users, matchdays } from '@/lib/db/schema'
 import { eq, inArray, or, and } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { getDisplayTournament } from '@/lib/tournament'
 import { computePlayerForm } from '@/lib/playerStats'
+import { perspective } from '@/lib/gameResult'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-import GameCard from '@/components/GameCard'
+import PlayerAvatar from '@/components/player/PlayerAvatar'
+import GameCard from '@/components/game/GameCard'
 import { ChevronLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PlayerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const session = await getSession()
-  if (!session.userId) redirect('/login')
+  const session = await requireSession()
 
   const playerId = parseInt(id)
   if (Number.isNaN(playerId)) notFound()
@@ -63,19 +63,17 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   // Build a per-game view from this player's perspective.
   const results = playerGames.map(g => {
-    const isHome = g.homePlayerId === playerId
+    const { isHome, mySets, oppSets, won, forfeited } = perspective(g, playerId)
     const opponentId = isHome ? g.awayPlayerId : g.homePlayerId
-    const theirSets = isHome ? (g.homeSets ?? 0) : (g.awaySets ?? 0)
-    const oppSets = isHome ? (g.awaySets ?? 0) : (g.homeSets ?? 0)
     return {
       gameId: g.id,
       opponentId,
       opponentName: opponentMap[opponentId] ?? '—',
       matchdayNumber: matchdayMap[g.matchdayId] ?? '?',
-      theirSets,
+      theirSets: mySets,
       oppSets,
-      won: g.status === 'forfeited' ? false : theirSets > oppSets,
-      forfeited: g.status === 'forfeited',
+      won,
+      forfeited,
     }
   }).reverse() // most recent first (confirmedAt asc → reverse)
 
@@ -130,7 +128,6 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   }))
 
   const playerForm = computePlayerForm(playerGames, playerId)
-  const initials = player.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
@@ -145,9 +142,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="text-xl text-white" style={{ backgroundColor: player.avatarColor ?? undefined }}>{initials}</AvatarFallback>
-            </Avatar>
+            <PlayerAvatar name={player.name} avatarColor={player.avatarColor} className="h-16 w-16" fallbackClassName="text-xl" />
             <div>
               <p className="text-xl font-bold">{player.name}</p>
               <p className="text-muted-foreground text-sm">{player.email}</p>

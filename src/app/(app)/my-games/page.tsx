@@ -1,6 +1,5 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { getSession } from '@/lib/session'
+import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { games, users, matchdays } from '@/lib/db/schema'
 import { eq, or, and, inArray } from 'drizzle-orm'
@@ -8,7 +7,7 @@ import { getDisplayTournament } from '@/lib/tournament'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
-import GameCard from '@/components/GameCard'
+import GameCard from '@/components/game/GameCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,8 +44,7 @@ function GamesSection({ title, tint, games, currentUserId }: {
 }
 
 export default async function MyGamesPage() {
-  const session = await getSession()
-  if (!session.userId) redirect('/login')
+  const session = await requireSession()
 
   const tournament = await getDisplayTournament()
   if (!tournament) {

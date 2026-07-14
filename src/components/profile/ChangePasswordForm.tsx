@@ -5,30 +5,24 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { useApiAction } from '@/hooks/useApiAction'
 
 export default function ChangePasswordForm() {
+  const { run, loading } = useApiAction()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (next !== confirm) { toast.error('New passwords do not match'); return }
-    setLoading(true)
-    const res = await fetch('/api/auth/change-password', {
+    const ok = await run('/api/auth/change-password', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword: current, newPassword: next }),
+      body: { currentPassword: current, newPassword: next },
+      success: 'Password changed!',
+      refresh: false,
     })
-    const data = await res.json()
-    if (!res.ok) {
-      toast.error(data.error ?? 'Failed')
-    } else {
-      toast.success('Password changed!')
-      setCurrent(''); setNext(''); setConfirm('')
-    }
-    setLoading(false)
+    if (ok) { setCurrent(''); setNext(''); setConfirm('') }
   }
 
   return (

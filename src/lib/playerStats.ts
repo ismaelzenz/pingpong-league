@@ -1,5 +1,7 @@
 // Extra per-player stats derived from their finished games, beyond the raw scoreboard totals.
 
+import { perspective } from '@/lib/gameResult'
+
 interface GameLite {
   homePlayerId: number
   awayPlayerId: number
@@ -21,13 +23,10 @@ export function computePlayerForm(games: GameLite[], playerId: number): PlayerFo
   const results: ('W' | 'L')[] = []
 
   for (const g of games) {
-    const isHome = g.homePlayerId === playerId
-    const mine = (isHome ? g.homeSets : g.awaySets) ?? 0
-    const opp = (isHome ? g.awaySets : g.homeSets) ?? 0
-    setsWon += mine
-    setsLost += opp
+    const { mySets, oppSets, won } = perspective(g, playerId)
+    setsWon += mySets
+    setsLost += oppSets
     played++
-    const won = g.status !== 'forfeited' && mine > opp
     results.push(won ? 'W' : 'L')
     if (won) { wins++; streak++; best = Math.max(best, streak) } else { streak = 0 }
   }

@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+import { useApiAction } from '@/hooks/useApiAction'
 
 const COLORS = [
   '#7C3AED', '#2563EB', '#0891B2', '#059669',
@@ -11,25 +10,12 @@ const COLORS = [
 ]
 
 export default function ProfileColorForm({ currentColor }: { currentColor: string | null }) {
-  const router = useRouter()
+  const { run, loading } = useApiAction()
   const [selected, setSelected] = useState(currentColor)
-  const [loading, setLoading] = useState(false)
 
   async function handleSave(color: string) {
     setSelected(color)
-    setLoading(true)
-    const res = await fetch('/api/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ avatarColor: color }),
-    })
-    if (!res.ok) {
-      toast.error('Failed to save colour')
-    } else {
-      toast.success('Avatar colour updated!')
-      router.refresh()
-    }
-    setLoading(false)
+    await run('/api/profile', { method: 'PATCH', body: { avatarColor: color }, success: 'Avatar colour updated!' })
   }
 
   return (

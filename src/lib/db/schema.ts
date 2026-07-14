@@ -80,11 +80,22 @@ export const pushSubscriptions = sqliteTable('push_subscriptions', {
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
 })
 
+// Per-user push-notification preferences (opt-out; all types default on). One row per user;
+// a missing row means "everything enabled". Column names mirror the keys in notificationTypes.ts.
+export const notificationPrefs = sqliteTable('notification_prefs', {
+  userId: integer('user_id').primaryKey().references(() => users.id),
+  resultToConfirm: integer('result_to_confirm', { mode: 'boolean' }).notNull().default(true),
+  resultConfirmed: integer('result_confirmed', { mode: 'boolean' }).notNull().default(true),
+  resultDisputed: integer('result_disputed', { mode: 'boolean' }).notNull().default(true),
+  weeklyReminder: integer('weekly_reminder', { mode: 'boolean' }).notNull().default(true),
+})
+
 // ─── TypeScript types ────────────────────────────────────────────────────────
 export type User = typeof users.$inferSelect
 export type Tournament = typeof tournaments.$inferSelect
 export type Participant = typeof participants.$inferSelect
 export type Matchday = typeof matchdays.$inferSelect
 export type Game = typeof games.$inferSelect
+export type NotificationPrefRow = typeof notificationPrefs.$inferSelect
 export type GameStatus = Game['status']
 export type TournamentStatus = Tournament['status']

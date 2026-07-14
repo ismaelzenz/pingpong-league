@@ -1,24 +1,25 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/session'
+import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
-import { games, users, matchdays } from '@/lib/db/schema'
+import { games, users, matchdays, notificationPrefs } from '@/lib/db/schema'
 import { eq, inArray, or, and } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { getDisplayTournament } from '@/lib/tournament'
 import { computePlayerForm } from '@/lib/playerStats'
+import { perspective } from '@/lib/gameResult'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
-import ProfileEditForm from '@/components/ProfileEditForm'
-import ProfileColorForm from '@/components/ProfileColorForm'
-import ChangePasswordForm from '@/components/ChangePasswordForm'
-import NotificationToggle from '@/components/NotificationToggle'
+import PlayerAvatar from '@/components/player/PlayerAvatar'
+import ProfileEditForm from '@/components/profile/ProfileEditForm'
+import ProfileColorForm from '@/components/profile/ProfileColorForm'
+import ChangePasswordForm from '@/components/profile/ChangePasswordForm'
+import NotificationToggle from '@/components/profile/NotificationToggle'
+import NotificationPrefs from '@/components/profile/NotificationPrefs'
+import { withDefaults } from '@/lib/notificationTypes'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ProfilePage() {
-  const session = await getSession()
-  if (!session.userId) redirect('/login')
+  const session = await requireSession()
 
   const tournament = await getDisplayTournament()
 
@@ -66,7 +67,9 @@ export default async function ProfilePage() {
   }
 
   const userRecord = await db.select({ avatarColor: users.avatarColor }).from(users).where(eq(users.id, session.userId)).then(r => r[0])
-  const initials = session.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+  const prefRow = await db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, session.userId)).then(r => r[0])
+  const notifPrefs = withDefaults(prefRow)
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
@@ -75,9 +78,7 @@ export default async function ProfilePage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center gap-4 mb-6">
-            <Avatar className="h-16 w-16">
-              <AvatarFallback className="text-xl text-white" style={{ backgroundColor: userRecord?.avatarColor ?? undefined }}>{initials}</AvatarFallback>
-            </Avatar>
+            <PlayerAvatar name={session.name} avatarColor={userRecord?.avatarColor} className="h-16 w-16" fallbackClassName="text-xl" />
             <div>
               <p className="text-xl font-bold">{session.name}</p>
               <p className="text-muted-foreground text-sm">{session.email}</p>
@@ -96,8 +97,10 @@ export default async function ProfilePage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Notifications</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <NotificationToggle />
+          <Separator />
+          <NotificationPrefs initial={notifPrefs} />
         </CardContent>
       </Card>
 
@@ -181,11 +184,8 @@ export default async function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {recentGames.map(game => {
-              const isHome = game.homePlayerId === session.userId
+              const { isHome, mySets, oppSets, won } = perspective(game, session.userId)
               const opponentId = isHome ? game.awayPlayerId : game.homePlayerId
-              const mySets = isHome ? (game.homeSets ?? 0) : (game.awaySets ?? 0)
-              const oppSets = isHome ? (game.awaySets ?? 0) : (game.homeSets ?? 0)
-              const won = mySets > oppSets
               return (
                 <div key={game.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">

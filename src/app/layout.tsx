@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { Geist } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
-import ThemeProvider from '@/components/ThemeProvider'
-import ServiceWorker from '@/components/ServiceWorker'
+import ThemeProvider from '@/components/layout/ThemeProvider'
+import ServiceWorker from '@/components/layout/ServiceWorker'
 
 const geist = Geist({ subsets: ['latin'] })
 

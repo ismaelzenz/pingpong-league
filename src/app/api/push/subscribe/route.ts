@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { pushSubscriptions } from '@/lib/db/schema'
-import { getSession } from '@/lib/session'
+import { requireUser } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
 
 // Store (or refresh) a browser push subscription for the current user.
 export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await requireUser()
+  if (session instanceof NextResponse) return session
 
   const sub = await req.json() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } }
   const endpoint = sub?.endpoint

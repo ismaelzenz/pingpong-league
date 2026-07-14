@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { tournaments, participants, matchdays, games } from '@/lib/db/schema'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
 import { isValid } from 'date-fns'
 
 // Edit tournament settings (start date) while registration is open.
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession()
-  if (!session.userId || !session.isAdmin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const guard = await requireAdmin()
+  if (guard instanceof NextResponse) return guard
 
   const { id } = await params
   const tournamentId = parseInt(id)
@@ -28,10 +26,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession()
-  if (!session.userId || !session.isAdmin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const guard = await requireAdmin()
+  if (guard instanceof NextResponse) return guard
 
   const { id } = await params
   const tournamentId = parseInt(id)

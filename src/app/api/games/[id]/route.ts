@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { games, matchdays, participants } from '@/lib/db/schema'
-import { getSession } from '@/lib/session'
+import { requireUser, requireAdmin } from '@/lib/apiAuth'
 import { sendPush } from '@/lib/push'
+import { isValidResult } from '@/lib/gameResult'
+import { todayISO } from '@/lib/dates'
 import { eq } from 'drizzle-orm'
 
 // A matchday an admin may still restructure: it hasn't started yet.
 async function getEditableMatchday(matchdayId: number) {
   const md = await db.select({ id: matchdays.id, weekStart: matchdays.weekStart }).from(matchdays).where(eq(matchdays.id, matchdayId)).then(r => r[0])
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
   const isFuture = !!md?.weekStart && md.weekStart > today
   return { md, isFuture }
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession()
-  if (!session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await requireUser()
+  if (session instanceof NextResponse) return session
 
   const { id } = await params
   const gameId = parseInt(id)
@@ -34,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!isValidResult(homeSets, awaySets)) return NextResponse.json({ error: 'Invalid result' }, { status: 400 })
 
     const matchday = await db.select({ weekStart: matchdays.weekStart }).from(matchdays).where(eq(matchdays.id, game.matchdayId)).then(r => r[0])
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayISO()
     if (!matchday?.weekStart || matchday.weekStart > today) {
       return NextResponse.json({ error: 'Cannot enter result for a future matchday' }, { status: 400 })
     }
@@ -54,7 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       title: 'Confirm a result',
       body: `${session.name} entered ${homeSets}–${awaySets}. Tap to confirm.`,
       url: `/games/${gameId}`,
-    })
+    }, 'resultToConfirm')
 
   } else if (action === 'confirm') {
     if (game.status !== 'result_entered') return NextResponse.json({ error: 'Nothing to confirm' }, { status: 400 })
@@ -72,7 +74,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         title: 'Result confirmed',
         body: `${session.name} confirmed your result.`,
         url: `/games/${gameId}`,
-      })
+      }, 'resultConfirmed')
     }
 
   } else if (action === 'dispute') {
@@ -93,7 +95,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         title: 'Result disputed',
         body: `${session.name} disputed the result — please re-enter the score.`,
         url: `/games/${gameId}`,
-      })
+      }, 'resultDisputed')
     }
 
   } else if (action === 'postpone') {
@@ -165,8 +167,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession()
-  if (!session.userId || !session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
+  const guard = await requireAdmin()
+  if (guard instanceof NextResponse) return guard
 
   const { id } = await params
   const gameId = parseInt(id)
@@ -181,8 +183,4 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   await db.delete(games).where(eq(games.id, gameId))
   return NextResponse.json({ ok: true })
-}
-
-function isValidResult(h: number, a: number) {
-  return (h === 2 && (a === 0 || a === 1)) || (a === 2 && (h === 0 || h === 1))
 }

@@ -1,16 +1,17 @@
-import { redirect, notFound } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getSession } from '@/lib/session'
+import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { games, users, matchdays } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { todayISO } from '@/lib/dates'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import PlayerLink from '@/components/PlayerLink'
-import GameResultForm from '@/components/GameResultForm'
-import AdminGameActions from '@/components/AdminGameActions'
-import AdminEditResultForm from '@/components/AdminEditResultForm'
+import PlayerLink from '@/components/player/PlayerLink'
+import PlayerAvatar from '@/components/player/PlayerAvatar'
+import GameResultForm from '@/components/game/GameResultForm'
+import AdminGameActions from '@/components/admin/AdminGameActions'
+import AdminEditResultForm from '@/components/admin/AdminEditResultForm'
 import { ChevronLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -25,8 +26,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'outlin
 
 export default async function GameDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const session = await getSession()
-  if (!session.userId) redirect('/login')
+  const session = await requireSession()
 
   const game = await db.select().from(games).where(eq(games.id, parseInt(id))).then(r => r[0] ?? null)
   if (!game) notFound()
@@ -40,16 +40,13 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   const isParticipant = session.userId === game.homePlayerId || session.userId === game.awayPlayerId
   const isSubmitter = game.submittedBy === session.userId
   const canConfirm = game.status === 'result_entered' && isParticipant && !isSubmitter
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
   const matchdayStarted = !matchday?.weekStart || matchday.weekStart <= today
   const canEnter = game.status === 'pending' && isParticipant && matchdayStarted
   const canPostpone = (game.status === 'pending' || game.status === 'postponed') && (isParticipant || session.isAdmin)
   const canAdminAct = session.isAdmin && !['confirmed', 'forfeited'].includes(game.status)
 
   const config = statusConfig[game.status] ?? statusConfig.pending
-
-  const initials = (name?: string) =>
-    (name ?? '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
@@ -71,11 +68,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
         <CardContent className="pt-6">
           <div className="flex items-center justify-around text-center gap-4">
             <PlayerLink userId={game.homePlayerId} currentUserId={session.userId} className="flex-1 flex flex-col items-center gap-2">
-              <Avatar className="h-14 w-14">
-                <AvatarFallback className="text-base text-white" style={{ backgroundColor: homePlayer?.avatarColor ?? undefined }}>
-                  {initials(homePlayer?.name)}
-                </AvatarFallback>
-              </Avatar>
+              <PlayerAvatar name={homePlayer?.name} avatarColor={homePlayer?.avatarColor} className="h-14 w-14" fallbackClassName="text-base" />
               <div>
                 <p className="text-sm text-muted-foreground">Home</p>
                 <p className={`font-bold text-lg ${homePlayer?.id === session.userId ? 'text-primary' : ''}`}>
@@ -100,11 +93,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
               {matchday && <p className="text-xs text-muted-foreground mt-1">Matchday {matchday.number}</p>}
             </div>
             <PlayerLink userId={game.awayPlayerId} currentUserId={session.userId} className="flex-1 flex flex-col items-center gap-2">
-              <Avatar className="h-14 w-14">
-                <AvatarFallback className="text-base text-white" style={{ backgroundColor: awayPlayer?.avatarColor ?? undefined }}>
-                  {initials(awayPlayer?.name)}
-                </AvatarFallback>
-              </Avatar>
+              <PlayerAvatar name={awayPlayer?.name} avatarColor={awayPlayer?.avatarColor} className="h-14 w-14" fallbackClassName="text-base" />
               <div>
                 <p className="text-sm text-muted-foreground">Away</p>
                 <p className={`font-bold text-lg ${awayPlayer?.id === session.userId ? 'text-primary' : ''}`}>

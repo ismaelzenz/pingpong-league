@@ -1,40 +1,27 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
-import { startOfWeek, format } from 'date-fns'
+import { format } from 'date-fns'
 import { X, CalendarOff } from 'lucide-react'
+import { mondayOf } from '@/lib/dates'
+import { useApiAction } from '@/hooks/useApiAction'
 
 export default function BreakWeeksForm({ tournamentId, initialWeeks }: { tournamentId: number; initialWeeks: string[] }) {
-  const router = useRouter()
+  const { run, loading } = useApiAction()
   const [weeks, setWeeks] = useState<string[]>(initialWeeks)
   const [pick, setPick] = useState('')
-  const [loading, setLoading] = useState(false)
 
   async function save(next: string[]) {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/tournaments/breaks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tournamentId, weeks: next }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? 'Failed to save')
-      setWeeks(data.weeks)
-      router.refresh()
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error')
-    }
-    setLoading(false)
+    const data = await run<{ weeks: string[] }>('/api/tournaments/breaks', { body: { tournamentId, weeks: next } })
+    if (data) setWeeks(data.weeks)
   }
 
   function add() {
     if (!pick) return
-    const monday = format(startOfWeek(new Date(pick), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+    const monday = mondayOf(pick)
     if (weeks.includes(monday)) { toast.info('That week is already a break'); setPick(''); return }
     setPick('')
     save([...weeks, monday].sort())

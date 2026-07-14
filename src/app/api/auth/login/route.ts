@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { getSession } from '@/lib/session'
-import { isAdmin } from '@/lib/admin'
+import { getSession, establishSession } from '@/lib/session'
 import { eq } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
@@ -20,11 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   const session = await getSession()
-  session.userId = user.id
-  session.email = user.email
-  session.name = user.name
-  session.isAdmin = isAdmin(user.email)
-  await session.save()
+  await establishSession(session, user)
 
   return NextResponse.json({ ok: true })
 }

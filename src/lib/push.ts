@@ -1,6 +1,7 @@
 import webpush from 'web-push'
 import { db } from '@/lib/db'
-import { pushSubscriptions } from '@/lib/db/schema'
+import { pushSubscriptions, notificationPrefs } from '@/lib/db/schema'
+import type { NotificationType } from '@/lib/notificationTypes'
 import { eq, inArray } from 'drizzle-orm'
 
 let configured: boolean | null = null
@@ -24,9 +25,19 @@ export interface PushPayload {
 /**
  * Send a web-push notification to every device a user has subscribed. Best-effort: failures
  * are swallowed, and subscriptions the push service reports as gone (404/410) are pruned.
+ *
+ * `type` names the kind of notification; if the user has opted out of that kind in their
+ * profile, nothing is sent. Preferences are opt-out — a missing row means all types are on.
  */
-export async function sendPush(userId: number, payload: PushPayload): Promise<void> {
+export async function sendPush(userId: number, payload: PushPayload, type: NotificationType): Promise<void> {
   if (!ready()) return
+
+  // Honour the recipient's per-type preference. On any lookup error, default to sending.
+  try {
+    const pref = await db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, userId)).then(r => r[0])
+    if (pref && pref[type] === false) return
+  } catch { /* ignore — fall through and send */ }
+
   let subs
   try {
     subs = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId))

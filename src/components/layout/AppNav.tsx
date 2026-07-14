@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import PlayerAvatar from '@/components/player/PlayerAvatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,13 +37,6 @@ export default function AppNav({ name, email, isAdmin, avatarColor }: Props) {
     router.push('/login')
     router.refresh()
   }
-
-  const initials = name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
 
   return (
     <>
@@ -87,9 +80,7 @@ export default function AppNav({ name, email, isAdmin, avatarColor }: Props) {
 
         <DropdownMenu>
           <DropdownMenuTrigger className="relative h-8 w-8 rounded-full cursor-pointer">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="text-xs text-white" style={{ backgroundColor: avatarColor ?? undefined }}>{initials}</AvatarFallback>
-            </Avatar>
+            <PlayerAvatar name={name} avatarColor={avatarColor} className="h-8 w-8" fallbackClassName="text-xs" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <div className="px-2 py-1.5">

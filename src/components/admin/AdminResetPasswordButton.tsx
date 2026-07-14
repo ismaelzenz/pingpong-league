@@ -3,27 +3,18 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { useApiAction } from '@/hooks/useApiAction'
 
 export default function AdminResetPasswordButton({ email, name }: { email: string; name: string }) {
+  const { run, loading } = useApiAction()
   const [resetUrl, setResetUrl] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
   async function handleGenerate() {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.resetUrl) throw new Error(data.error ?? 'Failed to generate link')
-      setResetUrl(data.resetUrl)
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error')
-    }
-    setLoading(false)
+    const data = await run<{ resetUrl?: string }>('/api/auth/forgot-password', { body: { email }, refresh: false })
+    if (!data) return
+    if (data.resetUrl) setResetUrl(data.resetUrl)
+    else toast.error('Failed to generate link')
   }
 
   async function handleCopy() {

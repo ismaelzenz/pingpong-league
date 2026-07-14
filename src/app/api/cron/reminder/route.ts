@@ -4,6 +4,7 @@ import { games, matchdays } from '@/lib/db/schema'
 import { and, eq, inArray, lte, gte } from 'drizzle-orm'
 import { getLiveTournament } from '@/lib/tournament'
 import { sendPush } from '@/lib/push'
+import { todayISO } from '@/lib/dates'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
   }
 
   // The matchday whose Mon–Fri window contains today.
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
   const matchday = await db.select().from(matchdays)
     .where(and(
       eq(matchdays.tournamentId, tournament.id),
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
     title: '🏓 2 days left to play',
     body: `Your Matchday ${matchday.number} game isn't played yet — it ends Friday. Tap to sort it out.`,
     url: '/my-games',
-  })))
+  }, 'weeklyReminder')))
 
   return NextResponse.json({ ok: true, matchday: matchday.number, notified: playerIds.length })
 }

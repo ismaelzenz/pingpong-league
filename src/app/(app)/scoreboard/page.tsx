@@ -1,16 +1,14 @@
-import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/session'
+import { requireSession } from '@/lib/session'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { getLiveTournament } from '@/lib/tournament'
 import { Card, CardContent } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import PlayerLink from '@/components/PlayerLink'
+import PlayerLink from '@/components/player/PlayerLink'
+import PlayerAvatar from '@/components/player/PlayerAvatar'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ScoreboardPage() {
-  const session = await getSession()
-  if (!session.userId) redirect('/login')
+  const session = await requireSession()
 
   const live = await getLiveTournament()
   const tournament = live?.status === 'active' ? live : null
@@ -51,7 +49,6 @@ export default async function ScoreboardPage() {
               </thead>
               <tbody>
                 {scores.map((entry, i) => {
-                  const initials = entry.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
                   const isMe = entry.userId === session.userId
                   return (
                     <tr key={entry.userId} className={`border-b last:border-0 ${isMe ? 'bg-primary/5' : 'hover:bg-muted/30'} transition-colors`}>
@@ -60,9 +57,7 @@ export default async function ScoreboardPage() {
                       </td>
                       <td className="px-4 py-3">
                         <PlayerLink userId={entry.userId} currentUserId={session.userId} className="flex items-center gap-2 w-fit">
-                          <Avatar className="h-7 w-7">
-                            <AvatarFallback className="text-xs text-white" style={{ backgroundColor: entry.avatarColor ?? undefined }}>{initials}</AvatarFallback>
-                          </Avatar>
+                          <PlayerAvatar name={entry.name} avatarColor={entry.avatarColor} className="h-7 w-7" fallbackClassName="text-xs" />
                           <span className={`font-medium ${isMe ? 'text-primary' : 'hover:underline'}`}>
                             {entry.name}{isMe && ' (you)'}
                           </span>

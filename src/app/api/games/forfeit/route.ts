@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { games, matchdays } from '@/lib/db/schema'
-import { getSession } from '@/lib/session'
+import { requireAdmin } from '@/lib/apiAuth'
 import { eq, and, inArray, lt } from 'drizzle-orm'
+import { todayISO } from '@/lib/dates'
 
 export async function POST(req: NextRequest) {
-  const session = await getSession()
-  if (!session.userId || !session.isAdmin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const guard = await requireAdmin()
+  if (guard instanceof NextResponse) return guard
 
   const { tournamentId } = await req.json()
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayISO()
 
   const pastMatchdays = await db.select({ id: matchdays.id })
     .from(matchdays)
