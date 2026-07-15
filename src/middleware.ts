@@ -14,9 +14,17 @@ const sessionOptions = {
 
 const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password']
 
+// Fully open to everyone (logged in or not) with no redirect either way — e.g. the office
+// wall display, which runs on a TV that can't log in.
+const OPEN_PATHS = ['/display']
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const response = NextResponse.next()
+
+  if (OPEN_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+    return response
+  }
 
   const session = await getIronSession<SessionData>(request, response, sessionOptions)
   const isLoggedIn = !!session.userId

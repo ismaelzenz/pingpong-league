@@ -35,7 +35,7 @@ tooling for managing the season (including adding players mid-tournament).
   - Win 2–0 → **3 pts** (winner), 0 pts (loser)
   - Win 2–1 → **3 pts** (winner), **1 pt** (loser)
   - Forfeit → 0 pts and counts as a loss for the no-show.
-- **Standings tiebreakers** — points, then sets won, then number of victories.
+- **Standings tiebreakers** — points, then victories, then sets won, then fewest sets lost.
 
 ### Number of matchdays
 
@@ -79,7 +79,7 @@ Also `postponed` and `forfeited`.
 
 ## The scoreboard
 
-A live table of every participant, sorted by points (then sets won, then victories). Columns:
+A live table of every participant, sorted by points (then victories, then sets won, then fewest sets lost). Columns:
 GP (games played), W (victories), L (losses), SW (sets won), SL (sets lost), Pts. It's
 recomputed from confirmed/forfeited games every time it's viewed — there's no stored total to
 get out of sync.
