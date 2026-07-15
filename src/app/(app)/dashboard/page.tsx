@@ -10,6 +10,7 @@ import PlayerLink from '@/components/player/PlayerLink'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import GameCard from '@/components/game/GameCard'
 import HowItWorks from '@/components/common/HowItWorks'
+import JoinTournamentButton from '@/components/common/JoinTournamentButton'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { getLiveTournament } from '@/lib/tournament'
 import { todayISO } from '@/lib/dates'
@@ -74,9 +75,12 @@ export default async function DashboardPage() {
                 ✓ You&apos;re in! Waiting for the tournament to start…
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                You&apos;re not in this tournament yet. Ask an admin to add you.
-              </p>
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-sm text-muted-foreground">
+                  You&apos;re not in this tournament yet — registration is open!
+                </p>
+                <JoinTournamentButton />
+              </div>
             )}
           </CardContent>
         </Card>

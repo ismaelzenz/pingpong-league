@@ -104,7 +104,7 @@ export default async function InfoPage() {
         <Section icon={AlertTriangle} title="Schedule health (admins)">
           <p>The schedule must keep every pair meeting exactly twice with no player double-booked in a week. After edits, the app flags problems:</p>
           <ul className="space-y-2">
-            <li>The <strong className="text-foreground">matchday list</strong> shows a ⚠️ icon on any matchday with a conflict, plus a banner listing each issue — e.g. <em>&ldquo;Isma vs Sameer is scheduled 3× (should be 2)&rdquo;</em> and the matching <em>&ldquo;Joe vs Kim is only scheduled 1×&rdquo;</em>.</li>
+            <li>The <strong className="text-foreground">matchday list</strong> shows a ⚠️ icon on any matchday with a conflict, plus a banner listing each issue — e.g. <em>&ldquo;Isma vs Sameer is scheduled 3× (should be 2)&rdquo;</em> and the matching <em>&ldquo;Ana vs Jelle is only scheduled 1×&rdquo;</em>.</li>
             <li>A matchday&apos;s page warns you about duplicate pairings there and where else those players meet.</li>
           </ul>
           <p>To fix it, use <strong className="text-foreground">Regenerate schedule</strong> — it rebuilds all unplayed matchdays cleanly so every pair meets exactly twice again, without touching games that already have a result. (Untangling it by hand tends to just move the problem around.)</p>
