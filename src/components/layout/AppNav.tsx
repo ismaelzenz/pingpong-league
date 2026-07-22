@@ -18,6 +18,7 @@ interface Props {
   email: string
   isAdmin: boolean
   avatarColor: string | null
+  tournamentName: string | null
 }
 
 const navLinks = [
@@ -26,11 +27,21 @@ const navLinks = [
   { href: '/matchdays', label: 'Matchdays', icon: CalendarDays },
 ]
 
-export default function AppNav({ name, email, isAdmin, avatarColor }: Props) {
+export default function AppNav({ name, email, isAdmin, avatarColor, tournamentName }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const { resolvedTheme, setTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
+
+  const isActive = (href: string) =>
+    href === '/dashboard' ? pathname === href : pathname.startsWith(href)
+
+  // Bottom tab bar (mobile): the main sections + Admin (if admin) + Profile.
+  const bottomLinks = [
+    ...navLinks,
+    ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: Shield }] : []),
+    { href: '/profile', label: 'Profile', icon: User },
+  ]
 
   async function handleSignOut() {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -42,10 +53,12 @@ export default function AppNav({ name, email, isAdmin, avatarColor }: Props) {
     <>
     <header className="border-b bg-card sticky top-0 z-50">
       <div className="container mx-auto px-4 max-w-5xl flex items-center justify-between h-14">
-        <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="font-bold text-lg flex items-center gap-2">
-            <span>🏓</span>
+        <div className="flex items-center gap-6 min-w-0">
+          <Link href="/dashboard" className="font-bold text-lg flex items-center gap-2 min-w-0">
+            <span className="shrink-0">🏓</span>
             <span className="hidden sm:inline">Zenz Ping Pong League</span>
+            {/* On mobile the brand text is hidden, so show the live tournament name for context. */}
+            <span className="sm:hidden truncate">{tournamentName ?? 'Ping Pong League'}</span>
           </Link>
           <nav className="hidden sm:flex items-center gap-1">
             {navLinks.map(link => (
@@ -128,35 +141,23 @@ export default function AppNav({ name, email, isAdmin, avatarColor }: Props) {
     </header>
 
     {/* Mobile bottom nav */}
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t flex items-center justify-around h-16 px-2">
-      {navLinks.map(link => {
-        const active = (pathname.startsWith(link.href) && link.href !== '/dashboard') ||
-          (pathname === link.href && link.href === '/dashboard')
+    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t flex items-stretch h-16">
+      {bottomLinks.map(link => {
+        const active = isActive(link.href)
         const Icon = link.icon
         return (
           <Link
             key={link.href}
             href={link.href}
-            className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-md text-xs font-medium transition-colors ${
+            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1 text-xs font-medium transition-colors ${
               active ? 'text-primary' : 'text-muted-foreground'
             }`}
           >
-            <Icon className="w-5 h-5" />
-            {link.label}
+            <Icon className="w-5 h-5 shrink-0" />
+            <span className="truncate max-w-full">{link.label}</span>
           </Link>
         )
       })}
-      {isAdmin && (
-        <Link
-          href="/admin"
-          className={`flex flex-col items-center gap-0.5 px-4 py-1 rounded-md text-xs font-medium transition-colors ${
-            pathname.startsWith('/admin') ? 'text-primary' : 'text-muted-foreground'
-          }`}
-        >
-          <Shield className="w-5 h-5" />
-          Admin
-        </Link>
-      )}
     </nav>
     </>
   )

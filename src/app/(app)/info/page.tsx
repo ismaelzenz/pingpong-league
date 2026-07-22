@@ -43,6 +43,7 @@ export default async function InfoPage() {
       </Section>
 
       <Section icon={CalendarDays} title="Your week, step by step">
+        <p>🆕 <strong className="text-foreground">New here?</strong> While registration is open, sign in and tap <strong className="text-foreground">Join the tournament</strong> on your dashboard (or from an invite link). Once the season has started, an admin adds latecomers.</p>
         <ol className="list-decimal pl-5 space-y-1.5">
           <li>Open your <strong className="text-foreground">dashboard</strong> — it shows your <strong className="text-foreground">catch-up games</strong> (overdue/backlog) and your <strong className="text-foreground">upcoming games</strong>. For the full list of your games, use <strong className="text-foreground">My games</strong> (in the account menu).</li>
           <li><strong className="text-foreground">Play your match</strong> Monday–Friday, its matchday week. Catch-up games can be played anytime.</li>
@@ -50,8 +51,8 @@ export default async function InfoPage() {
           <li>Check the <strong className="text-foreground">Scoreboard</strong>, and tap any player&apos;s avatar to see their stats and your head-to-head.</li>
         </ol>
         <p>That&apos;s the whole loop: play → report → confirm → repeat.</p>
-        <p className="text-xs">📱 Tip: on your phone you can install this as an app — open the browser menu and choose <strong className="text-foreground">Add to Home Screen</strong>.</p>
-        <p className="text-xs">🔔 Turn on notifications in <strong className="text-foreground">My profile → Notifications</strong> to get nudged when it&apos;s your turn to confirm a result, plus a <strong className="text-foreground">Thursday reminder</strong> if you still haven&apos;t played that week&apos;s game. (On iPhone, install the app first.)</p>
+        <p className="text-xs">📱 Tip: install it on your phone for an app-like experience. On <strong className="text-foreground">iPhone you must use Safari</strong> — open the link in Safari → Share → <strong className="text-foreground">Add to Home Screen</strong>. Adding it from Chrome or an in-app browser (like Teams) only makes a bookmark and won&apos;t work. On Android, use the browser menu → Add to Home Screen.</p>
+        <p className="text-xs">🔔 Turn on notifications in <strong className="text-foreground">My profile → Notifications</strong>, where you can pick which ones to receive: when it&apos;s your turn to <strong className="text-foreground">confirm a result</strong>, when your result is <strong className="text-foreground">confirmed</strong> or <strong className="text-foreground">disputed</strong>, when a game is <strong className="text-foreground">postponed</strong>, and a <strong className="text-foreground">weekly reminder</strong> if you haven&apos;t played that week. (On iPhone, install via Safari first.)</p>
       </Section>
 
       <Section icon={ClipboardCheck} title="Entering & confirming results">
@@ -88,7 +89,7 @@ export default async function InfoPage() {
         <Section icon={Shield} title="For admins">
           <ul className="space-y-2">
             <li><strong className="text-foreground">Create a tournament</strong> to open registration, optionally set a <strong className="text-foreground">start date</strong>, then <strong className="text-foreground">Close registration &amp; start</strong> to generate the schedule.</li>
-            <li><strong className="text-foreground">Add players yourself</strong> — players don&apos;t self-join. Share the invite link so colleagues create an account, then add each one from the Admin panel (works during registration and mid-season).</li>
+            <li><strong className="text-foreground">Players join themselves</strong> while registration is open — via a Join button on their dashboard or an invite link. You can also <strong className="text-foreground">add players manually</strong> from the Admin panel, and any <strong className="text-foreground">mid-season</strong> additions must be done by an admin.</li>
             <li><strong className="text-foreground">Run more than one tournament</strong> — only the one marked <strong className="text-foreground">Live</strong> is visible to players; use extra ones to test or fix things without touching the live season. <strong className="text-foreground">Set as live</strong> promotes one for everyone to see.</li>
             <li><strong className="text-foreground">Schedule breaks</strong> (during registration) — choose weeks to leave matchday-free (holidays); generation skips them and resumes the next week.</li>
             <li><strong className="text-foreground">Correct a confirmed result</strong> from a game&apos;s page if a score was wrong.</li>
