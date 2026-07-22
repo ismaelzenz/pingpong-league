@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Shield, Home, Trophy, CalendarDays, BookOpen, Sun, Moon, Swords } from 'lucide-react'
+import { LogOut, User, Shield, Home, Trophy, CalendarDays, BookOpen, Sun, Moon, Swords, Menu } from 'lucide-react'
 
 interface Props {
   name: string
@@ -36,11 +36,11 @@ export default function AppNav({ name, email, isAdmin, avatarColor, tournamentNa
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === href : pathname.startsWith(href)
 
-  // Bottom tab bar (mobile): the main sections + Admin (if admin) + Profile.
+  // Bottom tab bar (mobile): main sections + Admin (if admin). Profile is rendered separately
+  // below because it shows the user's avatar instead of a plain icon.
   const bottomLinks = [
     ...navLinks,
     ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: Shield }] : []),
-    { href: '/profile', label: 'Profile', icon: User },
   ]
 
   async function handleSignOut() {
@@ -52,13 +52,11 @@ export default function AppNav({ name, email, isAdmin, avatarColor, tournamentNa
   return (
     <>
     <header className="border-b bg-card sticky top-0 z-50">
-      <div className="container mx-auto px-4 max-w-5xl flex items-center justify-between h-14">
+      <div className="container mx-auto px-4 max-w-5xl relative flex items-center justify-between h-14">
         <div className="flex items-center gap-6 min-w-0">
           <Link href="/dashboard" className="font-bold text-lg flex items-center gap-2 min-w-0">
             <span className="shrink-0">🏓</span>
             <span className="hidden sm:inline">Zenz Ping Pong League</span>
-            {/* On mobile the brand text is hidden, so show the live tournament name for context. */}
-            <span className="sm:hidden truncate">{tournamentName ?? 'Ping Pong League'}</span>
           </Link>
           <nav className="hidden sm:flex items-center gap-1">
             {navLinks.map(link => (
@@ -91,9 +89,14 @@ export default function AppNav({ name, email, isAdmin, avatarColor, tournamentNa
           </nav>
         </div>
 
+        {/* Mobile: centered active-tournament name (the brand text is hidden at this width). */}
+        <span className="sm:hidden absolute left-1/2 -translate-x-1/2 max-w-[55%] truncate text-center font-bold pointer-events-none">
+          {tournamentName ?? 'Ping Pong League'}
+        </span>
+
         <DropdownMenu>
-          <DropdownMenuTrigger className="relative h-8 w-8 rounded-full cursor-pointer">
-            <PlayerAvatar name={name} avatarColor={avatarColor} className="h-8 w-8" fallbackClassName="text-xs" />
+          <DropdownMenuTrigger className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer">
+            <Menu className="h-5 w-5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <div className="px-2 py-1.5">
@@ -101,7 +104,8 @@ export default function AppNav({ name, email, isAdmin, avatarColor, tournamentNa
               <p className="text-xs text-muted-foreground truncate">{email}</p>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem render={<Link href="/profile" />}>
+            {/* Profile lives in the bottom tab bar on mobile, so only show it here on desktop. */}
+            <DropdownMenuItem render={<Link href="/profile" />} className="hidden sm:flex">
               <User className="mr-2 h-4 w-4" />
               My profile
             </DropdownMenuItem>
@@ -158,6 +162,20 @@ export default function AppNav({ name, email, isAdmin, avatarColor, tournamentNa
           </Link>
         )
       })}
+      <Link
+        href="/profile"
+        className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1 text-xs font-medium transition-colors ${
+          isActive('/profile') ? 'text-primary' : 'text-muted-foreground'
+        }`}
+      >
+        <PlayerAvatar
+          name={name}
+          avatarColor={avatarColor}
+          className={`h-6 w-6 shrink-0 ${isActive('/profile') ? 'ring-2 ring-primary ring-offset-1 ring-offset-card' : ''}`}
+          fallbackClassName="text-[10px]"
+        />
+        <span className="truncate max-w-full">Profile</span>
+      </Link>
     </nav>
     </>
   )
