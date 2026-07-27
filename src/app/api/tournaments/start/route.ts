@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { db } from '@/lib/db'
 import { tournaments, participants } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
@@ -27,11 +27,13 @@ export async function POST(req: NextRequest) {
   // always-on notification (not user-configurable), so it bypasses per-type preferences.
   const tournament = await db.select({ name: tournaments.name }).from(tournaments)
     .where(eq(tournaments.id, tournamentId)).then(r => r[0])
-  await Promise.all(pList.map(p => sendPush(p.userId, {
+  // Fire the "tournament started" pushes after the response so starting doesn't block on
+  // delivering to every participant.
+  after(() => Promise.all(pList.map(p => sendPush(p.userId, {
     title: '🏓 The tournament has started!',
     body: `${tournament?.name ?? 'Your tournament'} is officially underway — check your first matchday and get playing.`,
     url: '/my-games',
-  }, 'tournamentStarted')))
+  }, 'tournamentStarted'))))
 
   return NextResponse.json({ ok: true, matchdays: result.matchdays })
 }

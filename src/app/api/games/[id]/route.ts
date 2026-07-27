@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { db } from '@/lib/db'
 import { games, matchdays, participants } from '@/lib/db/schema'
 import { requireUser, requireAdmin } from '@/lib/apiAuth'
@@ -50,13 +50,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updatedAt: new Date().toISOString(),
     }).where(eq(games.id, gameId))
 
-    // Nudge the opponent to confirm.
+    // Nudge the opponent to confirm — fired after the response so it doesn't add latency.
     const opponentId = game.homePlayerId === session.userId ? game.awayPlayerId : game.homePlayerId
-    await sendPush(opponentId, {
+    after(() => sendPush(opponentId, {
       title: 'Confirm a result',
       body: `${session.name} entered ${homeSets}–${awaySets}. Tap to confirm.`,
       url: `/games/${gameId}`,
-    }, 'resultToConfirm')
+    }, 'resultToConfirm'))
 
   } else if (action === 'confirm') {
     if (game.status !== 'result_entered') return NextResponse.json({ error: 'Nothing to confirm' }, { status: 400 })
@@ -70,11 +70,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }).where(eq(games.id, gameId))
 
     if (game.submittedBy) {
-      await sendPush(game.submittedBy, {
+      const submitterId = game.submittedBy
+      after(() => sendPush(submitterId, {
         title: 'Result confirmed',
         body: `${session.name} confirmed your result.`,
         url: `/games/${gameId}`,
-      }, 'resultConfirmed')
+      }, 'resultConfirmed'))
     }
 
   } else if (action === 'dispute') {
@@ -91,11 +92,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }).where(eq(games.id, gameId))
 
     if (game.submittedBy) {
-      await sendPush(game.submittedBy, {
+      const submitterId = game.submittedBy
+      after(() => sendPush(submitterId, {
         title: 'Result disputed',
         body: `${session.name} disputed the result — please re-enter the score.`,
         url: `/games/${gameId}`,
-      }, 'resultDisputed')
+      }, 'resultDisputed'))
     }
 
   } else if (action === 'postpone') {
@@ -111,11 +113,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // If an admin who isn't in the game postpones it, both players are notified.
     if (becomingPostponed) {
       const recipients = [game.homePlayerId, game.awayPlayerId].filter(id => id !== session.userId)
-      await Promise.all(recipients.map(id => sendPush(id, {
+      after(() => Promise.all(recipients.map(id => sendPush(id, {
         title: 'Game postponed',
         body: `${session.name} postponed your game — it'll still need to be played.`,
         url: `/games/${gameId}`,
-      }, 'gamePostponed')))
+      }, 'gamePostponed'))))
     }
 
   } else if (action === 'edit-players') {

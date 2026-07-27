@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { participants, games, users, matchdays } from '@/lib/db/schema'
-import { eq, or, inArray, and } from 'drizzle-orm'
+import { eq, or, inArray, and, lte, gte } from 'drizzle-orm'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -152,6 +152,21 @@ export default async function DashboardPage() {
 
   const scores = await computeScoreboard(tournament.id)
 
+  // This week's matchday progress (the in-progress matchday whose Mon–Fri window covers today).
+  const currentMatchday = await db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays)
+    .where(and(
+      eq(matchdays.tournamentId, tournament.id),
+      lte(matchdays.weekStart, today),
+      gte(matchdays.weekEnd, today),
+    ))
+    .then(r => r[0] ?? null)
+  const weekGames = currentMatchday
+    ? await db.select({ status: games.status }).from(games)
+        .where(and(eq(games.matchdayId, currentMatchday.id), eq(games.isCatchUp, false)))
+    : []
+  const weekPlayed = weekGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
+  const weekPct = weekGames.length ? Math.round((weekPlayed / weekGames.length) * 100) : 0
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -161,6 +176,20 @@ export default async function DashboardPage() {
         </div>
         <Badge className="bg-green-600">Active</Badge>
       </div>
+
+      {currentMatchday && weekGames.length > 0 && (
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-medium text-sm">Matchday {currentMatchday.number} — this week</p>
+              <span className="text-sm text-muted-foreground tabular-nums">{weekPlayed}/{weekGames.length} games played</span>
+            </div>
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div className="h-full bg-primary transition-all" style={{ width: `${weekPct}%` }} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {catchUpGames.length > 0 && (
         <div className="space-y-3">

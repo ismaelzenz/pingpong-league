@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:init": "npx tsx src/lib/db/migrate.ts",
+    "db:init:prod": "npx tsx src/lib/db/migrate.ts .env.production.local",
     "gen:icons": "node scripts/gen-icons.mjs"
   },
   "dependencies": {

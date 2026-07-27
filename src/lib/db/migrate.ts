@@ -1,9 +1,14 @@
 import { config } from 'dotenv'
 import { createClient } from '@libsql/client'
 
-config({ path: '.env.local' })
+// Which env file to load. Defaults to local dev; pass a file as the first arg to target another
+// environment — the `db:init:prod` script passes `.env.production.local` (see package.json).
+const envFile = process.argv[2] || '.env.local'
+config({ path: envFile })
 
 async function main() {
+  console.log(`Running DB migrations using ${envFile} → ${process.env.TURSO_DATABASE_URL}`)
+
   const client = createClient({
     url: process.env.TURSO_DATABASE_URL!,
     authToken: process.env.TURSO_AUTH_TOKEN || undefined,

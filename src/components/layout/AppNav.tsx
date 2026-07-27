@@ -95,8 +95,12 @@ export default function AppNav({ name, email, isAdmin, avatarColor, tournamentNa
         </span>
 
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer">
-            <Menu className="h-5 w-5" />
+          <DropdownMenuTrigger className="cursor-pointer rounded-full">
+            {/* Mobile: hamburger. Desktop: the user's avatar. */}
+            <span className="sm:hidden flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors">
+              <Menu className="h-5 w-5" />
+            </span>
+            <PlayerAvatar name={name} avatarColor={avatarColor} className="hidden sm:block h-8 w-8" fallbackClassName="text-xs" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <div className="px-2 py-1.5">
