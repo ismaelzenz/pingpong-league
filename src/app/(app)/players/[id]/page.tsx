@@ -256,6 +256,14 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                       <p className="text-xs text-muted-foreground">{player.name.split(' ')[0]}</p>
                     </div>
                   </div>
+                  {h2h.length > 1 && (
+                    <div className="flex items-center justify-center gap-1 mb-4" title="Your results in this rivalry, oldest to newest">
+                      {[...h2h].reverse().map(r => {
+                        const youWon = !r.forfeited && r.oppSets > r.theirSets
+                        return <span key={r.gameId} className={`w-4 h-4 rounded-full ${youWon ? 'bg-green-500' : 'bg-red-500'}`} title={`${r.oppSets}–${r.theirSets}`} />
+                      })}
+                    </div>
+                  )}
                   <Separator className="mb-3" />
                   <div className="space-y-2">
                     {h2h.map(r => {
@@ -271,7 +279,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                           </div>
                           <div className="flex items-center gap-3 text-muted-foreground">
                             <span className="font-mono font-bold text-foreground">{r.oppSets} – {r.theirSets}</span>
-                            <span className="text-xs">MD {r.matchdayNumber}</span>
+                            <span className="text-xs w-12 text-right shrink-0">MD {r.matchdayNumber}</span>
                           </div>
                         </Link>
                       )
@@ -341,7 +349,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                 </div>
                 <div className="flex items-center gap-3 text-muted-foreground">
                   <span className="font-mono font-bold text-foreground">{r.theirSets} – {r.oppSets}</span>
-                  <span className="text-xs">MD {r.matchdayNumber}</span>
+                  <span className="text-xs w-12 text-right shrink-0">MD {r.matchdayNumber}</span>
                 </div>
               </Link>
             ))

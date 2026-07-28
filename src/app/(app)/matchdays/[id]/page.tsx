@@ -30,8 +30,12 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
       .from(users).where(eq(users.id, g.homePlayerId)).then(r => r[0])
     const awayPlayer = await db.select({ id: users.id, name: users.name, email: users.email })
       .from(users).where(eq(users.id, g.awayPlayerId)).then(r => r[0])
-    return { ...g, homePlayer, awayPlayer, matchday: { number: matchday.number } }
+    return { ...g, homePlayer, awayPlayer, matchday: { number: matchday.number }, weekStart: matchday.weekStart, weekEnd: matchday.weekEnd }
   }))
+
+  // Show the viewer's own game first (highlighted) so they don't have to scan the whole list.
+  const myGames = enriched.filter(g => g.homePlayerId === session.userId || g.awayPlayerId === session.userId)
+  const otherGames = enriched.filter(g => g.homePlayerId !== session.userId && g.awayPlayerId !== session.userId)
 
   const confirmed = dayGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
 
@@ -88,9 +92,26 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
       </div>
 
       <div className="space-y-4">
-        {enriched.map(game => (
-          <GameCard key={game.id} game={game} currentUserId={session.userId} />
-        ))}
+        {myGames.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your game</p>
+            {myGames.map(game => (
+              <GameCard key={game.id} game={game} currentUserId={session.userId} className="ring-1 ring-primary" />
+            ))}
+          </div>
+        )}
+        {otherGames.length > 0 && (
+          <div className="space-y-2">
+            {myGames.length > 0 && (
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-1">Other games</p>
+            )}
+            <div className="space-y-3">
+              {otherGames.map(game => (
+                <GameCard key={game.id} game={game} currentUserId={session.userId} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {byePlayers.length > 0 && (

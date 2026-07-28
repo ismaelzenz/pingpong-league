@@ -3,7 +3,6 @@ import { computeDisplayData, type FunWallEntry } from '@/lib/display'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import AutoRefresh from '@/components/display/AutoRefresh'
 import DisplayClock from '@/components/display/DisplayClock'
-import { ArrowUp, ArrowDown } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,34 +58,40 @@ export default async function DisplayPage() {
           <div className="rounded-2xl bg-slate-900/80 ring-1 ring-white/5 overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr className="text-slate-400 text-sm xl:text-base border-b border-white/10">
-                  <th className="text-left px-4 xl:px-6 py-3 font-medium w-16">#</th>
-                  <th className="text-left px-2 py-3 font-medium">Player</th>
-                  <th className="text-right px-3 py-3 font-medium">W</th>
-                  <th className="text-right px-3 py-3 font-medium">L</th>
-                  <th className="text-right px-4 xl:px-6 py-3 font-bold">Pts</th>
+                <tr className="text-slate-400 text-xs xl:text-sm border-b border-white/10">
+                  <th className="text-left pl-4 xl:pl-6 pr-1 py-1.5 font-medium">#</th>
+                  <th className="text-left pl-1 py-1.5 font-medium w-full">Player</th>
+                  <th className="text-right px-2.5 py-1.5 font-medium">GP</th>
+                  <th className="text-right px-2.5 py-1.5 font-medium">W</th>
+                  <th className="text-right px-2.5 py-1.5 font-medium">L</th>
+                  <th className="text-right px-2.5 py-1.5 font-medium">SW</th>
+                  <th className="text-right px-2.5 py-1.5 font-medium">SL</th>
+                  <th className="text-right px-4 xl:px-6 py-1.5 font-bold">Pts</th>
                 </tr>
               </thead>
               <tbody>
                 {leaderboard.map((row) => (
                   <tr key={row.userId} className="border-b border-white/5 last:border-0">
-                    <td className="px-4 xl:px-6 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl xl:text-2xl font-black text-slate-300 w-7">
+                    <td className="pl-4 xl:pl-6 pr-1 py-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-6 text-center shrink-0 text-base xl:text-lg font-black text-slate-300">
                           {row.rank <= 3 ? ['🥇', '🥈', '🥉'][row.rank - 1] : row.rank}
                         </span>
                         <Movement value={row.movement} />
                       </div>
                     </td>
-                    <td className="px-2 py-3">
-                      <div className="flex items-center gap-3">
-                        <PlayerAvatar name={row.name} avatarColor={row.avatarColor} className="h-9 w-9 xl:h-10 xl:w-10" fallbackClassName="text-sm" />
-                        <span className="font-semibold text-lg xl:text-xl truncate">{row.name}</span>
+                    <td className="pl-1 py-1.5">
+                      <div className="flex items-center gap-2.5">
+                        <PlayerAvatar name={row.name} avatarColor={row.avatarColor} className="h-7 w-7 xl:h-8 xl:w-8 shrink-0" fallbackClassName="text-xs" />
+                        <span className="font-semibold text-base xl:text-lg truncate">{row.name}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-right text-green-400 font-semibold text-lg xl:text-xl">{row.victories}</td>
-                    <td className="px-3 py-3 text-right text-red-400 font-semibold text-lg xl:text-xl">{row.losses}</td>
-                    <td className="px-4 xl:px-6 py-3 text-right font-black text-2xl xl:text-3xl">{row.points}</td>
+                    <td className="px-2.5 py-1.5 text-right text-slate-400 text-sm xl:text-base tabular-nums">{row.gamesPlayed}</td>
+                    <td className="px-2.5 py-1.5 text-right text-green-400 font-semibold text-sm xl:text-base tabular-nums">{row.victories}</td>
+                    <td className="px-2.5 py-1.5 text-right text-red-400 font-semibold text-sm xl:text-base tabular-nums">{row.losses}</td>
+                    <td className="px-2.5 py-1.5 text-right text-sm xl:text-base tabular-nums">{row.setsWon}</td>
+                    <td className="px-2.5 py-1.5 text-right text-sm xl:text-base tabular-nums">{row.setsLost}</td>
+                    <td className="px-4 xl:px-6 py-1.5 text-right font-black text-lg xl:text-xl tabular-nums">{row.points}</td>
                   </tr>
                 ))}
               </tbody>
@@ -106,23 +111,31 @@ export default async function DisplayPage() {
             {weekGames.length === 0 ? (
               <p className="text-slate-500 flex-1 flex items-center justify-center">No games scheduled this week.</p>
             ) : (
-              <div className="flex-1 flex flex-col gap-2 xl:gap-3">
+              <div className="flex-1 flex flex-col gap-1.5">
                 {weekGames.map((g) => {
-                  const hasResult = g.homeSets != null && g.awaySets != null
-                  const homeWon = hasResult && (g.homeSets ?? 0) > (g.awaySets ?? 0)
-                  const awayWon = hasResult && (g.awaySets ?? 0) > (g.homeSets ?? 0)
+                  const confirmed = g.status === 'confirmed' || g.status === 'forfeited'
+                  const awaiting = g.status === 'result_entered'
+                  const hasScore = g.homeSets != null && g.awaySets != null
+                  // Only a confirmed result is final, so only then do we bold the winner.
+                  const homeWon = confirmed && (g.homeSets ?? 0) > (g.awaySets ?? 0)
+                  const awayWon = confirmed && (g.awaySets ?? 0) > (g.homeSets ?? 0)
                   return (
                     <div
                       key={g.id}
-                      className={`flex-1 min-h-[3.25rem] flex items-center gap-3 rounded-xl px-3 xl:px-4 ring-1 ${hasResult ? 'bg-slate-800/60 ring-white/10' : 'bg-slate-800/25 ring-white/5'}`}
+                      className={`flex-1 min-h-[2.25rem] flex items-center gap-3 rounded-xl px-3 xl:px-4 ring-1 ${confirmed ? 'bg-slate-800/60 ring-white/10' : awaiting ? 'bg-amber-500/5 ring-amber-500/25' : 'bg-slate-800/25 ring-white/5'}`}
                     >
                       <div className="flex-1 flex items-center justify-end gap-2.5 min-w-0">
                         <span className={`truncate text-right text-base xl:text-lg ${homeWon ? 'font-bold text-white' : 'text-slate-300'}`}>{g.homeName}</span>
                         <PlayerAvatar name={g.homeName} avatarColor={g.homeColor} className="h-8 w-8 xl:h-9 xl:w-9 shrink-0" fallbackClassName="text-xs" />
                       </div>
-                      <div className="shrink-0 w-16 flex justify-center">
-                        {hasResult ? (
+                      <div className="shrink-0 w-20 flex flex-col items-center justify-center leading-tight">
+                        {confirmed ? (
                           <span className="font-mono font-black text-white text-lg xl:text-2xl tabular-nums">{g.homeSets}–{g.awaySets}</span>
+                        ) : awaiting && hasScore ? (
+                          <>
+                            <span className="font-mono font-black text-amber-400 text-lg xl:text-2xl tabular-nums">{g.homeSets}–{g.awaySets}</span>
+                            <span className="text-[10px] xl:text-xs font-semibold uppercase tracking-wide text-amber-400/80">to confirm</span>
+                          </>
                         ) : (
                           <span className="rounded-full bg-slate-700/60 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-slate-400">vs</span>
                         )}
@@ -154,19 +167,15 @@ export default async function DisplayPage() {
 }
 
 function Movement({ value }: { value: number | null }) {
-  if (value == null || value === 0) {
-    return <span className="text-slate-600 text-sm w-6 text-center">–</span>
-  }
-  if (value > 0) {
-    return (
-      <span className="flex items-center text-green-400 text-sm font-semibold w-6">
-        <ArrowUp className="h-3.5 w-3.5" />{value}
-      </span>
-    )
-  }
   return (
-    <span className="flex items-center text-red-400 text-sm font-semibold w-6">
-      <ArrowDown className="h-3.5 w-3.5" />{Math.abs(value)}
+    <span className="w-8 shrink-0 text-center text-sm xl:text-base font-semibold tabular-nums">
+      {value == null
+        ? null
+        : value > 0
+          ? <span className="text-green-400">▲{value}</span>
+          : value < 0
+            ? <span className="text-red-400">▼{Math.abs(value)}</span>
+            : <span className="text-slate-600">–</span>}
     </span>
   )
 }

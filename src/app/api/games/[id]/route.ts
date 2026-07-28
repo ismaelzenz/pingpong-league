@@ -32,7 +32,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { action, homeSets, awaySets } = body
 
   if (action === 'enter') {
-    if (game.status !== 'pending') return NextResponse.json({ error: 'Game not pending' }, { status: 400 })
+    // A postponed game can be scored directly once it's played (no need to un-postpone first).
+    if (game.status !== 'pending' && game.status !== 'postponed') {
+      return NextResponse.json({ error: 'Result already entered or game finished' }, { status: 400 })
+    }
     if (!isValidResult(homeSets, awaySets)) return NextResponse.json({ error: 'Invalid result' }, { status: 400 })
 
     const matchday = await db.select({ weekStart: matchdays.weekStart }).from(matchdays).where(eq(matchdays.id, game.matchdayId)).then(r => r[0])

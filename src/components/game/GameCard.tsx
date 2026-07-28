@@ -2,7 +2,9 @@ import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import PlayerLink from '@/components/player/PlayerLink'
+import GameCardActions from '@/components/game/GameCardActions'
 import { cn } from '@/lib/utils'
+import { todayISO, deadlineLabel } from '@/lib/dates'
 import type { GameStatus } from '@/lib/db/schema'
 
 const statusConfig: Record<GameStatus, { label: string; className: string }> = {
@@ -22,6 +24,8 @@ interface GameWithPlayers {
   awaySets: number | null
   submittedBy: number | null
   isCatchUp?: boolean
+  weekStart?: string | null
+  weekEnd?: string | null
   homePlayer?: { id: number; name: string } | null
   awayPlayer?: { id: number; name: string } | null
   matchday?: { number: number } | null
@@ -37,10 +41,19 @@ export default function GameCard({ game, currentUserId, className }: Props) {
   const config = statusConfig[game.status] ?? statusConfig.pending
   const hasResult = game.homeSets !== null && game.awaySets !== null
 
+  const isParticipant = currentUserId === game.homePlayerId || currentUserId === game.awayPlayerId
+  const unplayed = game.status === 'pending' || game.status === 'postponed'
+  const started = !game.weekStart || game.weekStart <= todayISO()
+
+  const canConfirm = game.status === 'result_entered' && isParticipant && game.submittedBy !== currentUserId
+  const canEnter = unplayed && isParticipant && started
+  // Deadline nudge only for the players who still owe the game.
+  const deadline = unplayed && isParticipant ? deadlineLabel(game.weekStart ?? null, game.weekEnd ?? null) : null
+
   return (
     <Card className={cn('relative hover:shadow-md transition-shadow flex flex-col', className)}>
-      {/* Stretched overlay link makes the whole card open the game, while the
-          player name links below sit above it (z-10) and navigate to profiles. */}
+      {/* Stretched overlay link makes the whole card open the game, while the player name links
+          and action buttons below sit above it (z-10) and handle their own clicks. */}
       <Link href={`/games/${game.id}`} className="absolute inset-0 z-0" aria-label="View game" />
       <CardContent className="pt-4 pb-3 flex-1 flex flex-col justify-center">
         <div className="flex items-center justify-between gap-2">
@@ -56,6 +69,11 @@ export default function GameCard({ game, currentUserId, className }: Props) {
             </p>
             <p className="text-xs text-muted-foreground">
               {game.isCatchUp ? 'Catch-up game' : `Matchday ${game.matchday?.number ?? '?'}`}
+              {deadline && (
+                <span className={cn('ml-1', deadline.overdue ? 'text-red-600 font-medium' : deadline.urgent ? 'text-yellow-600 font-medium' : '')}>
+                  · {deadline.text}
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -69,11 +87,12 @@ export default function GameCard({ game, currentUserId, className }: Props) {
             </Badge>
           </div>
         </div>
-        {game.status === 'result_entered' && game.submittedBy !== currentUserId && (
-          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2 bg-yellow-50 dark:bg-yellow-950/40 rounded px-2 py-1">
-            Your opponent entered a result — tap to confirm
-          </p>
-        )}
+        {canConfirm ? (
+          <GameCardActions gameId={game.id} />
+        ) : canEnter ? (
+          // Plain hint (no z-10) so a tap falls through to the card's overlay link → the game page.
+          <p className="mt-2 text-xs font-medium text-primary">Enter your result →</p>
+        ) : null}
       </CardContent>
     </Card>
   )

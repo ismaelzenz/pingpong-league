@@ -42,7 +42,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   const canConfirm = game.status === 'result_entered' && isParticipant && !isSubmitter
   const today = todayISO()
   const matchdayStarted = !matchday?.weekStart || matchday.weekStart <= today
-  const canEnter = game.status === 'pending' && isParticipant && matchdayStarted
+  const canEnter = (game.status === 'pending' || game.status === 'postponed') && isParticipant && matchdayStarted
   const canPostpone = (game.status === 'pending' || game.status === 'postponed') && (isParticipant || session.isAdmin)
   const canAdminAct = session.isAdmin && !['confirmed', 'forfeited'].includes(game.status)
 
@@ -121,14 +121,14 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
                 <CardTitle className="text-base">Enter result</CardTitle>
               </CardHeader>
               <CardContent>
-                <GameResultForm gameId={game.id} mode="enter" />
+                <GameResultForm gameId={game.id} mode="enter" homeName={homePlayer?.name} awayName={awayPlayer?.name} />
               </CardContent>
             </Card>
           )}
 
           {game.status === 'result_entered' && isSubmitter && (
-            <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40">
-              <CardContent className="pt-4 text-sm text-yellow-800 dark:text-yellow-300">
+            <Card className="border-amber-400/60 bg-amber-400/10 dark:border-amber-400/50 dark:bg-amber-400/15">
+              <CardContent className="py-6 flex items-center justify-center text-center text-sm font-medium text-amber-800 dark:text-amber-200">
                 ⏳ You entered the result. Waiting for your opponent to confirm.
               </CardContent>
             </Card>
@@ -139,7 +139,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Confirm result</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Your opponent entered: <strong>{game.homeSets} – {game.awaySets}</strong> (home – away sets). Is this correct?
+                  Your opponent entered <strong>{homePlayer?.name} {game.homeSets} – {game.awaySets} {awayPlayer?.name}</strong>. Is this correct?
                 </p>
               </CardHeader>
               <CardContent>

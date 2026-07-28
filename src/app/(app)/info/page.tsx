@@ -37,7 +37,7 @@ export default async function InfoPage() {
           <li>🔄 <strong className="text-foreground">Double round-robin</strong> — you play everyone <strong className="text-foreground">exactly twice</strong>, once home and once away.</li>
           <li>🏓 <strong className="text-foreground">Best of 3 sets</strong> — first to win 2 sets wins the match.</li>
           <li>📅 <strong className="text-foreground">One game per week</strong> — each matchday covers one week.</li>
-          <li>🏆 <strong className="text-foreground">Scoring</strong> — 1 point per set won, plus a 1-point bonus for winning the match. Win 2–0 → 3 pts. Win 2–1 → 3 pts, the opponent still gets 1 pt. A forfeit is 0 pts and a loss.</li>
+          <li>🏆 <strong className="text-foreground">Scoring</strong> — 1 point per set won, plus a 1-point bonus for winning the match. Win 2–0 → 3 pts. Win 2–1 → 3 pts, the opponent still gets 1 pt. A forfeit is 0 pts and a loss for both players (for a game that went unplayed and wasn&apos;t postponed).</li>
           <li>📊 <strong className="text-foreground">Tiebreakers</strong> — points, then victories, then sets won, then fewest sets lost.</li>
         </ul>
       </Section>

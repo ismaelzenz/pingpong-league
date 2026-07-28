@@ -9,6 +9,7 @@
     "lint": "eslint",
     "db:init": "npx tsx src/lib/db/migrate.ts",
     "db:init:prod": "npx tsx src/lib/db/migrate.ts .env.production.local",
+    "db:seed:mock": "npx tsx scripts/seed-mock.ts",
     "gen:icons": "node scripts/gen-icons.mjs"
   },
   "dependencies": {

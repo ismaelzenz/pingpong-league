@@ -1,98 +1,154 @@
 # Ping Pong League — Setup Guide
 
-No external services needed. Just Node.js.
+The app runs on **Next.js** with a **libSQL** database: a **local file** for development and
+**Turso** (hosted libSQL) in production on **Vercel**. Local dev needs nothing but Node.js.
 
-## 1. Install dependencies
+---
 
+## Local development
+
+### 1. Install dependencies
 ```bash
 npm install
 ```
 
-## 2. Configure environment variables
-
-Edit `.env.local`:
-
+### 2. Configure `.env.local`
 ```env
-# Generate a random secret: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-SESSION_SECRET=your-random-32-char-secret-here
+# Session encryption — any random 32+ char string
+# generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+SESSION_SECRET=your-random-secret
 
-# Comma-separated admin emails
-ADMIN_EMAILS=your@email.com
+# Comma-separated admin emails (these accounts get admin powers)
+ADMIN_EMAILS=you@example.com
 
-# Optional: custom DB path (default: ./data/pingpong.db)
-# DB_PATH=/path/to/pingpong.db
+# LOCAL DEV: a private SQLite file — nothing here ever touches production.
+TURSO_DATABASE_URL=file:./data/local.db
+# (no TURSO_AUTH_TOKEN needed for a local file)
+
+# Optional — web-push notifications (see "Notifications" below). Safe to leave unset in dev.
+# VAPID_PUBLIC_KEY=...
+# NEXT_PUBLIC_VAPID_PUBLIC_KEY=...   # same value as VAPID_PUBLIC_KEY
+# VAPID_PRIVATE_KEY=...
+# VAPID_SUBJECT=mailto:you@example.com
 ```
 
-## 3. Initialize the database
+> `.env.local`, `data/`, and `.env.production.local` are gitignored — no secrets are committed.
 
+### 3. Create the local database
 ```bash
 npm run db:init
 ```
+Creates/updates `data/local.db`. Idempotent — re-run it anytime you pull schema changes.
 
-This creates `data/pingpong.db` (a single SQLite file — back it up anytime by copying it).
-
-## 4. Run locally
-
+### 4. (Optional) Seed realistic mock data
 ```bash
-npm run dev
+npm run db:seed:mock
 ```
+Wipes the **local** DB and fills it with a mid-season **20-player** tournament (matchday 14 in
+progress, earlier ones played) so you can test everything at real scale. Log in with any seeded
+player at `test1234`; the admin account is the first email in `ADMIN_EMAILS`. This script **hard-
+refuses to run against anything but a `file:` database**, so it can never touch production.
 
-Open http://localhost:3000
-
-## 5. Deploy to a server
-
-Build and run on any machine with Node.js:
-
+### 5. Run
 ```bash
-npm run build
-npm start
+npm run dev      # http://localhost:3000
 ```
 
-Good options:
-- **Railway** — simple, free tier, persistent disk
-- **Fly.io** — free tier with persistent volumes
-- **A VPS** (DigitalOcean, Hetzner, etc.)
-- **A machine in the office** — just run `npm start`
+---
 
-> Vercel is NOT suitable (no persistent filesystem for the SQLite file).
+## Production (Vercel + Turso)
 
-## How it works
+### 1. Create a Turso database
+Get its URL and an auth token (Turso CLI: `turso db show <name>` and `turso db tokens create <name>`).
 
-### Tournament flow
-1. **Admin** creates a tournament (`/admin`)
-2. **Players** register accounts and click "Join the tournament"
-3. **Admin** clicks "Close registration & start" — generates the full double round-robin schedule automatically
-4. Players play their games, enter results, opponent confirms
-5. Scoreboard updates automatically after each confirmed game
-6. At end of tournament, admin clicks "End tournament"
+### 2. Set environment variables in Vercel → Settings → Environment Variables
+| Variable | Purpose |
+| --- | --- |
+| `SESSION_SECRET` | Session cookie encryption (32+ chars) |
+| `ADMIN_EMAILS` | Comma-separated admin emails |
+| `TURSO_DATABASE_URL` | `libsql://…turso.io` (the cloud DB) |
+| `TURSO_AUTH_TOKEN` | Turso auth token |
+| `VAPID_PUBLIC_KEY` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Web-push notifications |
+| `CRON_SECRET` | Secures the weekly-reminder cron (must have **no** leading/trailing whitespace) |
 
-### Scoring
-- 1 point per set won
-- +1 bonus point for winning the match
-- Win 2–0 → 3 pts (you), 0 pts (opponent)
-- Win 2–1 → 3 pts (you), 1 pt (opponent)
+> Production reads these from Vercel at runtime — **not** from any file in the repo.
 
-### Schedule format
-- Double round-robin (everyone plays everyone twice — home and away)
-- 1 game per player per matchday (week)
-- First leg: everyone faces each other once
-- Second leg: same pairs, home/away reversed
-- Starting from the next Monday after tournament starts
+### 3. Migrate the production database
+Migrations do **not** run during the build. Apply schema changes to prod explicitly:
 
-### File structure
+1. Create a gitignored `.env.production.local` with the prod Turso creds:
+   ```env
+   TURSO_DATABASE_URL=libsql://…turso.io
+   TURSO_AUTH_TOKEN=…
+   ```
+2. Run:
+   ```bash
+   npm run db:init:prod
+   ```
+   Idempotent and additive (creates missing tables / columns), so it's safe to re-run. Only needed
+   when you've added new tables or columns.
+
+### 4. Deploy
+Push to the git remote — Vercel builds (`next build`) and deploys automatically. The build never
+touches the database.
+
+### 5. Cron (weekly reminder)
+`vercel.json` schedules `GET /api/cron/reminder` (Thursdays). Vercel sends
+`Authorization: Bearer <CRON_SECRET>`; the route rejects anything else. If `CRON_SECRET` is unset
+the endpoint is open — always set it in production.
+
+---
+
+## Notifications (optional)
+Web push, no email. Generate VAPID keys once (e.g. `npx web-push generate-vapid-keys`), set the
+four `VAPID_*` vars (`NEXT_PUBLIC_VAPID_PUBLIC_KEY` = `VAPID_PUBLIC_KEY`). Players opt in per-type
+from **My profile → Notifications**. On iPhone the app must be installed via **Safari** first
+(iOS 16.4+). See the README for the full notification behaviour.
+
+---
+
+## npm scripts
+| Script | What it does |
+| --- | --- |
+| `npm run dev` | Dev server (live reload) |
+| `npm run build` / `npm start` | Production build / serve |
+| `npm run lint` | ESLint |
+| `npm run db:init` | Create/migrate the **local** DB (`.env.local`) |
+| `npm run db:init:prod` | Create/migrate the **production** DB (`.env.production.local`) |
+| `npm run db:seed:mock` | Seed the local DB with a mock 20-player tournament |
+| `npm run gen:icons` | Regenerate PWA app icons into `public/` |
+
+---
+
+## How it works (quick reference)
+- **Format**: double round-robin — everyone plays everyone twice (home & away), one game per week
+  (a *matchday*). Best of 3 sets.
+- **Scoring**: 1 pt per set won, +1 bonus for winning the match. Win 2–0 → 3 pts; win 2–1 → 3 pts,
+  opponent gets 1. Tiebreakers: points → victories → sets won → fewest sets lost.
+- **Flow**: admin creates a tournament → players self-join while registration is open → admin
+  starts it (generates the schedule) → players play, one enters the score, the other confirms →
+  scoreboard recomputes automatically.
+
+For the full rules, admin tools, notifications, PWA install and the `/display` wall board, see the
+[README](./README.md) and the in-app **How it works** page (`/info`).
+
+---
+
+## File structure
 ```
-data/
-  pingpong.db        ← SQLite database (auto-created by db:init)
+data/local.db            ← local SQLite DB (gitignored; created by db:init)
+scripts/seed-mock.ts     ← mock-data seeder (local only)
 src/
   app/
-    api/             ← API routes (auth, games, tournaments)
-    (app)/           ← Protected pages (dashboard, scoreboard, etc.)
-    login/           ← Public auth pages
-    register/
+    (app)/               ← authenticated pages (dashboard, scoreboard, matchdays, profile, …)
+    display/             ← public office-TV wall board (/display)
+    api/                 ← API routes (auth, games, tournaments, notifications, cron)
+    login/ register/ …   ← public auth pages
   lib/
-    db/              ← Drizzle schema + DB connection
-    session.ts       ← Iron-session config
-    schedule.ts      ← Round-robin schedule generator
-    scoreboard.ts    ← Scoreboard calculation
-  components/        ← Shared UI components
+    db/                  ← Drizzle schema, connection, migrate script
+    schedule.ts          ← round-robin generator     scoreboard.ts / standings.ts ← standings
+    display.ts           ← wall-board data           scheduleHealth.ts ← schedule validation
+    session.ts apiAuth.ts dates.ts gameResult.ts notificationTypes.ts push.ts tournament.ts
+  components/            ← admin/ game/ profile/ player/ layout/ display/ common/ ui/
+  hooks/useApiAction.ts  ← client "POST → toast → refresh" helper
 ```

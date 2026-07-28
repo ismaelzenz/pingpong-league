@@ -21,9 +21,10 @@ export async function POST(req: NextRequest) {
   }
 
   const ids = pastMatchdays.map(m => m.id)
+  // Only forfeit genuinely unplayed games. Postponed games are deliberate catch-ups — leave them.
   const result = await db.update(games)
     .set({ status: 'forfeited', homeSets: 0, awaySets: 0, updatedAt: new Date().toISOString() })
-    .where(and(inArray(games.matchdayId, ids), inArray(games.status, ['pending', 'postponed'])))
+    .where(and(inArray(games.matchdayId, ids), eq(games.status, 'pending')))
     .returning()
 
   return NextResponse.json({ ok: true, forfeited: result.length })

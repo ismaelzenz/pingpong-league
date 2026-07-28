@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { matchdays, games, participants, users } from '@/lib/db/schema'
@@ -6,9 +5,11 @@ import { eq } from 'drizzle-orm'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import GameCard from '@/components/game/GameCard'
+import MatchdayListItem from '@/components/common/MatchdayListItem'
+import EmptyState from '@/components/common/EmptyState'
 import { analyzeSchedule } from '@/lib/scheduleHealth'
 import { getLiveTournament } from '@/lib/tournament'
-import { formatWeekRange } from '@/lib/dates'
+import { todayISO } from '@/lib/dates'
 import { AlertTriangle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -20,12 +21,7 @@ export default async function MatchdaysPage() {
   const tournament = live?.status === 'active' ? live : null
 
   if (!tournament) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
-        <div className="text-5xl">🏓</div>
-        <p className="text-muted-foreground">No active tournament. Check back once one starts!</p>
-      </div>
-    )
+    return <EmptyState emoji="🏓" title="No active tournament" hint="Once a season starts, its matchdays and fixtures will appear here." />
   }
 
   const allMatchdays = await db.select().from(matchdays)
@@ -60,6 +56,43 @@ export default async function MatchdaysPage() {
       const done = (s: string) => (s === 'confirmed' || s === 'forfeited' ? 1 : 0)
       return done(a.status) - done(b.status)
     })
+
+  // Per-matchday stats, computed once.
+  const rows = allMatchdays.map(m => {
+    const dayGames = allGames.filter(g => g.matchdayId === m.id)
+    return {
+      m,
+      total: dayGames.length,
+      confirmed: dayGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length,
+      pending: dayGames.filter(g => g.status === 'pending').length,
+      hasIssue: health.matchdayIdsWithIssue.has(m.id),
+    }
+  })
+
+  // The "current" matchday: the one whose week contains today, else the latest already started.
+  // Used to split the list so the relevant matchdays sit at the top (no scrolling mid-season).
+  const today = todayISO()
+  const inProgress = allMatchdays.find(m => m.weekStart && m.weekEnd && m.weekStart <= today && today <= m.weekEnd)
+  const latestStarted = [...allMatchdays].reverse().find(m => m.weekStart != null && m.weekStart <= today)
+  const currentNumber = (inProgress ?? latestStarted)?.number ?? null
+
+  const upcoming = currentNumber != null ? rows.filter(r => r.m.number >= currentNumber) : rows
+  const past = currentNumber != null ? rows.filter(r => r.m.number < currentNumber).reverse() : []
+
+  const renderRow = (r: (typeof rows)[number]) => (
+    <MatchdayListItem
+      key={r.m.id}
+      id={r.m.id}
+      number={r.m.number}
+      weekStart={r.m.weekStart}
+      weekEnd={r.m.weekEnd}
+      total={r.total}
+      confirmed={r.confirmed}
+      pending={r.pending}
+      hasIssue={r.hasIssue}
+      isCurrent={r.m.number === currentNumber}
+    />
+  )
 
   return (
     <div className="space-y-6">
@@ -123,43 +156,29 @@ export default async function MatchdaysPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
-        {allMatchdays.map(matchday => {
-          const dayGames = allGames.filter(g => g.matchdayId === matchday.id)
-          const confirmed = dayGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
-          const pending = dayGames.filter(g => g.status === 'pending').length
+      {currentNumber != null ? (
+        <>
+          <section className="space-y-4">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">This week &amp; upcoming</h2>
+            <div className="flex flex-col gap-4">
+              {upcoming.map(renderRow)}
+            </div>
+          </section>
 
-          return (
-            <Link key={matchday.id} href={`/matchdays/${matchday.id}`} className="block">
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">Matchday {matchday.number}</h3>
-                        {health.matchdayIdsWithIssue.has(matchday.id) && (
-                          <span title="Scheduling conflict — a pairing here happens more than twice, or a player is double-booked">
-                            <AlertTriangle className="w-4 h-4 text-yellow-600" />
-                          </span>
-                        )}
-                      </div>
-                      {matchday.weekStart && matchday.weekEnd && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {formatWeekRange(matchday.weekStart, matchday.weekEnd)}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm text-muted-foreground">{confirmed}/{dayGames.length} played</p>
-                      {pending > 0 && <p className="text-xs text-yellow-600">{pending} pending</p>}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          )
-        })}
-      </div>
+          {past.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Played</h2>
+              <div className="flex flex-col gap-4">
+                {past.map(renderRow)}
+              </div>
+            </section>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {rows.map(renderRow)}
+        </div>
+      )}
     </div>
   )
 }

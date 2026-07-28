@@ -1,9 +1,10 @@
 import { requireSession } from '@/lib/session'
-import { computeScoreboard } from '@/lib/scoreboard'
+import { computeStandingsWithMovement } from '@/lib/standings'
 import { getLiveTournament } from '@/lib/tournament'
 import { Card, CardContent } from '@/components/ui/card'
 import PlayerLink from '@/components/player/PlayerLink'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
+import EmptyState from '@/components/common/EmptyState'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,15 +15,10 @@ export default async function ScoreboardPage() {
   const tournament = live?.status === 'active' ? live : null
 
   if (!tournament) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
-        <div className="text-5xl">🏓</div>
-        <p className="text-muted-foreground">No active tournament. Check back once one starts!</p>
-      </div>
-    )
+    return <EmptyState emoji="🏓" title="No active tournament" hint="Check back once a season is underway — the standings will show up here." />
   }
 
-  const scores = await computeScoreboard(tournament.id)
+  const scores = await computeStandingsWithMovement(tournament.id)
 
   return (
     <div className="space-y-6">
@@ -37,8 +33,8 @@ export default async function ScoreboardPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/30">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">#</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Player</th>
+                  <th className="text-left pl-4 pr-1 py-3 font-medium text-muted-foreground">#</th>
+                  <th className="text-left pl-1 pr-4 py-3 font-medium text-muted-foreground w-full">Player</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">GP</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">W</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">L</th>
@@ -52,10 +48,21 @@ export default async function ScoreboardPage() {
                   const isMe = entry.userId === session.userId
                   return (
                     <tr key={entry.userId} className={`border-b last:border-0 ${isMe ? 'bg-primary/5' : 'hover:bg-muted/30'} transition-colors`}>
-                      <td className="px-4 py-3 text-muted-foreground w-8">
-                        {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                      <td className="pl-4 pr-1 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-7 text-center shrink-0 text-muted-foreground">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
+                          <span className="w-7 shrink-0 text-xs tabular-nums text-center">
+                            {entry.movement == null
+                              ? null
+                              : entry.movement > 0
+                                ? <span className="text-green-500">▲{entry.movement}</span>
+                                : entry.movement < 0
+                                  ? <span className="text-red-500">▼{Math.abs(entry.movement)}</span>
+                                  : <span className="text-muted-foreground">–</span>}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="pl-1 pr-4 py-3">
                         <PlayerLink userId={entry.userId} currentUserId={session.userId} className="flex items-center gap-2 w-fit">
                           <PlayerAvatar name={entry.name} avatarColor={entry.avatarColor} className="h-7 w-7" fallbackClassName="text-xs" />
                           <span className={`font-medium ${isMe ? 'text-primary' : 'hover:underline'}`}>
@@ -81,7 +88,7 @@ export default async function ScoreboardPage() {
       <p className="text-xs text-muted-foreground text-center">
         GP = Games Played · W = Victories · L = Losses · SW = Sets Won · SL = Sets Lost · Pts = Points
         <br />
-        Scoring: 1 pt per set won + 1 bonus pt for winning the game
+        Scoring: 1 pt per set won + 1 bonus pt for winning the game · ▲▼ = rank change this matchday
       </p>
     </div>
   )

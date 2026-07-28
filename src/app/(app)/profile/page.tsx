@@ -196,7 +196,7 @@ export default async function ProfilePage() {
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground">
                     <span className="font-mono font-bold text-foreground">{mySets} – {oppSets}</span>
-                    <span className="text-xs">MD {matchdayNums[game.matchdayId] ?? '?'}</span>
+                    <span className="text-xs w-12 text-right shrink-0">MD {matchdayNums[game.matchdayId] ?? '?'}</span>
                   </div>
                 </div>
               )

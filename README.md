@@ -37,7 +37,7 @@ tooling for managing the season (including adding players mid-tournament).
 - **Scoring** — **1 point per set won, plus a 1-point bonus for winning the match.**
   - Win 2–0 → **3 pts** (winner), 0 pts (loser)
   - Win 2–1 → **3 pts** (winner), **1 pt** (loser)
-  - Forfeit → 0 pts and counts as a loss for the no-show.
+  - Forfeit → 0 pts and a loss for **both** players (used when a game went unplayed and wasn't postponed).
 - **Standings tiebreakers** — points, then victories, then sets won, then fewest sets lost.
 
 ### Number of matchdays
@@ -150,7 +150,8 @@ From the **Admin panel**:
   others earned against them are removed and the scoreboard recalculates.
 - **Regenerate schedule** — rebuilds the **unplayed** part of the schedule for the current
   roster (see rules below).
-- **Forfeit unplayed games** — marks still-pending games from past matchdays as forfeited.
+- **Forfeit unplayed games** — marks still-**pending** games from past matchdays as forfeited
+  (0 pts, a loss for both players). Postponed games are left alone — they're meant to be caught up.
 - **End tournament** — marks the season finished (read-only afterwards).
 - **Cancel tournament** — during registration only, discards it.
 - **Correct a confirmed result** — admins can fix the score of an already-confirmed/forfeited
@@ -263,21 +264,34 @@ in `src/middleware.ts`.
 - **Next.js** (App Router) + **React**, **Tailwind** + Base UI components, **Drizzle ORM** on
   **libsql/Turso**, **iron-session** auth.
 - Schedule generation: `src/lib/schedule.ts`. Mid-season rebuild: `src/lib/regenerateSchedule.ts`.
-  Standings: `src/lib/scoreboard.ts`. Schedule validation: `src/lib/scheduleHealth.ts`.
-- Database setup / migrations: `npm run db:init` (see `SETUP.md` and `src/lib/db/migrate.ts`).
-  Run it after pulling schema changes; column additions are additive and safe to re-run.
+  Standings: `src/lib/scoreboard.ts` (plus `src/lib/standings.ts` for weekly ▲/▼ rank movement).
+  Schedule validation: `src/lib/scheduleHealth.ts`. Wall-board data: `src/lib/display.ts`.
+- **Dates use the league timezone (`Europe/Amsterdam`), not UTC**, so matchday-week boundaries
+  line up with real local days — `todayISO()` in `src/lib/dates.ts`.
+- **Database** is libSQL — a **local file in dev, Turso (cloud) in production**:
+  - **Local dev**: `.env.local` sets `TURSO_DATABASE_URL=file:./data/local.db` — a private, isolated
+    file DB. `npm run db:init` creates/updates it. Nothing you do locally can touch production.
+  - **Production**: reads its Turso URL/token from **Vercel env vars** (never committed). Apply schema
+    changes with `npm run db:init:prod`, which reads a gitignored `.env.production.local`.
+  - **Mock data**: `npm run db:seed:mock` fills the **local** DB with a realistic mid-season 20-player
+    tournament for testing. It hard-refuses to run against anything but a `file:` DB.
+  - Migrations (`src/lib/db/migrate.ts`) are additive and safe to re-run. See `SETUP.md`.
 
 ### Code layout & shared building blocks
 
 - **`src/components/`** is grouped by feature: `admin/` (tournament & matchday controls),
-  `game/`, `profile/`, `player/`, `layout/` (nav, theme, service worker), `common/`, and
-  `ui/` (Base UI primitives). Import via the `@/` alias, e.g. `@/components/admin/AddPlayerForm`.
+  `game/`, `profile/`, `player/`, `layout/` (nav, theme, service worker), `display/` (the wall
+  board), `common/` (reusable bits — `EmptyState`, `MatchdayListItem`, `JoinTournamentButton`, …),
+  and `ui/` (Base UI primitives). Import via the `@/` alias, e.g. `@/components/admin/AddPlayerForm`.
 - **Shared helpers** keep behaviour in one place — reuse these instead of re-implementing:
   - `src/lib/apiAuth.ts` — `requireUser()` / `requireAdmin()` guards for API routes.
   - `src/lib/session.ts` — `requireSession()` / `requireAdminSession()` guards for pages,
     plus `establishSession()` for login/register.
   - `src/lib/gameResult.ts` — `perspective()`, `pointsFor()`, `isValidResult()` (the scoring rules).
-  - `src/lib/dates.ts` — `todayISO()`, `mondayOf()`, `formatWeekRange()`.
+  - `src/lib/dates.ts` — `todayISO()` (Amsterdam), `mondayOf()`, `formatWeekRange()`, `deadlineLabel()`.
+  - `src/lib/scoreboard.ts` / `src/lib/standings.ts` — `buildScoreboard()` and
+    `computeStandingsWithMovement()` (standings, shared by the scoreboard, dashboard and wall board).
+  - `src/lib/notificationTypes.ts` — the notification-type catalogue + per-type preference helpers.
   - `src/lib/utils.ts` — `getInitials()`; `src/components/player/PlayerAvatar.tsx` renders a player's avatar.
   - `src/hooks/useApiAction.ts` — the client-side "POST → toast → refresh" flow for buttons/forms.
 
