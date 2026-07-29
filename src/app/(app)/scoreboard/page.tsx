@@ -1,7 +1,10 @@
 import { requireSession } from '@/lib/session'
+import Link from 'next/link'
 import { computeStandingsWithMovement } from '@/lib/standings'
 import { getLiveTournament } from '@/lib/tournament'
+import { getLatestFinishedTournament } from '@/lib/recap'
 import { Card, CardContent } from '@/components/ui/card'
+import { buttonVariants } from '@/components/ui/button'
 import PlayerLink from '@/components/player/PlayerLink'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import EmptyState from '@/components/common/EmptyState'
@@ -15,7 +18,14 @@ export default async function ScoreboardPage() {
   const tournament = live?.status === 'active' ? live : null
 
   if (!tournament) {
-    return <EmptyState emoji="🏓" title="No active tournament" hint="Check back once a season is underway — the standings will show up here." />
+    const lastFinished = await getLatestFinishedTournament()
+    return (
+      <EmptyState emoji="🏓" title="No active tournament" hint="Check back once a season is underway — the standings will show up here.">
+        {lastFinished && (
+          <Link href="/recap" className={buttonVariants()}>🏆 View {lastFinished.name} recap</Link>
+        )}
+      </EmptyState>
+    )
   }
 
   const scores = await computeStandingsWithMovement(tournament.id)

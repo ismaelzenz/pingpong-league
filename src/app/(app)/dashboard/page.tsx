@@ -14,6 +14,7 @@ import JoinTournamentButton from '@/components/common/JoinTournamentButton'
 import EmptyState from '@/components/common/EmptyState'
 import { computeStandingsWithMovement } from '@/lib/standings'
 import { getLiveTournament } from '@/lib/tournament'
+import { getLatestFinishedTournament } from '@/lib/recap'
 import { todayISO, deadlineLabel } from '@/lib/dates'
 import { ChevronRight } from 'lucide-react'
 
@@ -25,6 +26,7 @@ export default async function DashboardPage() {
   const tournament = await getLiveTournament()
 
   if (!tournament) {
+    const lastFinished = await getLatestFinishedTournament()
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
         <div className="text-6xl">🏓</div>
@@ -34,8 +36,11 @@ export default async function DashboardPage() {
             ? 'Head to the Admin panel to create a new tournament.'
             : 'Check back later when the admin creates a new tournament.'}
         </p>
+        {lastFinished && (
+          <Link href="/recap" className={buttonVariants()}>🏆 View {lastFinished.name} recap</Link>
+        )}
         {session.isAdmin && (
-          <Link href="/admin" className={buttonVariants()}>Go to Admin panel</Link>
+          <Link href="/admin" className={buttonVariants({ variant: 'outline' })}>Go to Admin panel</Link>
         )}
       </div>
     )

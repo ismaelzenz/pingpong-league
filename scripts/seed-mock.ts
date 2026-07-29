@@ -91,73 +91,100 @@ async function main() {
     ids.push(row.id)
   }
 
-  // ── Dates: matchday 14 = this week; matchday 1 = 13 weeks ago ───────────────────────────
-  const currentMonday = startOfWeek(new Date(), { weekStartsOn: 1 })
-  const firstMonday = subWeeks(currentMonday, ACTIVE_MATCHDAY - 1)
-  const mondayOfMatchday = (n: number) => addWeeks(firstMonday, n - 1)
+  // Build one tournament: its matchdays + games, with each game's state decided per matchday.
+  async function seedTournament(opts: {
+    name: string
+    status: 'active' | 'finished'
+    isLive: boolean
+    firstMonday: Date
+    finishedAt?: Date
+    stateFor: (matchdayNumber: number, gameIndex: number) => 'confirmed' | 'entered' | 'pending'
+  }) {
+    const [t] = await db.insert(tournaments).values({
+      name: opts.name,
+      status: opts.status,
+      isLive: opts.isLive,
+      startDate: format(opts.firstMonday, 'yyyy-MM-dd'),
+      startedAt: opts.firstMonday.toISOString(),
+      finishedAt: opts.finishedAt ? opts.finishedAt.toISOString() : null,
+    }).returning()
+    await db.insert(participants).values(ids.map(userId => ({ tournamentId: t.id, userId })))
 
-  // ── Tournament (active, live) ───────────────────────────────────────────────────────────
-  const [tournament] = await db.insert(tournaments).values({
+    const schedule = generateSchedule(ids)
+    const rows: (typeof games.$inferInsert)[] = []
+    const counts = { confirmed: 0, entered: 0, pending: 0 }
+    for (const md of schedule) {
+      const weekStart = addWeeks(opts.firstMonday, md.number - 1)
+      const [mdRow] = await db.insert(matchdays).values({
+        tournamentId: t.id,
+        number: md.number,
+        weekStart: format(weekStart, 'yyyy-MM-dd'),
+        weekEnd: format(addDays(weekStart, 4), 'yyyy-MM-dd'),
+      }).returning()
+
+      md.games.forEach((g, i) => {
+        const base = { matchdayId: mdRow.id, tournamentId: t.id, homePlayerId: g.home, awayPlayerId: g.away, isCatchUp: false }
+        const playedAt = addDays(weekStart, 1 + Math.floor(Math.random() * 4)).toISOString()
+        const state = opts.stateFor(md.number, i)
+        if (state === 'confirmed') {
+          const s = score(Math.random() < 0.5)
+          rows.push({ ...base, status: 'confirmed', ...s, submittedBy: g.home, confirmedBy: g.away, submittedAt: playedAt, confirmedAt: playedAt })
+          counts.confirmed++
+        } else if (state === 'entered') {
+          const s = score(Math.random() < 0.5)
+          rows.push({ ...base, status: 'result_entered', ...s, submittedBy: g.home, submittedAt: addDays(weekStart, 1).toISOString() })
+          counts.entered++
+        } else {
+          rows.push({ ...base, status: 'pending' })
+          counts.pending++
+        }
+      })
+    }
+    await db.insert(games).values(rows)
+    return { tournament: t, matchdays: schedule.length, counts }
+  }
+
+  const currentMonday = startOfWeek(new Date(), { weekStartsOn: 1 })
+  const seasonLength = 2 * (PLAYERS.length - 1) // canonical matchdays for an even roster
+  const GAP = 2 // weeks of downtime between seasons
+
+  // ── Past seasons: two fully-played, finished leagues so the /recap "Past seasons" list is
+  //    populated. 2025 ends just before the active 2026 season; 2024 ends before 2025. ──────
+  const finishedAtOf = (firstMonday: Date) => addDays(addWeeks(firstMonday, seasonLength - 1), 4)
+  const prev2025FirstMonday = subWeeks(currentMonday, ACTIVE_MATCHDAY - 1 + seasonLength + GAP)
+  const prev2024FirstMonday = subWeeks(prev2025FirstMonday, seasonLength + GAP)
+
+  const older = await seedTournament({
+    name: 'Mock League 2024',
+    status: 'finished',
+    isLive: false,
+    firstMonday: prev2024FirstMonday,
+    finishedAt: finishedAtOf(prev2024FirstMonday),
+    stateFor: () => 'confirmed',
+  })
+
+  const prev = await seedTournament({
+    name: 'Mock League 2025',
+    status: 'finished',
+    isLive: false,
+    firstMonday: prev2025FirstMonday,
+    finishedAt: finishedAtOf(prev2025FirstMonday),
+    stateFor: () => 'confirmed',
+  })
+
+  // ── This season: active & live, matchday 14 in progress ─────────────────────────────────
+  const active = await seedTournament({
     name: 'Mock League 2026',
     status: 'active',
     isLive: true,
-    startDate: format(firstMonday, 'yyyy-MM-dd'),
-    startedAt: firstMonday.toISOString(),
-  }).returning()
+    firstMonday: subWeeks(currentMonday, ACTIVE_MATCHDAY - 1),
+    stateFor: (n, i) => (n < ACTIVE_MATCHDAY ? 'confirmed' : n > ACTIVE_MATCHDAY ? 'pending' : i < 2 ? 'confirmed' : i === 2 ? 'entered' : 'pending'),
+  })
 
-  await db.insert(participants).values(ids.map(userId => ({ tournamentId: tournament.id, userId })))
-
-  // ── Schedule + results ──────────────────────────────────────────────────────────────────
-  const schedule = generateSchedule(ids)
-  const gameRows: (typeof games.$inferInsert)[] = []
-  let confirmed = 0, entered = 0, pending = 0
-
-  for (const md of schedule) {
-    const weekStart = mondayOfMatchday(md.number)
-    const [mdRow] = await db.insert(matchdays).values({
-      tournamentId: tournament.id,
-      number: md.number,
-      weekStart: format(weekStart, 'yyyy-MM-dd'),
-      weekEnd: format(addDays(weekStart, 4), 'yyyy-MM-dd'),
-    }).returning()
-
-    md.games.forEach((g, i) => {
-      const base = {
-        matchdayId: mdRow.id,
-        tournamentId: tournament.id,
-        homePlayerId: g.home,
-        awayPlayerId: g.away,
-        isCatchUp: false,
-      }
-      const playedAt = addDays(weekStart, 1 + Math.floor(Math.random() * 4)).toISOString()
-
-      // Past matchdays are fully played. In matchday 14: first 2 confirmed, 3rd awaiting
-      // confirmation, the rest still to play. Future matchdays are all pending.
-      let state: 'confirmed' | 'entered' | 'pending'
-      if (md.number < ACTIVE_MATCHDAY) state = 'confirmed'
-      else if (md.number > ACTIVE_MATCHDAY) state = 'pending'
-      else state = i < 2 ? 'confirmed' : i === 2 ? 'entered' : 'pending'
-
-      if (state === 'confirmed') {
-        const s = score(Math.random() < 0.5)
-        gameRows.push({ ...base, status: 'confirmed', ...s, submittedBy: g.home, confirmedBy: g.away, submittedAt: playedAt, confirmedAt: playedAt })
-        confirmed++
-      } else if (state === 'entered') {
-        const s = score(Math.random() < 0.5)
-        gameRows.push({ ...base, status: 'result_entered', ...s, submittedBy: g.home, submittedAt: addDays(weekStart, 1).toISOString() })
-        entered++
-      } else {
-        gameRows.push({ ...base, status: 'pending' })
-        pending++
-      }
-    })
-  }
-
-  await db.insert(games).values(gameRows)
-
-  console.log('\n✅ Mock tournament seeded.')
-  console.log(`   Players: ${PLAYERS.length}  ·  Matchdays: ${schedule.length}  ·  Active matchday: ${ACTIVE_MATCHDAY}`)
-  console.log(`   Games — confirmed: ${confirmed}, awaiting confirmation: ${entered}, pending: ${pending}`)
+  console.log('\n✅ Mock data seeded.')
+  console.log(`   ${PLAYERS.length} players.`)
+  console.log(`   Finished: ${older.tournament.name} + ${prev.tournament.name} — ${prev.matchdays} matchdays each, all played (view /recap + Past seasons).`)
+  console.log(`   Active:   ${active.tournament.name} — matchday ${ACTIVE_MATCHDAY} in progress (confirmed ${active.counts.confirmed}, awaiting ${active.counts.entered}, pending ${active.counts.pending}).`)
   console.log(`\n   Log in as ADMIN:  ${PLAYERS[0].email}  /  ${PASSWORD}`)
   console.log(`   (all players share the password "${PASSWORD}")\n`)
 

@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Shield, Home, Trophy, CalendarDays, BookOpen, Sun, Moon, Swords, Menu } from 'lucide-react'
+import { LogOut, User, Shield, Home, Trophy, CalendarDays, BookOpen, Sun, Moon, Swords, Menu, Award } from 'lucide-react'
 
 interface Props {
   name: string
@@ -116,6 +116,10 @@ export default function AppNav({ name, email, isAdmin, avatarColor, tournamentNa
             <DropdownMenuItem render={<Link href="/my-games" />}>
               <Swords className="mr-2 h-4 w-4" />
               My games
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link href="/recap" />}>
+              <Award className="mr-2 h-4 w-4" />
+              Season recap
             </DropdownMenuItem>
             <DropdownMenuItem render={<Link href="/info" />}>
               <BookOpen className="mr-2 h-4 w-4" />
