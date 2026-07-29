@@ -48,6 +48,7 @@ export interface RecapData {
     ironMan: RecapAward | null      // most games played
     setMachine: RecapAward | null   // most sets won
     mostImproved: RecapAward | null // biggest rank climb mid-season → final
+    nailBiter: RecapAward | null    // most 2–1 games played (won or lost)
   }
   totals: {
     games: number      // confirmed games
@@ -106,15 +107,17 @@ export async function computeRecap(tournamentId: number, tournamentName: string)
   const standings: RecapStanding[] = sorted.map((e, i) => ({ ...e, rank: i + 1 }))
 
   // ── Per-player counts for awards + head-to-head (confirmed games only) ──────────────────
-  const acc = new Map(players.map(p => [p.userId, { twoOh: 0, twoOne: 0 }]))
+  const acc = new Map(players.map(p => [p.userId, { twoOh: 0, twoOne: 0, deciders: 0 }]))
   // h2h[playerId][opponentId] = the player's record vs that opponent.
   const h2h = new Map(players.map(p => [p.userId, new Map<number, { wins: number; losses: number }>()]))
   for (const g of confirmed) {
+    const wentToDecider = (g.homeSets ?? 0) + (g.awaySets ?? 0) === 3
     for (const pid of [g.homePlayerId, g.awayPlayerId]) {
       const s = acc.get(pid)
       if (!s) continue
       const { oppSets, won } = perspective(g, pid)
       if (won) { if (oppSets === 0) s.twoOh++; else if (oppSets === 1) s.twoOne++ }
+      if (wentToDecider) s.deciders++
 
       const oppId = pid === g.homePlayerId ? g.awayPlayerId : g.homePlayerId
       const mine = h2h.get(pid)
@@ -189,7 +192,7 @@ export async function computeRecap(tournamentId: number, tournamentName: string)
   // ── Personal detail per player: sweeps, deciders, favourite opponent & nemesis ──────────
   const personalByUser: Record<number, PersonalRecap> = {}
   for (const p of players) {
-    const s = acc.get(p.userId) ?? { twoOh: 0, twoOne: 0 }
+    const s = acc.get(p.userId) ?? { twoOh: 0, twoOne: 0, deciders: 0 }
     let favorite: HeadToHead | null = null
     let nemesis: HeadToHead | null = null
     for (const [oppId, rec] of h2h.get(p.userId) ?? []) {
@@ -216,6 +219,7 @@ export async function computeRecap(tournamentId: number, tournamentName: string)
       ironMan: topBy(standings, s => s.gamesPlayed, 1, s => s.userId, n => `${n} games played`),
       setMachine: topBy(standings, s => s.setsWon, 1, s => s.userId, n => `${n} sets won`),
       mostImproved,
+      nailBiter: topBy(accList, s => s.deciders, 1, s => s.userId, n => `${n} deciders played (2–1)`),
     },
     totals: {
       games: confirmed.length,

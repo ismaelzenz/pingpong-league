@@ -14,7 +14,7 @@ import JoinTournamentButton from '@/components/common/JoinTournamentButton'
 import EmptyState from '@/components/common/EmptyState'
 import { computeStandingsWithMovement } from '@/lib/standings'
 import { getLiveTournament } from '@/lib/tournament'
-import { getLatestFinishedTournament } from '@/lib/recap'
+import { getLatestFinishedTournament, computeRecap } from '@/lib/recap'
 import { todayISO, deadlineLabel } from '@/lib/dates'
 import { ChevronRight } from 'lucide-react'
 
@@ -27,21 +27,40 @@ export default async function DashboardPage() {
 
   if (!tournament) {
     const lastFinished = await getLatestFinishedTournament()
+    const champion = lastFinished ? (await computeRecap(lastFinished.id, lastFinished.name)).champion : null
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-        <div className="text-6xl">🏓</div>
-        <h1 className="text-2xl font-bold">No active tournament</h1>
-        <p className="text-muted-foreground">
-          {session.isAdmin
-            ? 'Head to the Admin panel to create a new tournament.'
-            : 'Check back later when the admin creates a new tournament.'}
-        </p>
+      <div className="space-y-6 max-w-2xl mx-auto">
         {lastFinished && (
-          <Link href="/recap" className={buttonVariants()}>🏆 View {lastFinished.name} recap</Link>
+          <Card className="border-yellow-400/50 bg-gradient-to-b from-yellow-400/10 to-transparent">
+            <CardContent className="py-8 flex flex-col items-center text-center gap-4">
+              <div className="text-5xl">🏆</div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-yellow-600 dark:text-yellow-400">Season complete</p>
+                <h1 className="text-2xl font-black">{lastFinished.name} has wrapped!</h1>
+                {champion && (
+                  <p className="text-muted-foreground mt-2 flex items-center justify-center gap-2">
+                    <PlayerAvatar name={champion.name} avatarColor={champion.avatarColor} className="h-6 w-6" fallbackClassName="text-[10px]" />
+                    Champion: <span className="font-semibold text-foreground">{champion.name}</span> 🎉
+                  </p>
+                )}
+              </div>
+              <Link href="/recap" className={buttonVariants({ size: 'lg' })}>🎬 See the season recap</Link>
+            </CardContent>
+          </Card>
         )}
-        {session.isAdmin && (
-          <Link href="/admin" className={buttonVariants({ variant: 'outline' })}>Go to Admin panel</Link>
-        )}
+
+        <div className="flex flex-col items-center justify-center py-10 gap-3 text-center">
+          <div className="text-5xl">🏓</div>
+          <h2 className="text-xl font-bold">No active tournament</h2>
+          <p className="text-muted-foreground">
+            {session.isAdmin
+              ? 'Head to the Admin panel to create the next season.'
+              : 'Check back later when the admin starts the next season.'}
+          </p>
+          {session.isAdmin && (
+            <Link href="/admin" className={buttonVariants({ variant: 'outline' })}>Go to Admin panel</Link>
+          )}
+        </div>
       </div>
     )
   }

@@ -9,13 +9,14 @@ export default function RecapView({ recap, currentUserId }: { recap: RecapData; 
   const me = standings.find(s => s.userId === currentUserId)
 
   const awardTiles = [
-    { emoji: '📈', title: 'Most improved', entry: awards.mostImproved, accent: 'from-emerald-500/15 to-teal-500/5 ring-emerald-500/20' },
-    { emoji: '🔥', title: 'On fire', entry: awards.onFire, accent: 'from-orange-500/15 to-red-500/5 ring-orange-500/20' },
-    { emoji: '🧨', title: 'The Destroyer', entry: awards.destroyer, accent: 'from-purple-500/15 to-fuchsia-500/5 ring-purple-500/20' },
-    { emoji: '🎯', title: 'Clutch', entry: awards.clutch, accent: 'from-sky-500/15 to-cyan-500/5 ring-sky-500/20' },
-    { emoji: '👑', title: 'Best win rate', entry: awards.bestWinRate, accent: 'from-yellow-500/15 to-amber-500/5 ring-yellow-500/20' },
-    { emoji: '💪', title: 'Iron Man', entry: awards.ironMan, accent: 'from-blue-500/15 to-indigo-500/5 ring-blue-500/20' },
-    { emoji: '🎢', title: 'Set machine', entry: awards.setMachine, accent: 'from-pink-500/15 to-rose-500/5 ring-pink-500/20' },
+    { emoji: '📈', title: 'Most improved', entry: awards.mostImproved, accent: 'from-emerald-500/25 to-teal-500/10 ring-emerald-500/40 dark:from-emerald-500/15 dark:to-teal-500/5 dark:ring-emerald-500/25' },
+    { emoji: '🔥', title: 'On fire', entry: awards.onFire, accent: 'from-orange-500/25 to-red-500/10 ring-orange-500/40 dark:from-orange-500/15 dark:to-red-500/5 dark:ring-orange-500/25' },
+    { emoji: '🧨', title: 'The Destroyer', entry: awards.destroyer, accent: 'from-purple-500/25 to-fuchsia-500/10 ring-purple-500/40 dark:from-purple-500/15 dark:to-fuchsia-500/5 dark:ring-purple-500/25' },
+    { emoji: '🎯', title: 'Clutch', entry: awards.clutch, accent: 'from-sky-500/25 to-cyan-500/10 ring-sky-500/40 dark:from-sky-500/15 dark:to-cyan-500/5 dark:ring-sky-500/25' },
+    { emoji: '👑', title: 'Best win rate', entry: awards.bestWinRate, accent: 'from-yellow-500/25 to-amber-500/10 ring-yellow-500/40 dark:from-yellow-500/15 dark:to-amber-500/5 dark:ring-yellow-500/25' },
+    { emoji: '💪', title: 'Iron Man', entry: awards.ironMan, accent: 'from-blue-500/25 to-indigo-500/10 ring-blue-500/40 dark:from-blue-500/15 dark:to-indigo-500/5 dark:ring-blue-500/25' },
+    { emoji: '🎢', title: 'Set machine', entry: awards.setMachine, accent: 'from-pink-500/25 to-rose-500/10 ring-pink-500/40 dark:from-pink-500/15 dark:to-rose-500/5 dark:ring-pink-500/25' },
+    { emoji: '😰', title: 'Nail-biter', entry: awards.nailBiter, accent: 'from-red-500/25 to-rose-500/10 ring-red-500/40 dark:from-red-500/15 dark:to-rose-500/5 dark:ring-red-500/25' },
   ].filter(t => t.entry)
 
   return (
@@ -27,7 +28,7 @@ export default function RecapView({ recap, currentUserId }: { recap: RecapData; 
 
       {/* Champion */}
       {champion && (
-        <Card className="border-yellow-400/50 bg-gradient-to-b from-yellow-400/10 to-transparent">
+        <Card className="border-yellow-400/60 bg-gradient-to-b from-yellow-400/25 to-transparent dark:border-yellow-400/50 dark:from-yellow-400/10">
           <CardContent className="pt-8 pb-8 flex flex-col items-center text-center gap-3">
             <div className="text-5xl">🏆</div>
             <PlayerAvatar name={champion.name} avatarColor={champion.avatarColor} className="h-20 w-20" fallbackClassName="text-2xl" />
@@ -148,22 +149,20 @@ export default function RecapView({ recap, currentUserId }: { recap: RecapData; 
                 {(mine?.favorite || mine?.nemesis) && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {mine.favorite && (
-                      <div className="rounded-lg bg-background/60 ring-1 ring-border p-3 flex items-center gap-3">
-                        <span className="text-xl shrink-0">😈</span>
-                        <PlayerAvatar name={mine.favorite.name} avatarColor={mine.favorite.avatarColor} className="h-8 w-8 shrink-0" fallbackClassName="text-xs" />
-                        <div className="min-w-0">
-                          <p className="text-xs text-muted-foreground">Favourite opponent</p>
+                      <div className="rounded-lg bg-background/60 ring-1 ring-border p-4 flex flex-col items-center text-center gap-2">
+                        <p className="text-xs font-medium text-muted-foreground">😈 Favourite opponent</p>
+                        <PlayerAvatar name={mine.favorite.name} avatarColor={mine.favorite.avatarColor} className="h-11 w-11" fallbackClassName="text-sm" />
+                        <div className="max-w-full">
                           <p className="font-semibold truncate">{mine.favorite.name}</p>
                           <p className="text-xs text-muted-foreground">You won {mine.favorite.wins} of {mine.favorite.wins + mine.favorite.losses}</p>
                         </div>
                       </div>
                     )}
                     {mine.nemesis && (
-                      <div className="rounded-lg bg-background/60 ring-1 ring-border p-3 flex items-center gap-3">
-                        <span className="text-xl shrink-0">😤</span>
-                        <PlayerAvatar name={mine.nemesis.name} avatarColor={mine.nemesis.avatarColor} className="h-8 w-8 shrink-0" fallbackClassName="text-xs" />
-                        <div className="min-w-0">
-                          <p className="text-xs text-muted-foreground">Your nemesis</p>
+                      <div className="rounded-lg bg-background/60 ring-1 ring-border p-4 flex flex-col items-center text-center gap-2">
+                        <p className="text-xs font-medium text-muted-foreground">😤 Your nemesis</p>
+                        <PlayerAvatar name={mine.nemesis.name} avatarColor={mine.nemesis.avatarColor} className="h-11 w-11" fallbackClassName="text-sm" />
+                        <div className="max-w-full">
                           <p className="font-semibold truncate">{mine.nemesis.name}</p>
                           <p className="text-xs text-muted-foreground">You lost {mine.nemesis.losses} of {mine.nemesis.wins + mine.nemesis.losses}</p>
                         </div>

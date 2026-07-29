@@ -20,6 +20,7 @@ import BreakWeeksForm from '@/components/admin/BreakWeeksForm'
 import StartDateForm from '@/components/admin/StartDateForm'
 import SetLiveButton from '@/components/admin/SetLiveButton'
 import InviteLink from '@/components/admin/InviteLink'
+import { Monitor, ExternalLink, Award } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -88,6 +89,29 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         <h1 className="text-2xl font-bold">Admin Panel</h1>
         <p className="text-muted-foreground">Manage tournaments and participants</p>
       </div>
+
+      {/* Office display — the public TV wall board. Opens in a new tab for the office screen. */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Office display</CardTitle>
+          <CardDescription>
+            The public wall board — live standings, this week&apos;s games and the fun wall. Open it
+            full-screen on the office TV.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <a
+            href="/display"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
+          >
+            <Monitor className="h-4 w-4" />
+            Open office display
+            <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+          </a>
+        </CardContent>
+      </Card>
 
       {/* Tournament switcher — swap between concurrent tournaments (e.g. the live one and a
           test copy). Only the tournament marked "Live" is visible to players. */}
@@ -292,6 +316,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               <div key={tour.id} className="flex items-center justify-between text-sm">
                 <span>{tour.name}</span>
                 <div className="flex items-center gap-2">
+                  <Link
+                    href={`/recap/${tour.id}`}
+                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 text-muted-foreground')}
+                  >
+                    <Award className="h-3.5 w-3.5" />
+                    Recap
+                  </Link>
                   <Badge variant="secondary">Finished</Badge>
                   <DeleteTournamentButton tournamentId={tour.id} name={tour.name} />
                 </div>
