@@ -24,6 +24,16 @@ export interface FunWallEntry {
   value: string
 }
 
+export type RecordKey = 'onFire' | 'destroyer' | 'clutch' | 'bestWinRate' | 'theWall' | 'setMachine' | 'nailBiter'
+
+export interface RecordEntry {
+  key: RecordKey
+  userId: number
+  name: string
+  avatarColor: string | null
+  value: string
+}
+
 export interface WeekGame {
   id: number
   homePlayerId: number
@@ -37,16 +47,20 @@ export interface WeekGame {
   status: string
 }
 
+export interface ByePlayer {
+  userId: number
+  name: string
+  avatarColor: string | null
+}
+
 export interface DisplayData {
   leaderboard: LeaderRow[]
-  funWall: {
-    onFire: FunWallEntry | null
-    destroyer: FunWallEntry | null
-    bestWinRate: FunWallEntry | null
-    clutch: FunWallEntry | null
-  }
+  /** Fun-wall records (on fire, destroyer, clutch, best win rate, iron man, set machine, nail-biter). */
+  records: RecordEntry[]
   matchdayNumber: number | null
   weekGames: WeekGame[]
+  /** Participants with no game this matchday (odd roster → one player rests each round). */
+  byePlayers: ByePlayer[]
 }
 
 export async function computeDisplayData(tournamentId: number): Promise<DisplayData> {
@@ -105,9 +119,16 @@ export async function computeDisplayData(tournamentId: number): Promise<DisplayD
         }))
     : []
 
-  const funWall = computeFunWall(players, allFinished.filter(g => g.status === 'confirmed'))
+  const records = computeRecords(players, allFinished.filter(g => g.status === 'confirmed'))
 
-  return { leaderboard, funWall, matchdayNumber: currentMd?.number ?? null, weekGames }
+  // Bye: participants with no game in the current matchday (odd roster → one player rests).
+  const inGame = new Set<number>()
+  for (const g of weekGames) { inGame.add(g.homePlayerId); inGame.add(g.awayPlayerId) }
+  const byePlayers = currentMd && weekGames.length > 0
+    ? players.filter(p => !inGame.has(p.userId)).map(p => ({ userId: p.userId, name: p.name, avatarColor: p.avatarColor }))
+    : []
+
+  return { leaderboard, records, matchdayNumber: currentMd?.number ?? null, weekGames, byePlayers }
 }
 
 interface ConfirmedGame {
@@ -119,15 +140,20 @@ interface ConfirmedGame {
   confirmedAt: string | null
 }
 
-function computeFunWall(players: ScoreboardPlayer[], confirmed: ConfirmedGame[]) {
-  const acc = new Map(players.map(p => [p.userId, { twoOh: 0, twoOne: 0, wins: 0, played: 0 }]))
+type RecordAcc = { twoOh: number; twoOne: number; wins: number; played: number; setsWon: number; setsLost: number; deciders: number }
+
+function computeRecords(players: ScoreboardPlayer[], confirmed: ConfirmedGame[]): RecordEntry[] {
+  const acc = new Map<number, RecordAcc>(players.map(p => [p.userId, { twoOh: 0, twoOne: 0, wins: 0, played: 0, setsWon: 0, setsLost: 0, deciders: 0 }]))
 
   for (const g of confirmed) {
     for (const pid of [g.homePlayerId, g.awayPlayerId]) {
       const s = acc.get(pid)
       if (!s) continue
-      const { oppSets, won } = perspective(g, pid)
+      const { mySets, oppSets, won } = perspective(g, pid)
       s.played++
+      s.setsWon += mySets
+      s.setsLost += oppSets
+      if (mySets + oppSets === 3) s.deciders++ // went to a decider (2–1), won or lost
       if (won) {
         s.wins++
         if (oppSets === 0) s.twoOh++
@@ -150,56 +176,48 @@ function computeFunWall(players: ScoreboardPlayer[], confirmed: ConfirmedGame[])
     streak.set(p.userId, run)
   }
 
-  const mk = (userId: number, value: string): FunWallEntry | null => {
-    const p = players.find(x => x.userId === userId)
-    return p ? { userId, name: p.name, avatarColor: p.avatarColor, value } : null
+  const byId = new Map(players.map(p => [p.userId, p]))
+  const records: RecordEntry[] = []
+  const add = (key: RecordKey, userId: number, value: string) => {
+    const p = byId.get(userId)
+    if (p) records.push({ key, userId, name: p.name, avatarColor: p.avatarColor, value })
+  }
+  const topAcc = (sel: (s: RecordAcc) => number, min: number): { id: number; best: number } => {
+    let best = min - 1, id = -1
+    for (const [uid, s] of acc) { const v = sel(s); if (v > best) { best = v; id = uid } }
+    return { id, best }
   }
 
   // On fire: longest current streak, only worth showing at 2+.
-  let onFire: FunWallEntry | null = null
   {
-    let best = 1, bestId = -1
-    for (const [id, s] of streak) if (s > best) { best = s; bestId = id }
-    if (bestId !== -1) onFire = mk(bestId, `${best} wins in a row`)
+    let best = 1, id = -1
+    for (const [uid, s] of streak) if (s > best) { best = s; id = uid }
+    if (id !== -1) add('onFire', id, `${best} wins in a row`)
   }
-
-  // The Destroyer: most 2–0 wins (min 1).
-  const destroyer = pickTop(acc, s => s.twoOh, 1, (n) => `${n} clean sweep${n !== 1 ? 's' : ''}`, mk)
-
-  // Clutch: most 2–1 wins (min 1).
-  const clutch = pickTop(acc, s => s.twoOne, 1, (n) => `${n} deciders won`, mk)
-
+  { const { id, best } = topAcc(s => s.twoOh, 1); if (id !== -1) add('destroyer', id, `${best} clean sweep${best !== 1 ? 's' : ''}`) }
+  { const { id, best } = topAcc(s => s.twoOne, 1); if (id !== -1) add('clutch', id, `${best} deciders won`) }
   // Best win rate among players with enough games.
-  let bestWinRate: FunWallEntry | null = null
   {
-    let bestRate = -1, bestPlayed = -1, bestId = -1
-    for (const [id, s] of acc) {
+    let bestRate = -1, bestPlayed = -1, id = -1
+    for (const [uid, s] of acc) {
       if (s.played < MIN_GAMES_FOR_WIN_RATE) continue
       const rate = s.wins / s.played
-      if (rate > bestRate || (rate === bestRate && s.played > bestPlayed)) {
-        bestRate = rate; bestPlayed = s.played; bestId = id
-      }
+      if (rate > bestRate || (rate === bestRate && s.played > bestPlayed)) { bestRate = rate; bestPlayed = s.played; id = uid }
     }
-    if (bestId !== -1) {
-      const s = acc.get(bestId)!
-      bestWinRate = mk(bestId, `${Math.round(bestRate * 100)}% (${s.wins}/${s.played})`)
+    if (id !== -1) { const s = acc.get(id)!; add('bestWinRate', id, `${Math.round(bestRate * 100)}% (${s.wins}/${s.played})`) }
+  }
+  // The Wall: best defence — fewest sets lost per game (min games, so early flukes don't win it).
+  {
+    let bestAvg = Infinity, id = -1
+    for (const [uid, s] of acc) {
+      if (s.played < MIN_GAMES_FOR_WIN_RATE) continue
+      const avg = s.setsLost / s.played
+      if (avg < bestAvg) { bestAvg = avg; id = uid }
     }
+    if (id !== -1) add('theWall', id, `${bestAvg.toFixed(1)} sets lost/game`)
   }
+  { const { id, best } = topAcc(s => s.setsWon, 1); if (id !== -1) add('setMachine', id, `${best} sets won`) }
+  { const { id, best } = topAcc(s => s.deciders, 1); if (id !== -1) add('nailBiter', id, `${best} deciders played`) }
 
-  return { onFire, destroyer, bestWinRate, clutch }
-}
-
-function pickTop(
-  acc: Map<number, { twoOh: number; twoOne: number; wins: number; played: number }>,
-  pick: (s: { twoOh: number; twoOne: number; wins: number; played: number }) => number,
-  min: number,
-  fmt: (n: number) => string,
-  mk: (userId: number, value: string) => FunWallEntry | null,
-): FunWallEntry | null {
-  let best = min - 1, bestId = -1
-  for (const [id, s] of acc) {
-    const v = pick(s)
-    if (v > best) { best = v; bestId = id }
-  }
-  return bestId === -1 ? null : mk(bestId, fmt(best))
+  return records
 }

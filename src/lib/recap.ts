@@ -45,7 +45,7 @@ export interface RecapData {
     destroyer: RecapAward | null    // most 2–0 wins
     clutch: RecapAward | null       // most 2–1 wins
     bestWinRate: RecapAward | null
-    ironMan: RecapAward | null      // most games played
+    theWall: RecapAward | null      // best defence — fewest sets lost per game
     setMachine: RecapAward | null   // most sets won
     mostImproved: RecapAward | null // biggest rank climb mid-season → final
     nailBiter: RecapAward | null    // most 2–1 games played (won or lost)
@@ -180,6 +180,15 @@ export async function computeRecap(tournamentId: number, tournamentName: string)
     if (cand) bestWinRate = mk(cand.userId, `${Math.round((cand.victories / cand.gamesPlayed) * 100)}% (${cand.victories}/${cand.gamesPlayed})`)
   }
 
+  // ── The Wall: best defence — fewest sets lost per game (min games) ──────────────────────────
+  let theWall: RecapAward | null = null
+  {
+    const cand = standings
+      .filter(s => s.gamesPlayed >= MIN_GAMES_FOR_WIN_RATE)
+      .sort((a, b) => (a.setsLost / a.gamesPlayed) - (b.setsLost / b.gamesPlayed))[0]
+    if (cand) theWall = mk(cand.userId, `${(cand.setsLost / cand.gamesPlayed).toFixed(1)} sets lost/game`)
+  }
+
   // ── League totals ───────────────────────────────────────────────────────────────────────
   let sets = 0, straightSets = 0, deciders = 0
   for (const g of confirmed) {
@@ -216,7 +225,7 @@ export async function computeRecap(tournamentId: number, tournamentName: string)
       destroyer: topBy(accList, s => s.twoOh, 1, s => s.userId, n => `${n} clean sweep${n !== 1 ? 's' : ''}`),
       clutch: topBy(accList, s => s.twoOne, 1, s => s.userId, n => `${n} deciders won`),
       bestWinRate,
-      ironMan: topBy(standings, s => s.gamesPlayed, 1, s => s.userId, n => `${n} games played`),
+      theWall,
       setMachine: topBy(standings, s => s.setsWon, 1, s => s.userId, n => `${n} sets won`),
       mostImproved,
       nailBiter: topBy(accList, s => s.deciders, 1, s => s.userId, n => `${n} deciders played (2–1)`),

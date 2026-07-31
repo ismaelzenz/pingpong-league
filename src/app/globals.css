@@ -128,3 +128,18 @@
     @apply font-sans;
   }
 }
+
+/* Continuous marquee for the office-display records ticker. The track holds two identical copies
+   of the content, so translating it -50% loops seamlessly. Duration is set inline so the scroll
+   speed stays constant regardless of how many records there are. */
+@keyframes display-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.display-marquee {
+  animation-name: display-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-duration: 40s;
+  will-change: transform;
+}

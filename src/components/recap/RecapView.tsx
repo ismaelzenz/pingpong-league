@@ -2,6 +2,7 @@ import type { RecapData } from '@/lib/recap'
 import { Card, CardContent } from '@/components/ui/card'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import PlayerLink from '@/components/player/PlayerLink'
+import { TrendingUp, Flame, Bomb, Target, Crown, Shield, Zap, HeartPulse } from 'lucide-react'
 
 /** Renders a finished tournament's recap. Shared by /recap (latest) and /recap/[id] (a specific season). */
 export default function RecapView({ recap, currentUserId }: { recap: RecapData; currentUserId: number }) {
@@ -9,14 +10,14 @@ export default function RecapView({ recap, currentUserId }: { recap: RecapData; 
   const me = standings.find(s => s.userId === currentUserId)
 
   const awardTiles = [
-    { emoji: '📈', title: 'Most improved', entry: awards.mostImproved, accent: 'from-emerald-500/25 to-teal-500/10 ring-emerald-500/40 dark:from-emerald-500/15 dark:to-teal-500/5 dark:ring-emerald-500/25' },
-    { emoji: '🔥', title: 'On fire', entry: awards.onFire, accent: 'from-orange-500/25 to-red-500/10 ring-orange-500/40 dark:from-orange-500/15 dark:to-red-500/5 dark:ring-orange-500/25' },
-    { emoji: '🧨', title: 'The Destroyer', entry: awards.destroyer, accent: 'from-purple-500/25 to-fuchsia-500/10 ring-purple-500/40 dark:from-purple-500/15 dark:to-fuchsia-500/5 dark:ring-purple-500/25' },
-    { emoji: '🎯', title: 'Clutch', entry: awards.clutch, accent: 'from-sky-500/25 to-cyan-500/10 ring-sky-500/40 dark:from-sky-500/15 dark:to-cyan-500/5 dark:ring-sky-500/25' },
-    { emoji: '👑', title: 'Best win rate', entry: awards.bestWinRate, accent: 'from-yellow-500/25 to-amber-500/10 ring-yellow-500/40 dark:from-yellow-500/15 dark:to-amber-500/5 dark:ring-yellow-500/25' },
-    { emoji: '💪', title: 'Iron Man', entry: awards.ironMan, accent: 'from-blue-500/25 to-indigo-500/10 ring-blue-500/40 dark:from-blue-500/15 dark:to-indigo-500/5 dark:ring-blue-500/25' },
-    { emoji: '🎢', title: 'Set machine', entry: awards.setMachine, accent: 'from-pink-500/25 to-rose-500/10 ring-pink-500/40 dark:from-pink-500/15 dark:to-rose-500/5 dark:ring-pink-500/25' },
-    { emoji: '😰', title: 'Nail-biter', entry: awards.nailBiter, accent: 'from-red-500/25 to-rose-500/10 ring-red-500/40 dark:from-red-500/15 dark:to-rose-500/5 dark:ring-red-500/25' },
+    { Icon: TrendingUp, iconClass: 'text-blue-500', title: 'Most improved', entry: awards.mostImproved, accent: 'from-blue-500/25 to-indigo-500/10 ring-blue-500/40 dark:from-blue-500/15 dark:to-indigo-500/5 dark:ring-blue-500/25' },
+    { Icon: Flame, iconClass: 'text-orange-500', title: 'On fire', entry: awards.onFire, accent: 'from-orange-500/25 to-red-500/10 ring-orange-500/40 dark:from-orange-500/15 dark:to-red-500/5 dark:ring-orange-500/25' },
+    { Icon: Bomb, iconClass: 'text-purple-500', title: 'The Destroyer', entry: awards.destroyer, accent: 'from-purple-500/25 to-fuchsia-500/10 ring-purple-500/40 dark:from-purple-500/15 dark:to-fuchsia-500/5 dark:ring-purple-500/25' },
+    { Icon: Target, iconClass: 'text-sky-500', title: 'Clutch', entry: awards.clutch, accent: 'from-sky-500/25 to-cyan-500/10 ring-sky-500/40 dark:from-sky-500/15 dark:to-cyan-500/5 dark:ring-sky-500/25' },
+    { Icon: Crown, iconClass: 'text-yellow-500', title: 'Best win rate', entry: awards.bestWinRate, accent: 'from-yellow-500/25 to-amber-500/10 ring-yellow-500/40 dark:from-yellow-500/15 dark:to-amber-500/5 dark:ring-yellow-500/25' },
+    { Icon: Shield, iconClass: 'text-emerald-500', title: 'The Wall', entry: awards.theWall, accent: 'from-emerald-500/25 to-teal-500/10 ring-emerald-500/40 dark:from-emerald-500/15 dark:to-teal-500/5 dark:ring-emerald-500/25' },
+    { Icon: Zap, iconClass: 'text-pink-500', title: 'Set machine', entry: awards.setMachine, accent: 'from-pink-500/25 to-rose-500/10 ring-pink-500/40 dark:from-pink-500/15 dark:to-rose-500/5 dark:ring-pink-500/25' },
+    { Icon: HeartPulse, iconClass: 'text-red-500', title: 'Nail-biter', entry: awards.nailBiter, accent: 'from-red-500/25 to-rose-500/10 ring-red-500/40 dark:from-red-500/15 dark:to-rose-500/5 dark:ring-red-500/25' },
   ].filter(t => t.entry)
 
   return (
@@ -71,7 +72,7 @@ export default function RecapView({ recap, currentUserId }: { recap: RecapData; 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {awardTiles.map(t => (
               <div key={t.title} className={`rounded-xl bg-gradient-to-br ${t.accent} ring-1 p-4 flex items-center gap-3`}>
-                <span className="text-2xl shrink-0">{t.emoji}</span>
+                <t.Icon className={`h-6 w-6 shrink-0 ${t.iconClass}`} />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium text-muted-foreground">{t.title}</p>
                   <p className="font-bold truncate">{t.entry!.name}</p>
@@ -177,7 +178,7 @@ export default function RecapView({ recap, currentUserId }: { recap: RecapData; 
                     <div className="flex flex-wrap gap-2">
                       {myBadges.map(b => (
                         <span key={b.title} className="inline-flex items-center gap-1.5 rounded-full bg-background/70 ring-1 ring-border px-3 py-1 text-xs font-medium">
-                          <span>{b.emoji}</span>{b.title}
+                          <b.Icon className={`h-3.5 w-3.5 ${b.iconClass}`} />{b.title}
                         </span>
                       ))}
                     </div>
