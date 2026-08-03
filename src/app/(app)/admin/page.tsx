@@ -20,7 +20,7 @@ import BreakWeeksForm from '@/components/admin/BreakWeeksForm'
 import StartDateForm from '@/components/admin/StartDateForm'
 import SetLiveButton from '@/components/admin/SetLiveButton'
 import InviteLink from '@/components/admin/InviteLink'
-import { Monitor, ExternalLink, Award } from 'lucide-react'
+import { Monitor, ExternalLink, Award, Swords } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -108,6 +108,30 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           >
             <Monitor className="h-4 w-4" />
             Open office display
+            <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+          </a>
+        </CardContent>
+      </Card>
+
+      {/* Daily tournament — self-serve quick league/knockout, separate from the official season. */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Daily tournament</CardTitle>
+          <CardDescription>
+            Spin up a quick one-off league or knockout (singles or doubles) with league members or
+            guests — great for a lunch or after-work session. Runs in the browser, separate from the
+            official season.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <a
+            href="/dailytournament"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
+          >
+            <Swords className="h-4 w-4" />
+            Open daily tournament
             <ExternalLink className="h-3.5 w-3.5 opacity-60" />
           </a>
         </CardContent>
