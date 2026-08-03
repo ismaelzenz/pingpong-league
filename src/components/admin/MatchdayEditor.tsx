@@ -66,7 +66,7 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
     const pid = Number(byeSel)
     if (!pid) { toast.error('Pick a player'); return }
     const game = games.find(g => g.homePlayerId === pid || g.awayPlayerId === pid)
-    if (!game) { toast.error('That player is already on a bye'); return }
+    if (!game) { toast.error('That player is already resting'); return }
     call(`/api/games/${game.id}`, 'DELETE').then(ok => { if (ok) setByeSel('') })
   }
 
@@ -103,7 +103,7 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
 
       {unassigned.length > 0 && (
         <p className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded px-2 py-1">
-          🪑 No game this matchday (bye): {unassigned.map(p => p.name).join(', ')}
+          🪑 Resting this matchday (no game): {unassigned.map(p => p.name).join(', ')}
         </p>
       )}
 
@@ -152,7 +152,7 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
         <div className="flex items-center gap-2 pt-1">
           <Select value={byeSel} onValueChange={v => setByeSel(v ?? '')} disabled={busy}>
             <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Give a bye to…">{(v: string | null) => (v ? nameOf(Number(v)) : 'Give a bye to…')}</SelectValue>
+              <SelectValue placeholder="Rest a player…">{(v: string | null) => (v ? nameOf(Number(v)) : 'Rest a player…')}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {roster.filter(p => counts.has(p.id)).map(p => (
@@ -161,13 +161,13 @@ export default function MatchdayEditor({ matchdayId, games, roster }: Props) {
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" onClick={giveBye} disabled={busy || !byeSel}>
-            🪑 Bye
+            🪑 Rest
           </Button>
         </div>
       )}
       {evenRoster && (
         <p className="text-xs text-muted-foreground -mt-1">
-          Giving a bye removes that game, so both players sit out — re-pair the other player if you still want them to play.
+          Resting a player removes that game, so both players sit out — re-pair the other player if you still want them to play.
         </p>
       )}
     </div>

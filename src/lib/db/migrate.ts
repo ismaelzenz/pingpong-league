@@ -99,6 +99,7 @@ async function main() {
 
   // Add new columns to existing tables (safe to re-run)
   try { await client.execute('ALTER TABLE users ADD COLUMN avatar_color TEXT') } catch {}
+  try { await client.execute('ALTER TABLE users ADD COLUMN archived_at TEXT') } catch {}
   try { await client.execute('ALTER TABLE games ADD COLUMN is_catch_up INTEGER NOT NULL DEFAULT 0') } catch {}
   try { await client.execute('ALTER TABLE tournaments ADD COLUMN break_weeks TEXT') } catch {}
   try { await client.execute('ALTER TABLE tournaments ADD COLUMN is_live INTEGER NOT NULL DEFAULT 0') } catch {}

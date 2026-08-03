@@ -18,8 +18,11 @@ export default function DailyTournament({ appUsers }: { appUsers: AppUser[] }) {
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) setSaved(JSON.parse(raw)) } catch { /* ignore */ }
-    setLoaded(true)
+    const raf = requestAnimationFrame(() => {
+      try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) setSaved(JSON.parse(raw)) } catch { /* ignore */ }
+      setLoaded(true)
+    })
+    return () => cancelAnimationFrame(raf)
   }, [])
   useEffect(() => {
     if (!loaded) return
@@ -397,8 +400,8 @@ function BracketMatchCard({ match, label, onBump }: { match: BracketMatch; label
 }
 
 function BracketSlot({ slot, score, won, lost, onClick }: { slot: BracketMatch['a']; score: number | null | undefined; won: boolean; lost: boolean; onClick?: () => void }) {
-  if (slot === null) { // BYE
-    return <div className="flex items-center px-[1.6vh] py-[1.4vh] text-[2.1vh] italic text-slate-600">Bye</div>
+  if (slot === null) { // resting (no opponent this round)
+    return <div className="flex items-center px-[1.6vh] py-[1.4vh] text-[2.1vh] italic text-slate-600">Rest</div>
   }
   if (slot === undefined) { // TBD
     return (

@@ -116,7 +116,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
 
       {byePlayers.length > 0 && (
         <p className="text-sm text-muted-foreground">
-          <span className="font-medium">Bye this matchday:</span>{' '}
+          <span className="font-medium">Resting this matchday:</span>{' '}
           {byePlayers.map(p => p.name).join(', ')}
         </p>
       )}

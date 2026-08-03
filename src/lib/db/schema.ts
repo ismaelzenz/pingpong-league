@@ -8,6 +8,10 @@ export const users = sqliteTable('users', {
   passwordHash: text('password_hash').notNull(),
   avatarColor: text('avatar_color'),
   createdAt: text('created_at').default(sql`(datetime('now'))`).notNull(),
+  // Set when the member is archived ("no longer in the company"). The row and all their history
+  // stay — so recaps/standings still resolve their name & colour — but they're hidden from active
+  // pickers (daily tournament, add-player, etc). Reversible.
+  archivedAt: text('archived_at'),
 })
 
 export const tournaments = sqliteTable('tournaments', {

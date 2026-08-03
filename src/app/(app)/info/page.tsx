@@ -1,7 +1,7 @@
 import { getSession } from '@/lib/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  BookOpen, Trophy, CalendarDays, ClipboardCheck, Timer, Users, Shield, AlertTriangle, UserPlus,
+  BookOpen, Trophy, CalendarDays, ClipboardCheck, Timer, Users, Shield, AlertTriangle, UserPlus, Swords,
 } from 'lucide-react'
 
 export const metadata = { title: 'How it works' }
@@ -67,12 +67,12 @@ export default async function InfoPage() {
 
       <Section icon={Timer} title="Catch-up games">
         <p>A <strong className="text-foreground">catch-up game</strong> is one owed outside the normal weekly grid. It shows in the <strong className="text-foreground">Catch-up</strong> section of your dashboard, under <strong className="text-foreground">My games</strong>, on the <strong className="text-foreground">Matchdays</strong> page, and on the players&apos; profiles — so everyone (and admins) can find an outstanding game. Play it anytime — it counts toward the scoreboard once confirmed.</p>
-        <p>You&apos;ll see them when a game is <strong className="text-foreground">overdue</strong> (its week passed unplayed) or as a newcomer&apos;s <strong className="text-foreground">backlog</strong> (see below). They aren&apos;t part of any matchday&apos;s line-up, so they don&apos;t change a matchday&apos;s played count or byes.</p>
+        <p>You&apos;ll see them when a game is <strong className="text-foreground">overdue</strong> (its week passed unplayed) or as a newcomer&apos;s <strong className="text-foreground">backlog</strong> (see below). They aren&apos;t part of any matchday&apos;s line-up, so they don&apos;t change a matchday&apos;s played count or who rests.</p>
       </Section>
 
-      <Section icon={Users} title="Matchdays & byes">
-        <p>Each matchday is one week, played <strong className="text-foreground">Monday to Friday</strong> — weekends are left free. When the number of players is <strong className="text-foreground">odd</strong>, one player sits out each matchday — a <strong className="text-foreground">bye</strong> — and byes are spread <strong className="text-foreground">as evenly as possible</strong>. A matchday page shows who&apos;s on a bye that week.</p>
-        <p className="text-xs">Matchdays total <strong className="text-foreground">2 × (players − 1)</strong> for an even roster, or <strong className="text-foreground">2 × players</strong> for an odd roster (with the rotating byes). Someone who joins mid-season may bye a bit more than everyone else — they can&apos;t play the weeks they missed — but every pair still meets exactly twice.</p>
+      <Section icon={Users} title="Matchdays & rests">
+        <p>Each matchday is one week, played <strong className="text-foreground">Monday to Friday</strong> — weekends are left free. When the number of players is <strong className="text-foreground">odd</strong>, one player <strong className="text-foreground">rests</strong> each matchday (sits out), and the rests are spread <strong className="text-foreground">as evenly as possible</strong>. A matchday page shows who rests that week.</p>
+        <p className="text-xs">Matchdays total <strong className="text-foreground">2 × (players − 1)</strong> for an even roster, or <strong className="text-foreground">2 × players</strong> for an odd roster (with the rotating rests). Someone who joins mid-season may rest a bit more than everyone else — they can&apos;t play the weeks they missed — but every pair still meets exactly twice.</p>
       </Section>
 
       <Section icon={UserPlus} title="When someone joins mid-season">
@@ -85,6 +85,17 @@ export default async function InfoPage() {
         <p>So a newcomer plays their scheduled future games week-by-week <em>and</em> works through their catch-up list whenever they can arrange the matches. Every pair still ends up playing exactly twice.</p>
       </Section>
 
+      <Section icon={Swords} title="Daily tournaments">
+        <p><strong className="text-foreground">Anyone signed in</strong> can spin up a quick one-off tournament at <strong className="text-foreground">/dailytournament</strong> — great for a lunch or after-work session. It&apos;s completely separate from the official league (nothing counts toward the season).</p>
+        <ul className="space-y-2">
+          <li>Pick a <strong className="text-foreground">format</strong> — <strong className="text-foreground">Knockout</strong> (single-elimination bracket) or <strong className="text-foreground">League</strong> (everyone plays everyone) — and a <strong className="text-foreground">mode</strong>: <strong className="text-foreground">Singles</strong> or <strong className="text-foreground">Doubles</strong>.</li>
+          <li>Add players from the <strong className="text-foreground">league members</strong> or type in <strong className="text-foreground">guests</strong>. For doubles, add everyone then tap <strong className="text-foreground">Generate pairs</strong> to form the teams (re-generate to reshuffle).</li>
+          <li>For knockouts you can toggle a <strong className="text-foreground">3rd-place playoff</strong>. Everyone who can play is paired each round; only an odd count leaves someone <strong className="text-foreground">resting</strong> to the next round.</li>
+          <li><strong className="text-foreground">Enter results by tapping the scores</strong> — winners auto-advance, the champion (and bronze) fill in, and league standings update live.</li>
+          <li>It runs in <strong className="text-foreground">your browser</strong> (saved on that device) and is full-screen friendly for a TV. Use <strong className="text-foreground">New</strong> to start over.</li>
+        </ul>
+      </Section>
+
       {session.isAdmin && (
         <Section icon={Shield} title="For admins">
           <ul className="space-y-2">
@@ -94,9 +105,11 @@ export default async function InfoPage() {
             <li><strong className="text-foreground">Schedule breaks</strong> (during registration) — choose weeks to leave matchday-free (holidays); generation skips them and resumes the next week.</li>
             <li><strong className="text-foreground">Correct a confirmed result</strong> from a game&apos;s page if a score was wrong.</li>
             <li><strong className="text-foreground">Add a player mid-season</strong> — rebuilds the unplayed schedule and creates catch-up games for them (above).</li>
-            <li><strong className="text-foreground">Edit a future matchday</strong> from its page: change who plays whom, add/remove a game, reorder, or give a bye (even rosters).</li>
+            <li><strong className="text-foreground">Edit a future matchday</strong> from its page: change who plays whom, add/remove a game, reorder, or rest a player (even rosters).</li>
             <li><strong className="text-foreground">Regenerate schedule</strong> — rebuilds only the not-yet-played matchdays for the current roster. Played matchdays are never touched, and every pair still plays exactly twice.</li>
             <li><strong className="text-foreground">Forfeit unplayed games</strong> (including catch-up games, from the game&apos;s page), <strong className="text-foreground">eliminate a player</strong>, <strong className="text-foreground">reset a password</strong>, and <strong className="text-foreground">end the tournament</strong>.</li>
+            <li><strong className="text-foreground">Manage accounts</strong> (Admin → Accounts): <strong className="text-foreground">Mark as left</strong> archives a member who is no longer in the company — they&apos;re hidden from player pickers (daily tournament, add-player) but <strong className="text-foreground">kept in every past recap and standing</strong>, and can be reactivated anytime. <strong className="text-foreground">Delete</strong> permanently removes an account, and is only offered for accounts with <strong className="text-foreground">no games</strong> (e.g. guests/test accounts) — real players should be archived so history stays intact.</li>
+            <li><strong className="text-foreground">Office display</strong> and <strong className="text-foreground">Daily tournament</strong> — open the TV wall board or a one-off tournament from the Admin panel (see the Daily tournaments section above).</li>
           </ul>
         </Section>
       )}

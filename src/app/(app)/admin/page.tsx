@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireAdminSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { tournaments, participants, users, matchdays, games } from '@/lib/db/schema'
-import { eq, and, lt, inArray } from 'drizzle-orm'
+import { eq, and, lt, inArray, isNull } from 'drizzle-orm'
 import { todayISO } from '@/lib/dates'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,9 @@ import BreakWeeksForm from '@/components/admin/BreakWeeksForm'
 import StartDateForm from '@/components/admin/StartDateForm'
 import SetLiveButton from '@/components/admin/SetLiveButton'
 import InviteLink from '@/components/admin/InviteLink'
+import DeleteUserButton from '@/components/admin/DeleteUserButton'
+import ArchiveUserButton from '@/components/admin/ArchiveUserButton'
+import { isAdmin } from '@/lib/admin'
 import { Monitor, ExternalLink, Award, Swords } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -79,9 +82,15 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   let eligibleUsers: { id: number; name: string; email: string }[] = []
   if (selected && selected.status !== 'finished') {
     const enrolledIds = new Set(participantsWithProfiles.map(p => p.participant.userId))
-    const allUsers = await db.select({ id: users.id, name: users.name, email: users.email }).from(users)
+    const allUsers = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(isNull(users.archivedAt))
     eligibleUsers = allUsers.filter(u => !enrolledIds.has(u.id)).sort((a, b) => a.name.localeCompare(b.name))
   }
+
+  // All accounts + which users still have games (can't be account-deleted until removed from them).
+  const allAccounts = await db.select({ id: users.id, name: users.name, email: users.email, archivedAt: users.archivedAt }).from(users).orderBy(users.name)
+  const homePlayers = await db.selectDistinct({ id: games.homePlayerId }).from(games)
+  const awayPlayers = await db.selectDistinct({ id: games.awayPlayerId }).from(games)
+  const usersInGames = new Set<number>([...homePlayers, ...awayPlayers].map(r => r.id))
 
   return (
     <div className="space-y-6">
@@ -355,6 +364,41 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           </CardContent>
         </Card>
       )}
+
+      {/* Account management — delete a member's account entirely (login + data). */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Accounts ({allAccounts.length})</CardTitle>
+          <CardDescription>
+            <strong>Mark as left</strong> hides an ex-member from player pickers but keeps all their
+            history and recaps. <strong>Delete</strong> permanently removes an account — only possible
+            for accounts with no games (e.g. guests/test accounts); real players should be archived.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {allAccounts.map((u, i) => (
+            <div key={u.id}>
+              {i > 0 && <Separator className="mb-2" />}
+              <div className="flex items-center justify-between text-sm gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium flex items-center gap-1.5">
+                    <span className={`truncate ${u.archivedAt ? 'text-muted-foreground' : ''}`}>{u.name}</span>
+                    {isAdmin(u.email) && <Badge variant="secondary" className="text-[10px] shrink-0">Admin</Badge>}
+                    {u.archivedAt && <Badge variant="outline" className="text-[10px] shrink-0 border-amber-500/50 text-amber-600">Left</Badge>}
+                  </p>
+                  <p className="text-muted-foreground text-xs truncate">{u.email}</p>
+                </div>
+                {!isAdmin(u.email) && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <ArchiveUserButton userId={u.id} name={u.name} archived={!!u.archivedAt} />
+                    {!usersInGames.has(u.id) && <DeleteUserButton userId={u.id} name={u.name} email={u.email} />}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -21,7 +21,6 @@ function usePingPong(pageCount: number, intervalMs: number) {
   const [i, setI] = useState(0)
   const dir = useRef(1)
   useEffect(() => {
-    setI(0)
     dir.current = 1
     if (pageCount <= 1) return
     const t = setInterval(() => {
