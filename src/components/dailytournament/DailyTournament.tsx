@@ -325,8 +325,12 @@ function KnockoutView({ saved, updateResults, onReset }: { saved: SavedTournamen
   // The bracket is built as two balanced halves that meet in a centre final (see buildBracket),
   // so it draws symmetrically: `left` flows rightward, `right` flows leftward, final in the middle.
   const { left, right, final: finalMatch } = bracket
+  // The beaten finalist — styled as the runner-up so the podium (1st / 2nd / 3rd) is complete.
+  const runnerUp: Competitor | undefined = finalMatch?.winner && finalMatch.a && finalMatch.b
+    ? (finalMatch.winner.id === (finalMatch.a as Competitor).id ? (finalMatch.b as Competitor) : (finalMatch.a as Competitor))
+    : undefined
   const tallest = Math.max(left[0]?.length ?? 1, right[0]?.length ?? 1, 1)
-  const vBudget = showThird ? 60 : 88 // vh available for the bracket rows
+  const vBudget = showThird ? 70 : 88 // vh available for the bracket rows
   const scale = Math.max(0.5, Math.min(1, vBudget / (tallest * 13)))
 
   return (
@@ -346,14 +350,20 @@ function KnockoutView({ saved, updateResults, onReset }: { saved: SavedTournamen
         ))}
 
         {/* Centre — the final sits at the vertical middle so the two semifinal lines meet it; the
-            champion hangs directly beneath the final card (absolute, so it never shifts the final
-            off-centre and never collides with it, whatever the final's height). */}
-        <div className="flex flex-col justify-center min-w-0 px-[0.4vw]" style={{ flexGrow: 3, flexBasis: 0 }}>
+            champion is pinned directly above it (absolute, so it never shifts the final off-centre
+            and never collides with it, whatever the height). */}
+        <div className="flex flex-col justify-center min-w-0 px-[0.4vw]" style={{ flexGrow: 3.4, flexBasis: 0 }}>
           <div className="relative">
-            {finalMatch && <BracketMatchCard match={finalMatch} label={left.length ? 'Final' : undefined} onBump={bump} />}
-            <div className="absolute top-full inset-x-0 mt-[2.5vh]">
+            <div className="absolute bottom-full inset-x-0 mb-[2.5vh]">
               <ResultCard tone="gold" title="Champion" competitor={bracket.champion} />
             </div>
+            {finalMatch && <BracketMatchCard match={finalMatch} label={left.length ? 'Final' : undefined} onBump={bump} />}
+            {runnerUp && (
+              <div className="absolute top-full inset-x-0 mt-[1.8vh] flex justify-center">
+                <PodiumTag members={runnerUp.members} name={competitorName(runnerUp)} title="2nd place"
+                  className="border-slate-400/40 bg-slate-400/5" titleClass="text-slate-300" />
+              </div>
+            )}
           </div>
         </div>
 
@@ -371,14 +381,26 @@ function KnockoutView({ saved, updateResults, onReset }: { saved: SavedTournamen
         })}
       </div>
 
+      {/* 3rd-place playoff — kept small and muted so it never competes with the main bracket. */}
       {showThird && bracket.thirdPlace && (
-        <div className="shrink-0 h-[22vh] mt-[2vh] pt-[2vh] border-t border-slate-800 flex items-center gap-[2vw]">
-          <h2 className="shrink-0 w-[14vw] flex items-center gap-[1vh] text-[2.2vh] font-bold text-slate-300">
-            <Medal className="h-[2.8vh] w-[2.8vh] text-amber-600" /> Playoff for 3rd
+        <div className="shrink-0 h-[15vh] mt-[1.5vh] pt-[1.5vh] border-t border-slate-800/70 flex items-center gap-[1.6vw] text-slate-400">
+          <h2 className="shrink-0 flex items-center gap-[0.8vh] text-[1.8vh] font-semibold">
+            <Medal className="h-[2.2vh] w-[2.2vh] text-amber-700" /> Playoff for 3rd
           </h2>
-          <div className="w-[24vw] min-w-[220px] shrink-0"><BracketMatchCard match={bracket.thirdPlace} label="3rd / 4th place" onBump={bump} /></div>
-          <div className="relative flex-1 min-w-[3vw] self-stretch"><div className={`absolute left-0 top-1/2 w-full border-t-2 ${LINE}`} /></div>
-          <div className="w-[22vw] min-w-[200px] shrink-0"><ResultCard tone="bronze" title="3rd place" competitor={bracket.bronze} /></div>
+          <div className="w-[20vw] min-w-[190px] shrink-0"><BracketMatchCard match={bracket.thirdPlace} onBump={bump} /></div>
+          <div className="relative w-[4vw] min-w-[28px] self-stretch"><div className={`absolute left-0 top-1/2 w-full border-t-2 ${LINE}`} /></div>
+          {bracket.bronze ? (
+            <PodiumTag members={bracket.bronze.members} name={competitorName(bracket.bronze)} title="3rd place"
+              className="shrink-0 border-amber-700/30 bg-amber-700/5" titleClass="text-amber-600/80" />
+          ) : (
+            <div className="shrink-0 inline-flex items-center gap-[1.2vh] rounded-xl border border-amber-700/30 bg-amber-700/5 px-[1.6vh] py-[1.1vh]">
+              <Medal className="h-[3.4vh] w-[3.4vh] text-amber-700/50 shrink-0" />
+              <div>
+                <p className="text-[1.3vh] font-semibold uppercase tracking-wider text-amber-700/60">3rd place</p>
+                <p className="text-[1.8vh] italic text-slate-500">To be decided</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -423,7 +445,9 @@ function BracketConnector({ left, right, mirror }: { left: BracketMatch[]; right
       const y0 = lc[f0], y1 = lc[f1]
       lines.push(<div key={`t${j}`} className={`absolute left-0 w-1/2 border-t-2 ${LINE}`} style={{ top: `${y0}%` }} />)
       lines.push(<div key={`b${j}`} className={`absolute left-0 w-1/2 border-t-2 ${LINE}`} style={{ top: `${y1}%` }} />)
-      lines.push(<div key={`v${j}`} className={`absolute left-1/2 border-l-2 ${LINE}`} style={{ top: `${Math.min(y0, y1)}%`, height: `${Math.abs(y1 - y0)}%` }} />)
+      // Overshoot the vertical line 1px at each end: its % height rounds independently from the
+      // horizontal lines' % positions, which otherwise leaves a ~1px gap at one corner (the bottom).
+      lines.push(<div key={`v${j}`} className={`absolute left-1/2 border-l-2 ${LINE}`} style={{ top: `calc(${Math.min(y0, y1)}% - 1px)`, height: `calc(${Math.abs(y1 - y0)}% + 2px)` }} />)
       lines.push(<div key={`m${j}`} className={`absolute left-1/2 w-1/2 border-t-2 ${LINE}`} style={{ top: `${yR}%` }} />)
     } else {
       lines.push(<div key={`s${j}`} className={`absolute left-0 w-full border-t-2 ${LINE}`} style={{ top: `${yR}%` }} />)
@@ -467,14 +491,15 @@ function BracketSlot({ slot, score, won, lost, onClick }: { slot: BracketMatch['
   )
 }
 
+// The champion trophy card — the largest of the podium, to crown the bracket.
 function ResultCard({ tone, title, competitor }: { tone: 'gold' | 'bronze'; title: string; competitor?: Competitor }) {
   const Icon = tone === 'gold' ? Trophy : Medal
   if (!competitor) {
     return (
-      <div className="rounded-2xl border-2 border-dashed border-slate-600 p-[2.5vh] text-center text-slate-500">
+      <div className="rounded-2xl border-2 border-dashed border-slate-600 p-[2.4vh] text-center text-slate-500">
         <Icon className="mx-auto h-[6vh] w-[6vh] opacity-40" />
         <p className="text-[1.7vh] font-semibold uppercase tracking-widest mt-[1vh]">{title}</p>
-        <p className="text-[2.2vh] italic mt-[1.5vh]">To be decided</p>
+        <p className="text-[2.1vh] italic mt-[1.4vh]">To be decided</p>
       </div>
     )
   }
@@ -482,11 +507,24 @@ function ResultCard({ tone, title, competitor }: { tone: 'gold' | 'bronze'; titl
   const iconColor = tone === 'gold' ? 'text-yellow-500' : 'text-amber-600'
   const labelColor = tone === 'gold' ? 'text-yellow-400' : 'text-amber-500'
   return (
-    <div className={`rounded-2xl border-2 ${box} bg-gradient-to-b to-transparent p-[2.5vh] text-center`}>
+    <div className={`rounded-2xl border-2 ${box} bg-gradient-to-b to-transparent p-[2.4vh] text-center shadow-lg shadow-yellow-500/10`}>
       <Icon className={`mx-auto h-[6vh] w-[6vh] ${iconColor}`} />
       <p className={`text-[1.7vh] font-semibold uppercase tracking-widest mt-[1vh] ${labelColor}`}>{title}</p>
-      <div className="flex justify-center mt-[1.6vh]"><Avatars members={competitor.members} size="h-[6.5vh] w-[6.5vh]" fallback="text-[2.4vh]" /></div>
-      <p className="text-[2.3vh] font-bold mt-[1.4vh]">{competitorName(competitor)}</p>
+      <div className="flex justify-center mt-[1.6vh]"><Avatars members={competitor.members} size="h-[7vh] w-[7vh]" fallback="text-[2.7vh]" /></div>
+      <p className="text-[2.5vh] font-bold mt-[1.3vh]">{competitorName(competitor)}</p>
+    </div>
+  )
+}
+
+/** Compact horizontal medal chip for the runner-up (silver) and 3rd place (bronze). */
+function PodiumTag({ members, name, title, className, titleClass }: { members: Person[]; name: string; title: string; className: string; titleClass: string }) {
+  return (
+    <div className={`inline-flex items-center gap-[1.2vh] rounded-xl border px-[1.6vh] py-[1.1vh] ${className}`}>
+      <Avatars members={members} size="h-[4vh] w-[4vh]" fallback="text-[1.6vh]" />
+      <div className="min-w-0 text-left">
+        <p className={`text-[1.3vh] font-semibold uppercase tracking-wider ${titleClass}`}>{title}</p>
+        <p className="text-[2vh] font-bold text-slate-200 truncate">{name}</p>
+      </div>
     </div>
   )
 }

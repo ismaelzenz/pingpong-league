@@ -114,7 +114,12 @@ export function buildBracket(competitors: Competitor[], results: Results): Brack
     return { left: [], right: [], champion: competitors[0] }
   }
 
-  const mid = Math.ceil(competitors.length / 2)
+  // Split down the middle — but keep BOTH halves even when the field is even. A naive split of an
+  // N ≡ 2 (mod 4) field (e.g. 26 → 13/13) leaves both halves odd, so a lone player is left resting
+  // on each side. Nudging the split by one (→ 14/12) makes both halves even, letting those two play
+  // each other instead. (With an odd field one half is always odd, so a single rest is unavoidable.)
+  let mid = Math.ceil(competitors.length / 2)
+  if (competitors.length % 2 === 0 && mid % 2 === 1 && mid + 1 <= competitors.length - 1) mid += 1
   const left = buildSide('L', competitors.slice(0, mid), results)
   const right = buildSide('R', competitors.slice(mid), results)
 
