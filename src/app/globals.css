@@ -49,6 +49,9 @@
 }
 
 :root {
+  /* Bracket sizing scale — 1 by default; the daily-tournament knockout view lowers it
+     on its own container so large brackets shrink to fit the screen. */
+  --s: 1;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -142,4 +145,32 @@
   animation-iteration-count: infinite;
   animation-duration: 40s;
   will-change: transform;
+}
+
+/* ── App-wide hover feedback ──────────────────────────────────────────────────────────
+   A subtle background shift so it's always clear which card or table row is under the
+   cursor. Cards must be styled unlayered so this wins over their own `bg-card`; it only
+   targets *interactive* cards — those wrapped in a link/button, or holding a stretched
+   overlay link (e.g. GameCard) — so static info/warning cards are left alone. */
+[data-slot="card"] {
+  transition: background-color 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+a:hover > [data-slot="card"],
+button:hover > [data-slot="card"],
+[data-slot="card"]:has(> a[href]):hover,
+[data-slot="card"]:has(> button):hover {
+  background-color: var(--accent);
+}
+
+/* Table rows in the app views. Layered as `components` so any row that sets its own
+   background (a highlighted "you" row) or its own hover utility keeps winning — this only
+   fills in hover feedback for rows that don't already have it. Scoped to `.app-content`
+   so the dark office-display / daily-tournament boards are never affected. */
+@layer components {
+  .app-content tbody tr {
+    transition: background-color 150ms ease;
+  }
+  .app-content tbody tr:hover {
+    background-color: var(--accent);
+  }
 }

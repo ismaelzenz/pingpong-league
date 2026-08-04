@@ -287,12 +287,12 @@ function Avatars({ members, size, fallback }: { members: Person[]; size: string;
 function ScoreCell({ score, won, onClick }: { score: number | null | undefined; won: boolean; onClick?: () => void }) {
   if (onClick) {
     return (
-      <button onClick={onClick} className={`shrink-0 min-w-[5vh] h-[5vh] rounded-lg text-[3vh] font-black tabular-nums flex items-center justify-center transition-colors ${won ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}`}>
+      <button onClick={onClick} className={`shrink-0 min-w-[calc(var(--s)*3.8vh)] h-[calc(var(--s)*3.8vh)] rounded-lg text-[calc(var(--s)*2.4vh)] font-black tabular-nums flex items-center justify-center transition-colors ${won ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'}`}>
         {score ?? '–'}
       </button>
     )
   }
-  return score != null ? <span className={`shrink-0 text-[3vh] font-black tabular-nums ${won ? 'text-emerald-400' : 'text-slate-500'}`}>{score}</span> : null
+  return score != null ? <span className={`shrink-0 text-[calc(var(--s)*2.4vh)] font-black tabular-nums ${won ? 'text-emerald-400' : 'text-slate-500'}`}>{score}</span> : null
 }
 
 // ── Knockout ────────────────────────────────────────────────────────────────────────────────────
@@ -305,37 +305,70 @@ function KnockoutView({ saved, updateResults, onReset }: { saved: SavedTournamen
   const bump = (matchId: string, side: 'a' | 'b') => updateResults(prev => {
     const cur = prev[matchId] ?? EMPTY_SCORE
     const next: Results = { ...prev, [matchId]: { ...cur, [side]: cycleScore(cur[side]) } }
-    if (matchId !== 'third') {
-      const round = parseInt(matchId.slice(1))
+    // Editing a side match invalidates later rounds on that side, plus the centre final and the
+    // 3rd-place game (both depend on who comes through). The final / 3rd-place games themselves
+    // have nothing downstream, so tapping them clears nothing.
+    const m = /^([LR])r(\d+)-/.exec(matchId)
+    if (m) {
+      const sidePrefix = m[1]
+      const round = parseInt(m[2])
       for (const key of Object.keys(next)) {
         if (key === matchId) continue
-        if (key === 'third') { if (round < bracket.finalRound) delete next[key]; continue }
-        const kr = parseInt(key.slice(1))
-        if (!isNaN(kr) && kr > round) delete next[key]
+        const km = /^([LR])r(\d+)-/.exec(key)
+        if (km && km[1] === sidePrefix && parseInt(km[2]) > round) { delete next[key]; continue }
+        if (key === 'final' || key === 'third') delete next[key]
       }
     }
     return next
   })
 
+  // The bracket is built as two balanced halves that meet in a centre final (see buildBracket),
+  // so it draws symmetrically: `left` flows rightward, `right` flows leftward, final in the middle.
+  const { left, right, final: finalMatch } = bracket
+  const tallest = Math.max(left[0]?.length ?? 1, right[0]?.length ?? 1, 1)
+  const vBudget = showThird ? 60 : 88 // vh available for the bracket rows
+  const scale = Math.max(0.5, Math.min(1, vBudget / (tallest * 13)))
+
   return (
-    <div className="h-screen bg-slate-950 text-slate-100 p-[3vh] flex flex-col overflow-hidden">
+    <div
+      className="h-screen bg-slate-950 text-slate-100 p-[3vh] flex flex-col overflow-hidden"
+      style={{ '--s': scale } as React.CSSProperties}
+    >
       <Header name={saved.config.name} onReset={onReset} />
-      <div className="flex-1 min-h-0 flex items-stretch overflow-x-auto">
-        {bracket.rounds.map((round, r) => (
-          <div key={r} className="flex items-stretch">
-            <div className="w-[19vw] min-w-[220px] shrink-0 flex flex-col">
-              {round.map(m => (
-                <div key={m.id} style={{ flexGrow: m.weight ?? 1, flexBasis: 0 }} className="flex items-center px-[0.5vw] min-h-0">
-                  <BracketMatchCard match={m} onBump={bump} />
-                </div>
-              ))}
-            </div>
-            {r < bracket.finalRound ? <BracketConnector left={round} right={bracket.rounds[r + 1]} /> : <SimpleConnector />}
+      <div className="flex-1 min-h-0 flex items-stretch">
+        {/* Left half — outer round on the far left, flowing inward to the centre. The first
+            round (real player names) gets a touch more width so names aren't clipped. */}
+        {left.map((round, rr) => (
+          <div key={`l${rr}`} className="flex items-stretch min-w-0" style={{ flexGrow: rr === 0 ? 4 : 3, flexBasis: 0 }}>
+            <RoundColumn round={round} onBump={bump} />
+            {rr < left.length - 1 ? <BracketConnector left={round} right={left[rr + 1]} /> : <SimpleConnector />}
           </div>
         ))}
-        <div className="w-[19vw] min-w-[200px] shrink-0 flex flex-col justify-center px-[0.5vw]">
-          <ResultCard tone="gold" title="Champion" competitor={bracket.champion} />
+
+        {/* Centre — the final sits at the vertical middle so the two semifinal lines meet it; the
+            champion hangs directly beneath the final card (absolute, so it never shifts the final
+            off-centre and never collides with it, whatever the final's height). */}
+        <div className="flex flex-col justify-center min-w-0 px-[0.4vw]" style={{ flexGrow: 3, flexBasis: 0 }}>
+          <div className="relative">
+            {finalMatch && <BracketMatchCard match={finalMatch} label={left.length ? 'Final' : undefined} onBump={bump} />}
+            <div className="absolute top-full inset-x-0 mt-[2.5vh]">
+              <ResultCard tone="gold" title="Champion" competitor={bracket.champion} />
+            </div>
+          </div>
         </div>
+
+        {/* Right half — mirror of the left: inner round nearest the centre, flowing outward. */}
+        {right.length > 0 && <SimpleConnector />}
+        {right.map((_, i) => {
+          const rr = right.length - 1 - i // render centre-out: semifinal first, outer round last
+          const round = right[rr]
+          return (
+            <div key={`r${rr}`} className="flex items-stretch min-w-0" style={{ flexGrow: rr === 0 ? 4 : 3, flexBasis: 0 }}>
+              <RoundColumn round={round} onBump={bump} />
+              {rr > 0 && <BracketConnector left={right[rr - 1]} right={round} mirror />}
+            </div>
+          )
+        })}
       </div>
 
       {showThird && bracket.thirdPlace && (
@@ -352,13 +385,27 @@ function KnockoutView({ saved, updateResults, onReset }: { saved: SavedTournamen
   )
 }
 
+/** One vertical column of matches in a round, each row weighted so rounds line up. The vertical
+ *  padding keeps neighbouring pairing boxes from touching. */
+function RoundColumn({ round, onBump }: { round: BracketMatch[]; onBump: (id: string, side: 'a' | 'b') => void }) {
+  return (
+    <div className="flex-1 min-w-0 flex flex-col">
+      {round.map(m => (
+        <div key={m.id} style={{ flexGrow: m.weight ?? 1, flexBasis: 0 }} className="flex items-center px-[0.4vw] py-[calc(var(--s)*0.8vh)] min-h-0 min-w-0">
+          <BracketMatchCard match={m} onBump={onBump} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function SimpleConnector() {
-  return <div className="relative w-[4vw] min-w-[40px] shrink-0"><div className={`absolute left-0 top-1/2 w-full border-t-2 ${LINE}`} /></div>
+  return <div className="relative w-[2.6vw] min-w-[22px] shrink-0"><div className={`absolute left-0 top-1/2 w-full border-t-2 ${LINE}`} /></div>
 }
 
 /** Connects a round's matches to the next, using each match's alignment weight so lines meet the
  *  vertically-centered cards — works for balanced and greedy (bye-carrying) brackets alike. */
-function BracketConnector({ left, right }: { left: BracketMatch[]; right: BracketMatch[] }) {
+function BracketConnector({ left, right, mirror }: { left: BracketMatch[]; right: BracketMatch[]; mirror?: boolean }) {
   const total = left.reduce((s, m) => s + (m.weight ?? 1), 0) || 1
   const centers = (arr: BracketMatch[]) => {
     const cs: number[] = []
@@ -382,15 +429,15 @@ function BracketConnector({ left, right }: { left: BracketMatch[]; right: Bracke
       lines.push(<div key={`s${j}`} className={`absolute left-0 w-full border-t-2 ${LINE}`} style={{ top: `${yR}%` }} />)
     }
   })
-  return <div className="relative w-[4vw] min-w-[40px] shrink-0">{lines}</div>
+  return <div className={`relative w-[2.6vw] min-w-[22px] shrink-0 ${mirror ? '-scale-x-100' : ''}`}>{lines}</div>
 }
 
 function BracketMatchCard({ match, label, onBump }: { match: BracketMatch; label?: string; onBump: (id: string, side: 'a' | 'b') => void }) {
   const editable = !!(match.a && match.b)
   const winSide = match.winner ? (match.a && match.winner.id === (match.a as Competitor).id ? 'a' : 'b') : null
   return (
-    <div className="w-full">
-      {label && <p className="text-[1.7vh] font-medium text-slate-400 mb-[0.8vh]">{label}</p>}
+    <div className="w-full min-w-0">
+      {label && <p className="text-[calc(var(--s)*1.7vh)] font-medium text-slate-400 mb-[calc(var(--s)*0.8vh)]">{label}</p>}
       <div className="rounded-xl border border-slate-700 bg-slate-900 overflow-hidden divide-y divide-slate-800">
         <BracketSlot slot={match.a} score={match.score?.a} won={winSide === 'a'} lost={winSide === 'b'} onClick={editable ? () => onBump(match.id, 'a') : undefined} />
         <BracketSlot slot={match.b} score={match.score?.b} won={winSide === 'b'} lost={winSide === 'a'} onClick={editable ? () => onBump(match.id, 'b') : undefined} />
@@ -401,20 +448,20 @@ function BracketMatchCard({ match, label, onBump }: { match: BracketMatch; label
 
 function BracketSlot({ slot, score, won, lost, onClick }: { slot: BracketMatch['a']; score: number | null | undefined; won: boolean; lost: boolean; onClick?: () => void }) {
   if (slot === null) { // resting (no opponent this round)
-    return <div className="flex items-center px-[1.6vh] py-[1.4vh] text-[2.1vh] italic text-slate-600">Rest</div>
+    return <div className="flex items-center px-[calc(var(--s)*1.2vh)] py-[calc(var(--s)*1vh)] text-[calc(var(--s)*2vh)] italic text-slate-600">Rest</div>
   }
   if (slot === undefined) { // TBD
     return (
-      <div className="flex items-center gap-[1.2vh] px-[1.6vh] py-[1.4vh] text-slate-500">
-        <div className="h-[4.6vh] w-[4.6vh] rounded-full border-2 border-dashed border-slate-600 shrink-0" />
-        <span className="flex-1 text-[2.1vh] italic truncate">To be decided</span>
+      <div className="flex items-center gap-[calc(var(--s)*0.9vh)] px-[calc(var(--s)*1.2vh)] py-[calc(var(--s)*1vh)] text-slate-500 min-w-0">
+        <div className="h-[calc(var(--s)*3.4vh)] w-[calc(var(--s)*3.4vh)] rounded-full border-2 border-dashed border-slate-600 shrink-0" />
+        <span className="flex-1 text-[calc(var(--s)*2vh)] italic truncate">TBD</span>
       </div>
     )
   }
   return (
-    <div className={`flex items-center gap-[1.2vh] px-[1.6vh] py-[1.2vh] ${won ? 'bg-emerald-500/10' : ''}`}>
-      <div className={lost ? 'opacity-60' : ''}><Avatars members={slot.members} size="h-[4.6vh] w-[4.6vh]" fallback="text-[1.9vh]" /></div>
-      <span className={`flex-1 text-[2.4vh] truncate ${won ? 'font-bold text-white' : lost ? 'font-medium text-slate-400' : 'font-semibold'}`}>{competitorName(slot)}</span>
+    <div className={`flex items-center gap-[calc(var(--s)*0.9vh)] px-[calc(var(--s)*1.2vh)] py-[calc(var(--s)*1vh)] min-w-0 ${won ? 'bg-emerald-500/10' : ''}`}>
+      <div className={lost ? 'opacity-60' : ''}><Avatars members={slot.members} size="h-[calc(var(--s)*3.4vh)] w-[calc(var(--s)*3.4vh)]" fallback="text-[calc(var(--s)*1.5vh)]" /></div>
+      <span className={`flex-1 text-[calc(var(--s)*2.1vh)] truncate ${won ? 'font-bold text-white' : lost ? 'font-medium text-slate-400' : 'font-semibold'}`}>{competitorName(slot)}</span>
       <ScoreCell score={score} won={won} onClick={onClick} />
     </div>
   )

@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <IosInstallHint />
       {/* pb-24 on mobile clears the fixed bottom tab bar (h-16) + iOS home indicator; the bar
           is sm:hidden, so desktop reverts to the normal py-6 spacing. */}
-      <main className="flex-1 container mx-auto px-4 pt-6 pb-24 sm:pb-6 max-w-5xl">
+      <main className="app-content flex-1 container mx-auto px-4 pt-6 pb-24 sm:pb-6 max-w-5xl">
         {children}
       </main>
     </div>

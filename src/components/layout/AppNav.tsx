@@ -156,7 +156,8 @@ export default function AppNav({ name, email, isAdmin, avatarColor, tournamentNa
       </div>
     </header>
 
-    {/* Mobile bottom nav */}
+    {/* Mobile bottom nav. Each tab uses a fixed-size icon slot so icons and the
+        avatar share one baseline and the labels below them line up exactly. */}
     <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t flex items-stretch h-16">
       {bottomLinks.map(link => {
         const active = isActive(link.href)
@@ -165,27 +166,31 @@ export default function AppNav({ name, email, isAdmin, avatarColor, tournamentNa
           <Link
             key={link.href}
             href={link.href}
-            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1 text-xs font-medium transition-colors ${
+            className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-1 text-xs font-medium leading-none transition-colors ${
               active ? 'text-primary' : 'text-muted-foreground'
             }`}
           >
-            <Icon className="w-5 h-5 shrink-0" />
+            <span className="flex h-6 w-6 items-center justify-center shrink-0">
+              <Icon className="w-5 h-5" />
+            </span>
             <span className="truncate max-w-full">{link.label}</span>
           </Link>
         )
       })}
       <Link
         href="/profile"
-        className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1 text-xs font-medium transition-colors ${
+        className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-1 text-xs font-medium leading-none transition-colors ${
           isActive('/profile') ? 'text-primary' : 'text-muted-foreground'
         }`}
       >
-        <PlayerAvatar
-          name={name}
-          avatarColor={avatarColor}
-          className={`h-6 w-6 shrink-0 ${isActive('/profile') ? 'ring-2 ring-primary ring-offset-1 ring-offset-card' : ''}`}
-          fallbackClassName="text-[10px]"
-        />
+        <span className="flex h-6 w-6 items-center justify-center shrink-0">
+          <PlayerAvatar
+            name={name}
+            avatarColor={avatarColor}
+            className={`h-6 w-6 ${isActive('/profile') ? 'ring-2 ring-primary ring-offset-1 ring-offset-card' : ''}`}
+            fallbackClassName="text-[10px]"
+          />
+        </span>
         <span className="truncate max-w-full">Profile</span>
       </Link>
     </nav>

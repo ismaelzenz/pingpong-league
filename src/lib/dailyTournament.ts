@@ -39,8 +39,11 @@ export function cycleScore(cur: number | null | undefined): number | null {
 type Side = Competitor | null | undefined // Competitor = known · null = BYE · undefined = TBD
 export type BracketMatch = { id: string; a: Side; b: Side; score?: Scores; winner?: Competitor; weight?: number; bye?: boolean }
 export interface Bracket {
-  rounds: BracketMatch[][]
-  finalRound: number
+  // Two balanced halves that meet in a centre final, so the drawn bracket is symmetric:
+  // `left` flows rightward, `right` flows leftward, the final sits between them.
+  left: BracketMatch[][]
+  right: BracketMatch[][]
+  final?: BracketMatch
   champion?: Competitor
   thirdPlace?: BracketMatch
   bronze?: Competitor
@@ -59,22 +62,24 @@ function resolveMatch(id: string, a: Side, b: Side, results: Results): BracketMa
 }
 
 /**
- * Single-elimination bracket that pairs as many competitors as possible each round — so a bye only
- * appears when a round has an odd number left (and lands on the last one), never wasting round-1
- * games. `weight` (= leaf slots under a match) lets the UI align rounds vertically.
+ * One half of the draw: a single-elimination sub-bracket that pairs as many competitors as
+ * possible each round — so a bye only appears when a round has an odd number left (and lands on
+ * the last one), never wasting round-1 games. `weight` (= leaf slots under a match) lets the UI
+ * align rounds vertically. Match ids are prefixed (`L`/`R`) so the two halves never collide.
+ * Returns the side's rounds and its finalist (the winner that goes on to the centre final).
  */
-export function buildBracket(competitors: Competitor[], results: Results): Bracket {
+function buildSide(prefix: string, comps: Competitor[], results: Results): { rounds: BracketMatch[][]; finalist?: Competitor } {
   const rounds: BracketMatch[][] = []
-  let current: Side[] = competitors.slice()
+  let current: Side[] = comps.slice()
   let r = 0
   while (current.length > 1) {
     const matches: BracketMatch[] = []
     let idx = 0
     for (let i = 0; i < current.length; i += 2) {
       if (i + 1 < current.length) {
-        matches.push(resolveMatch(`r${r}-m${idx}`, current[i], current[i + 1], results))
+        matches.push(resolveMatch(`${prefix}r${r}-m${idx}`, current[i], current[i + 1], results))
       } else {
-        const m = resolveMatch(`r${r}-m${idx}`, current[i], null, results) // odd one out → bye
+        const m = resolveMatch(`${prefix}r${r}-m${idx}`, current[i], null, results) // odd one out → bye
         m.bye = true
         matches.push(m)
       }
@@ -93,23 +98,46 @@ export function buildBracket(competitors: Competitor[], results: Results): Brack
     })
   }
 
-  const finalRound = rounds.length - 1
-  const champion = rounds[finalRound]?.[0]?.winner
+  // A lone competitor (side of 1) has no match — it walks straight to the centre final.
+  const finalist = rounds.length ? rounds[rounds.length - 1][0]?.winner : comps[0]
+  return { rounds, finalist }
+}
 
+/**
+ * A symmetric single-elimination bracket. The field is split down the middle into two balanced
+ * halves (each built with {@link buildSide}); their two finalists meet in the centre final. This
+ * keeps the drawn bracket even — half the players on each side — while still never wasting round-1
+ * games. The two beaten finalists (the "semifinalists") contest the 3rd-place playoff.
+ */
+export function buildBracket(competitors: Competitor[], results: Results): Bracket {
+  if (competitors.length <= 1) {
+    return { left: [], right: [], champion: competitors[0] }
+  }
+
+  const mid = Math.ceil(competitors.length / 2)
+  const left = buildSide('L', competitors.slice(0, mid), results)
+  const right = buildSide('R', competitors.slice(mid), results)
+
+  const final = resolveMatch('final', left.finalist, right.finalist, results)
+  const champion = final.winner
+
+  // 3rd-place playoff between the two beaten semifinalists — only when both halves actually
+  // produced a real side-final (a genuine match, not a lone competitor who walked through).
   let thirdPlace: BracketMatch | undefined
   let bronze: Competitor | undefined
-  const semis = rounds[finalRound - 1]
-  // Only offer a 3rd-place playoff when both semifinals are real matchups (not a bye).
-  if (semis && semis.length === 2 && !semis[0].bye && !semis[1].bye) {
+  const sideFinal = (rounds: BracketMatch[][]) => (rounds.length ? rounds[rounds.length - 1][0] : undefined)
+  const lFinal = sideFinal(left.rounds)
+  const rFinal = sideFinal(right.rounds)
+  if (lFinal && rFinal && !lFinal.bye && !rFinal.bye) {
     const loser = (m: BracketMatch): Side => {
       if (!m.winner || !m.a || !m.b) return undefined
       return m.winner.id === (m.a as Competitor).id ? m.b : m.a
     }
-    thirdPlace = resolveMatch('third', loser(semis[0]), loser(semis[1]), results)
+    thirdPlace = resolveMatch('third', loser(lFinal), loser(rFinal), results)
     bronze = thirdPlace.winner
   }
 
-  return { rounds, finalRound, champion, thirdPlace, bronze }
+  return { left: left.rounds, right: right.rounds, final, champion, thirdPlace, bronze }
 }
 
 /** Human label for a knockout round given its index and the total number of rounds. */
