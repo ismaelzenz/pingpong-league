@@ -3,7 +3,8 @@ import PlayerAvatar from '@/components/player/PlayerAvatar'
 import AutoRefresh from '@/components/display/AutoRefresh'
 import DisplayClock from '@/components/display/DisplayClock'
 import type { LeaderRow, WeekGame, FunWallEntry, ByePlayer, RecordEntry, RecordKey } from '@/lib/display'
-import { Flame, Bomb, Crown, Target, Medal, CalendarClock, Coffee, Shield, Zap, HeartPulse, History } from 'lucide-react'
+import { Flame, Bomb, Crown, Target, Medal, CalendarClock, Coffee, Shield, Zap, HeartPulse } from 'lucide-react'
+import CatchUpTicker from '@/components/display/CatchUpTicker'
 
 /**
  * Shared building blocks for the office-TV board, composed differently by each layout variant
@@ -166,29 +167,7 @@ export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames }: 
           })}
         </div>
       )}
-      {catchUpGames && catchUpGames.length > 0 && (
-        <div className="shrink-0 mt-[0.8vh] flex items-center gap-[1.4vh] rounded-xl bg-amber-500/5 ring-1 ring-amber-500/20 px-[1.6vh] py-[0.8vh] overflow-hidden">
-          <div className="flex items-center gap-[0.8vh] shrink-0 text-amber-300/90">
-            <History className="h-[2.4vh] w-[2.4vh]" />
-            <span className="text-[1.6vh] font-semibold uppercase tracking-wide whitespace-nowrap">Catch-up · {catchUpGames.length} to play</span>
-          </div>
-          {/* Single-line marquee so any number of catch-up games scroll past without growing the
-              panel. Two identical copies → a seamless -50% loop (same trick as the records ticker). */}
-          <div className="relative flex-1 min-w-0 overflow-hidden">
-            <div className="flex w-max display-marquee" style={{ animationDuration: `${Math.max(24, catchUpGames.length * 4)}s` }}>
-              {[...catchUpGames, ...catchUpGames].map((g, i) => (
-                <span key={i} className="flex items-center gap-[0.9vh] mr-[1.4vh] shrink-0 rounded-full bg-slate-800/80 ring-1 ring-amber-500/20 px-[1.4vh] py-[0.6vh]">
-                  <PlayerAvatar name={g.homeName} avatarColor={g.homeColor} className="h-[2.6vh] w-[2.6vh] shrink-0" fallbackClassName="text-[1.2vh]" />
-                  <span className="text-[1.9vh] font-medium text-slate-100 whitespace-nowrap">{g.homeName}</span>
-                  <span className="text-[1.4vh] font-bold uppercase text-amber-400/80">v</span>
-                  <span className="text-[1.9vh] font-medium text-slate-100 whitespace-nowrap">{g.awayName}</span>
-                  <PlayerAvatar name={g.awayName} avatarColor={g.awayColor} className="h-[2.6vh] w-[2.6vh] shrink-0" fallbackClassName="text-[1.2vh]" />
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {catchUpGames && catchUpGames.length > 0 && <CatchUpTicker games={catchUpGames} />}
       {byePlayers && byePlayers.length > 0 && (
         <div className="shrink-0 mt-[0.8vh] flex items-center gap-[1.2vh] rounded-xl bg-slate-800/40 ring-1 ring-white/5 px-[1.6vh] py-[0.8vh]">
           <Coffee className="h-[2.4vh] w-[2.4vh] text-slate-400 shrink-0" />

@@ -47,7 +47,7 @@ export const PREVIEW: DisplayData = {
     { id: 3, homePlayerId: 3, awayPlayerId: 18, homeName: 'Priya', awayName: 'Ines', homeColor: '#8b5cf6', awayColor: '#e11d48', homeSets: 2, awaySets: 0, status: 'confirmed' },
     { id: 4, homePlayerId: 4, awayPlayerId: 17, homeName: 'Lucas', awayName: 'Gijs', homeColor: '#22c55e', awayColor: '#65a30d', homeSets: 2, awaySets: 1, status: 'result_entered' },
     { id: 5, homePlayerId: 5, awayPlayerId: 16, homeName: 'Sofia', awayName: 'Fatima', homeColor: '#eab308', awayColor: '#06b6d4', homeSets: null, awaySets: null, status: 'pending' },
-    { id: 6, homePlayerId: 6, awayPlayerId: 15, homeName: 'Daan', awayName: 'Erik', homeColor: '#ec4899', awayColor: '#d946ef', homeSets: 2, awaySets: 0, status: 'confirmed' },
+    { id: 6, homePlayerId: 6, awayPlayerId: 15, homeName: 'Daan', awayName: 'Erik', homeColor: '#ec4899', awayColor: '#d946ef', homeSets: null, awaySets: null, status: 'postponed' },
     { id: 7, homePlayerId: 7, awayPlayerId: 14, homeName: 'Ravi', awayName: 'Carla', homeColor: '#f97316', awayColor: '#3b82f6', homeSets: null, awaySets: null, status: 'postponed' },
     { id: 8, homePlayerId: 8, awayPlayerId: 13, homeName: 'Emma', awayName: 'Bruno', homeColor: '#14b8a6', awayColor: '#10b981', homeSets: 2, awaySets: 1, status: 'confirmed' },
     { id: 9, homePlayerId: 9, awayPlayerId: 12, homeName: 'Jonas', awayName: 'Lena', homeColor: '#6366f1', awayColor: '#a855f7', homeSets: null, awaySets: null, status: 'pending' },
