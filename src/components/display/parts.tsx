@@ -3,7 +3,7 @@ import PlayerAvatar from '@/components/player/PlayerAvatar'
 import AutoRefresh from '@/components/display/AutoRefresh'
 import DisplayClock from '@/components/display/DisplayClock'
 import type { LeaderRow, WeekGame, FunWallEntry, ByePlayer, RecordEntry, RecordKey } from '@/lib/display'
-import { Flame, Bomb, Crown, Target, Medal, CalendarClock, Coffee, Shield, Zap, HeartPulse } from 'lucide-react'
+import { Flame, Bomb, Crown, Target, Medal, CalendarClock, Coffee, Shield, Zap, HeartPulse, History } from 'lucide-react'
 
 /**
  * Shared building blocks for the office-TV board, composed differently by each layout variant
@@ -106,7 +106,7 @@ export function StandingsTable({ rows }: { rows: LeaderRow[] }) {
  * This week's fixtures. Fills its parent's height; rows stretch. Handles postponed games.
  * `summary` overrides the header count (used when only a page of games is passed in for paging).
  */
-export function ThisWeekPanel({ weekGames, summary, byePlayers }: { weekGames: WeekGame[]; summary?: { played: number; total: number }; byePlayers?: ByePlayer[] }) {
+export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames }: { weekGames: WeekGame[]; summary?: { played: number; total: number }; byePlayers?: ByePlayer[]; catchUpGames?: WeekGame[] }) {
   const played = summary ? summary.played : weekGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
   const total = summary ? summary.total : weekGames.length
   return (
@@ -164,6 +164,29 @@ export function ThisWeekPanel({ weekGames, summary, byePlayers }: { weekGames: W
               </div>
             )
           })}
+        </div>
+      )}
+      {catchUpGames && catchUpGames.length > 0 && (
+        <div className="shrink-0 mt-[0.8vh] flex items-center gap-[1.4vh] rounded-xl bg-amber-500/5 ring-1 ring-amber-500/20 px-[1.6vh] py-[0.8vh] overflow-hidden">
+          <div className="flex items-center gap-[0.8vh] shrink-0 text-amber-300/90">
+            <History className="h-[2.4vh] w-[2.4vh]" />
+            <span className="text-[1.6vh] font-semibold uppercase tracking-wide whitespace-nowrap">Catch-up · {catchUpGames.length} to play</span>
+          </div>
+          {/* Single-line marquee so any number of catch-up games scroll past without growing the
+              panel. Two identical copies → a seamless -50% loop (same trick as the records ticker). */}
+          <div className="relative flex-1 min-w-0 overflow-hidden">
+            <div className="flex w-max display-marquee" style={{ animationDuration: `${Math.max(24, catchUpGames.length * 4)}s` }}>
+              {[...catchUpGames, ...catchUpGames].map((g, i) => (
+                <span key={i} className="flex items-center gap-[0.9vh] mr-[1.4vh] shrink-0 rounded-full bg-slate-800/80 ring-1 ring-amber-500/20 px-[1.4vh] py-[0.6vh]">
+                  <PlayerAvatar name={g.homeName} avatarColor={g.homeColor} className="h-[2.6vh] w-[2.6vh] shrink-0" fallbackClassName="text-[1.2vh]" />
+                  <span className="text-[1.9vh] font-medium text-slate-100 whitespace-nowrap">{g.homeName}</span>
+                  <span className="text-[1.4vh] font-bold uppercase text-amber-400/80">v</span>
+                  <span className="text-[1.9vh] font-medium text-slate-100 whitespace-nowrap">{g.awayName}</span>
+                  <PlayerAvatar name={g.awayName} avatarColor={g.awayColor} className="h-[2.6vh] w-[2.6vh] shrink-0" fallbackClassName="text-[1.2vh]" />
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       )}
       {byePlayers && byePlayers.length > 0 && (

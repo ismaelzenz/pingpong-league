@@ -61,6 +61,9 @@ export interface DisplayData {
   weekGames: WeekGame[]
   /** Participants with no game this matchday (odd roster → one player rests each round). */
   byePlayers: ByePlayer[]
+  /** Unplayed catch-up games — backlog owed outside the weekly grid, playable anytime. Shown so
+   *  people can see which extra games are up for grabs and arrange them. */
+  catchUpGames: WeekGame[]
 }
 
 export async function computeDisplayData(tournamentId: number): Promise<DisplayData> {
@@ -102,22 +105,38 @@ export async function computeDisplayData(tournamentId: number): Promise<DisplayD
     ...e, rank: i + 1, movement: movement ? (movement.get(e.userId) ?? 0) : null,
   }))
 
+  const toWeekGame = (g: typeof allFinished[number]): WeekGame => ({
+    id: g.id,
+    homePlayerId: g.homePlayerId,
+    awayPlayerId: g.awayPlayerId,
+    homeName: playerById.get(g.homePlayerId)?.name ?? '—',
+    awayName: playerById.get(g.awayPlayerId)?.name ?? '—',
+    homeColor: playerById.get(g.homePlayerId)?.avatarColor ?? null,
+    awayColor: playerById.get(g.awayPlayerId)?.avatarColor ?? null,
+    homeSets: g.homeSets,
+    awaySets: g.awaySets,
+    status: g.status,
+  })
+
   // This week's fixtures (current matchday, excluding catch-up games).
   const weekGames: WeekGame[] = currentMd
-    ? (await db.select().from(games).where(and(eq(games.matchdayId, currentMd.id), eq(games.isCatchUp, false))))
-        .map(g => ({
-          id: g.id,
-          homePlayerId: g.homePlayerId,
-          awayPlayerId: g.awayPlayerId,
-          homeName: playerById.get(g.homePlayerId)?.name ?? '—',
-          awayName: playerById.get(g.awayPlayerId)?.name ?? '—',
-          homeColor: playerById.get(g.homePlayerId)?.avatarColor ?? null,
-          awayColor: playerById.get(g.awayPlayerId)?.avatarColor ?? null,
-          homeSets: g.homeSets,
-          awaySets: g.awaySets,
-          status: g.status,
-        }))
+    ? (await db.select().from(games).where(and(eq(games.matchdayId, currentMd.id), eq(games.isCatchUp, false)))).map(toWeekGame)
     : []
+
+  // Catch-up backlog: unplayed games people still owe that AREN'T part of this week's fixtures.
+  // Always includes explicit catch-up games; also folds in any overdue game from an earlier matchday
+  // (its week has already begun but it went unplayed / was postponed). Current-matchday games are
+  // deliberately left out — they already appear in "This week" above, postponed ones included.
+  const mdById = new Map(mds.map(m => [m.id, m]))
+  const catchUpGames: WeekGame[] = (await db.select().from(games)
+    .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, ['pending', 'postponed']))))
+    .filter(g => {
+      if (g.isCatchUp) return true                     // explicit backlog — never a weekly fixture
+      if (g.matchdayId === currentMd?.id) return false // a current fixture → shown in "This week"
+      const wk = mdById.get(g.matchdayId)?.weekStart
+      return !!wk && wk <= today                       // overdue: an earlier week that's already started
+    })
+    .map(toWeekGame)
 
   const records = computeRecords(players, allFinished.filter(g => g.status === 'confirmed'))
 
@@ -128,7 +147,7 @@ export async function computeDisplayData(tournamentId: number): Promise<DisplayD
     ? players.filter(p => !inGame.has(p.userId)).map(p => ({ userId: p.userId, name: p.name, avatarColor: p.avatarColor }))
     : []
 
-  return { leaderboard, records, matchdayNumber: currentMd?.number ?? null, weekGames, byePlayers }
+  return { leaderboard, records, matchdayNumber: currentMd?.number ?? null, weekGames, byePlayers, catchUpGames }
 }
 
 interface ConfirmedGame {

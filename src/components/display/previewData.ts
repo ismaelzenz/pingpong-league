@@ -54,4 +54,23 @@ export const PREVIEW: DisplayData = {
     { id: 10, homePlayerId: 10, awayPlayerId: 11, homeName: 'Yuki', awayName: 'Omar', homeColor: '#84cc16', awayColor: '#ef4444', homeSets: null, awaySets: null, status: 'pending' },
     { id: 11, homePlayerId: 21, awayPlayerId: 22, homeName: 'Timo', awayName: 'Vera', homeColor: '#fb7185', awayColor: '#38bdf8', homeSets: 2, awaySets: 1, status: 'confirmed' },
   ],
+  // Backlog games owed outside the weekly grid — playable anytime. In a real 22-player season this
+  // grows large (most players end up owing a game or two), so the board scrolls them in a marquee.
+  catchUpGames: [
+    { id: 101, homePlayerId: 23, awayPlayerId: 7, homeName: 'Wout', awayName: 'Ravi', homeColor: '#c084fc', awayColor: '#f97316', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 102, homePlayerId: 23, awayPlayerId: 12, homeName: 'Wout', awayName: 'Lena', homeColor: '#c084fc', awayColor: '#a855f7', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 103, homePlayerId: 1, awayPlayerId: 21, homeName: 'Nadia', awayName: 'Timo', homeColor: '#f43f5e', awayColor: '#fb7185', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 104, homePlayerId: 2, awayPlayerId: 22, homeName: 'Marco', awayName: 'Vera', homeColor: '#0ea5e9', awayColor: '#38bdf8', homeSets: null, awaySets: null, status: 'postponed' },
+    { id: 105, homePlayerId: 3, awayPlayerId: 20, homeName: 'Priya', awayName: 'Noah', homeColor: '#8b5cf6', awayColor: '#f59e0b', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 106, homePlayerId: 4, awayPlayerId: 19, homeName: 'Lucas', awayName: 'Klara', homeColor: '#22c55e', awayColor: '#7c3aed', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 107, homePlayerId: 5, awayPlayerId: 18, homeName: 'Sofia', awayName: 'Ines', homeColor: '#eab308', awayColor: '#e11d48', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 108, homePlayerId: 6, awayPlayerId: 17, homeName: 'Daan', awayName: 'Gijs', homeColor: '#ec4899', awayColor: '#65a30d', homeSets: null, awaySets: null, status: 'postponed' },
+    { id: 109, homePlayerId: 8, awayPlayerId: 16, homeName: 'Emma', awayName: 'Fatima', homeColor: '#14b8a6', awayColor: '#06b6d4', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 110, homePlayerId: 9, awayPlayerId: 15, homeName: 'Jonas', awayName: 'Erik', homeColor: '#6366f1', awayColor: '#d946ef', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 111, homePlayerId: 10, awayPlayerId: 14, homeName: 'Yuki', awayName: 'Carla', homeColor: '#84cc16', awayColor: '#3b82f6', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 112, homePlayerId: 11, awayPlayerId: 13, homeName: 'Omar', awayName: 'Bruno', homeColor: '#ef4444', awayColor: '#10b981', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 113, homePlayerId: 7, awayPlayerId: 16, homeName: 'Ravi', awayName: 'Fatima', homeColor: '#f97316', awayColor: '#06b6d4', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 114, homePlayerId: 12, awayPlayerId: 20, homeName: 'Lena', awayName: 'Noah', homeColor: '#a855f7', awayColor: '#f59e0b', homeSets: null, awaySets: null, status: 'pending' },
+    { id: 115, homePlayerId: 3, awayPlayerId: 9, homeName: 'Priya', awayName: 'Jonas', homeColor: '#8b5cf6', awayColor: '#6366f1', homeSets: null, awaySets: null, status: 'postponed' },
+  ],
 }

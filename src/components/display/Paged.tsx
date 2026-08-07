@@ -79,7 +79,7 @@ export function PagedStandings({ rows, maxPerPage = 18, intervalMs = 20000 }: { 
   )
 }
 
-export function PagedThisWeek({ weekGames, byePlayers, maxPerPage = 10, intervalMs = 20000 }: { weekGames: WeekGame[]; byePlayers?: ByePlayer[]; maxPerPage?: number; intervalMs?: number }) {
+export function PagedThisWeek({ weekGames, byePlayers, catchUpGames, maxPerPage = 10, intervalMs = 20000 }: { weekGames: WeekGame[]; byePlayers?: ByePlayer[]; catchUpGames?: WeekGame[]; maxPerPage?: number; intervalMs?: number }) {
   const total = weekGames.length
   const played = weekGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
   const { pageCount, pageSize } = paginate(total, maxPerPage)
@@ -88,7 +88,7 @@ export function PagedThisWeek({ weekGames, byePlayers, maxPerPage = 10, interval
     <div className="h-full flex flex-col gap-[1vh] min-h-0">
       <Slider pageCount={pageCount} page={page}>
         {Array.from({ length: pageCount }, (_, i) => (
-          <ThisWeekPanel key={i} weekGames={weekGames.slice(i * pageSize, i * pageSize + pageSize)} summary={{ played, total }} byePlayers={byePlayers} />
+          <ThisWeekPanel key={i} weekGames={weekGames.slice(i * pageSize, i * pageSize + pageSize)} summary={{ played, total }} byePlayers={byePlayers} catchUpGames={catchUpGames} />
         ))}
       </Slider>
       {pageCount > 1 && <PageDots count={pageCount} active={page} />}
