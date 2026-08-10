@@ -1,16 +1,16 @@
+import Link from 'next/link'
 import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { matchdays, games, participants, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import GameCard from '@/components/game/GameCard'
 import MatchdayListItem from '@/components/common/MatchdayListItem'
 import EmptyState from '@/components/common/EmptyState'
 import { analyzeSchedule } from '@/lib/scheduleHealth'
 import { getLiveTournament } from '@/lib/tournament'
 import { todayISO } from '@/lib/dates'
-import { AlertTriangle } from 'lucide-react'
+import { isCatchUpBacklog } from '@/lib/backlog'
+import { AlertTriangle, Hourglass, ChevronRight } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,22 +41,6 @@ export default async function MatchdaysPage() {
   const matchdayNumberById = new Map(allMatchdays.map(m => [m.id, m.number]))
   const health = analyzeSchedule(allGamesRaw, matchdayNumberById, roster)
 
-  // Catch-up games live outside the regular matchday grid, so they never show inside a
-  // matchday. List them here so everyone (and especially admins, who can forfeit them from
-  // the game page) can find them. Unplayed first, then any already settled.
-  const nameById = new Map(roster.map(p => [p.id, p.name]))
-  const catchUpGames = allGamesRaw
-    .filter(g => g.isCatchUp)
-    .map(g => ({
-      ...g,
-      homePlayer: { id: g.homePlayerId, name: nameById.get(g.homePlayerId) ?? '—' },
-      awayPlayer: { id: g.awayPlayerId, name: nameById.get(g.awayPlayerId) ?? '—' },
-    }))
-    .sort((a, b) => {
-      const done = (s: string) => (s === 'confirmed' || s === 'forfeited' ? 1 : 0)
-      return done(a.status) - done(b.status)
-    })
-
   // Per-matchday stats, computed once.
   const rows = allMatchdays.map(m => {
     const dayGames = allGames.filter(g => g.matchdayId === m.id)
@@ -74,7 +58,17 @@ export default async function MatchdaysPage() {
   const today = todayISO()
   const inProgress = allMatchdays.find(m => m.weekStart && m.weekEnd && m.weekStart <= today && today <= m.weekEnd)
   const latestStarted = [...allMatchdays].reverse().find(m => m.weekStart != null && m.weekStart <= today)
-  const currentNumber = (inProgress ?? latestStarted)?.number ?? null
+  const currentMd = inProgress ?? latestStarted ?? null
+  const currentNumber = currentMd?.number ?? null
+
+  // Catch-up backlog count — everything still to play that isn't this week's fixtures (overdue
+  // games from earlier matchdays + any newcomer's catch-up games). Admins see the whole league's
+  // count; everyone else only their own. Full list lives on its own page (/matchdays/catch-up).
+  const weekStartByMd = new Map(allMatchdays.map(m => [m.id, m.weekStart]))
+  const backlog = allGamesRaw.filter(g => isCatchUpBacklog(g, weekStartByMd, currentMd?.id ?? null, today))
+  const backlogCount = session.isAdmin
+    ? backlog.length
+    : backlog.filter(g => g.homePlayerId === session.userId || g.awayPlayerId === session.userId).length
 
   const upcoming = currentNumber != null ? rows.filter(r => r.m.number >= currentNumber) : rows
   const past = currentNumber != null ? rows.filter(r => r.m.number < currentNumber).reverse() : []
@@ -138,22 +132,27 @@ export default async function MatchdaysPage() {
         </Card>
       )}
 
-      {catchUpGames.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-yellow-700 dark:text-yellow-400">⏳ Catch-up games</h2>
-            <Badge variant="outline" className="text-xs border-yellow-400 text-yellow-700 dark:text-yellow-400">{catchUpGames.length}</Badge>
-          </div>
-          <p className="text-sm text-muted-foreground -mt-1">
-            Owed games that sit outside the regular matchdays (a newcomer&apos;s backlog). They&apos;re
-            playable anytime{session.isAdmin ? ' — open one to enter a result, postpone, or forfeit it' : ''}.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {catchUpGames.map(game => (
-              <GameCard key={game.id} game={game} currentUserId={session.userId} />
-            ))}
-          </div>
-        </div>
+      {backlogCount > 0 && (
+        <Link href="/matchdays/catch-up" className="block">
+          <Card className="border-yellow-300 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40 hover:shadow-md transition-shadow">
+            <CardContent className="py-4 flex items-center gap-3">
+              <Hourglass className="w-5 h-5 text-yellow-600 dark:text-yellow-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-yellow-800 dark:text-yellow-300">
+                  {session.isAdmin
+                    ? `${backlogCount} game${backlogCount !== 1 ? 's' : ''} to catch up on across the league`
+                    : `You have ${backlogCount} game${backlogCount !== 1 ? 's' : ''} to catch up on`}
+                </p>
+                <p className="text-sm text-yellow-700/90 dark:text-yellow-300/80">
+                  {session.isAdmin
+                    ? 'Unplayed games from earlier matchdays and any newcomer’s backlog — playable anytime.'
+                    : 'Your unplayed games from earlier matchdays — playable anytime.'}
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-yellow-700 dark:text-yellow-400 shrink-0" />
+            </CardContent>
+          </Card>
+        </Link>
       )}
 
       {currentNumber != null ? (

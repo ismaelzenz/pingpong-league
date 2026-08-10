@@ -8,6 +8,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/scoreboard'
 import { perspective } from '@/lib/gameResult'
 import { todayISO } from '@/lib/dates'
+import { isCatchUpBacklog } from '@/lib/backlog'
 
 const MIN_GAMES_FOR_WIN_RATE = 4
 
@@ -123,19 +124,13 @@ export async function computeDisplayData(tournamentId: number): Promise<DisplayD
     ? (await db.select().from(games).where(and(eq(games.matchdayId, currentMd.id), eq(games.isCatchUp, false)))).map(toWeekGame)
     : []
 
-  // Catch-up backlog: unplayed games people still owe that AREN'T part of this week's fixtures.
-  // Always includes explicit catch-up games; also folds in any overdue game from an earlier matchday
-  // (its week has already begun but it went unplayed / was postponed). Current-matchday games are
-  // deliberately left out — they already appear in "This week" above, postponed ones included.
-  const mdById = new Map(mds.map(m => [m.id, m]))
+  // Catch-up backlog: unplayed games people still owe that AREN'T part of this week's fixtures —
+  // explicit catch-up games plus any overdue game from an earlier matchday. See {@link isCatchUpBacklog};
+  // the Catch-up games page reuses the same rule so the two never drift.
+  const weekStartByMd = new Map(mds.map(m => [m.id, m.weekStart]))
   const catchUpGames: WeekGame[] = (await db.select().from(games)
     .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, ['pending', 'postponed']))))
-    .filter(g => {
-      if (g.isCatchUp) return true                     // explicit backlog — never a weekly fixture
-      if (g.matchdayId === currentMd?.id) return false // a current fixture → shown in "This week"
-      const wk = mdById.get(g.matchdayId)?.weekStart
-      return !!wk && wk <= today                       // overdue: an earlier week that's already started
-    })
+    .filter(g => isCatchUpBacklog(g, weekStartByMd, currentMd?.id ?? null, today))
     .map(toWeekGame)
 
   const records = computeRecords(players, allFinished.filter(g => g.status === 'confirmed'))
