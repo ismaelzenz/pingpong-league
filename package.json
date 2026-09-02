@@ -11,6 +11,7 @@
     "db:init:prod": "npx tsx src/lib/db/migrate.ts .env.production.local",
     "db:seed:mock": "npx tsx scripts/seed-mock.ts",
     "db:delete-user": "npx tsx scripts/delete-users.ts",
+    "db:confirm-awaiting": "npx tsx scripts/confirm-awaiting.ts",
     "gen:icons": "node scripts/gen-icons.mjs"
   },
   "dependencies": {

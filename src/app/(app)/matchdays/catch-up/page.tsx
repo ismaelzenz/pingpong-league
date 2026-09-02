@@ -60,7 +60,7 @@ export default async function CatchUpPage() {
 
   // Split into newcomer catch-up games and overdue matchday games (grouped by matchday). Each game
   // lands in exactly one group, so nothing is shown twice.
-  const newcomerGames = backlog.filter(g => g.isCatchUp)
+  const noMatchdayGames = backlog.filter(g => g.isCatchUp)
   const overdueByMatchday = new Map<number, typeof backlog>()
   for (const g of backlog) {
     if (g.isCatchUp) continue
@@ -82,7 +82,7 @@ export default async function CatchUpPage() {
         <h1 className="text-2xl font-bold">Catch-up games</h1>
         <p className="text-muted-foreground text-sm mt-1">
           {session.isAdmin
-            ? 'Every unplayed game across the league that isn’t part of this week’s fixtures — from earlier matchdays, plus any newcomer’s backlog.'
+            ? 'Every unplayed game across the league that isn’t part of this week’s fixtures — overdue games from earlier matchdays, plus catch-up games that sit outside the matchday grid.'
             : 'Your unplayed games from earlier matchdays and any catch-up games you owe.'}
           {' '}They&apos;re playable anytime{enterHint}.
         </p>
@@ -103,16 +103,17 @@ export default async function CatchUpPage() {
             </section>
           ))}
 
-          {newcomerGames.length > 0 && (
+          {noMatchdayGames.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Newcomer catch-up · {newcomerGames.length}
+                Outside the matchdays · {noMatchdayGames.length}
               </h2>
               <p className="text-sm text-muted-foreground -mt-1">
-                Owed games from a player who joined mid-season, played outside the regular matchdays.
+                Owed games that don&apos;t belong to any matchday — a mid-season joiner&apos;s backlog, or a
+                leftover pairing from rebuilding the schedule. Playable anytime.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {newcomerGames.map(game => <GameCard key={game.id} game={game} currentUserId={session.userId} />)}
+                {noMatchdayGames.map(game => <GameCard key={game.id} game={game} currentUserId={session.userId} />)}
               </div>
             </section>
           )}

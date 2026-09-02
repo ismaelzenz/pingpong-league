@@ -41,15 +41,31 @@ export default async function MatchdaysPage() {
   const matchdayNumberById = new Map(allMatchdays.map(m => [m.id, m.number]))
   const health = analyzeSchedule(allGamesRaw, matchdayNumberById, roster)
 
+  // For the "You play / You rest" chip: who the viewer faces each matchday (or that they sit out).
+  // Only for players actually in the tournament — an admin who isn't a participant sees no chip.
+  const nameById = new Map(roster.map(p => [p.id, p.name]))
+  const isParticipant = roster.some(p => p.id === session.userId)
+
   // Per-matchday stats, computed once.
   const rows = allMatchdays.map(m => {
     const dayGames = allGames.filter(g => g.matchdayId === m.id)
+    let mine: { resting: boolean; opponent?: string | null } | undefined
+    if (isParticipant && dayGames.length > 0) {
+      const myGame = dayGames.find(g => g.homePlayerId === session.userId || g.awayPlayerId === session.userId)
+      if (myGame) {
+        const oppId = myGame.homePlayerId === session.userId ? myGame.awayPlayerId : myGame.homePlayerId
+        mine = { resting: false, opponent: nameById.get(oppId) ?? '—' }
+      } else {
+        mine = { resting: true }
+      }
+    }
     return {
       m,
       total: dayGames.length,
       confirmed: dayGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length,
       pending: dayGames.filter(g => g.status === 'pending').length,
       hasIssue: health.matchdayIdsWithIssue.has(m.id),
+      mine,
     }
   })
 
@@ -85,6 +101,7 @@ export default async function MatchdaysPage() {
       pending={r.pending}
       hasIssue={r.hasIssue}
       isCurrent={r.m.number === currentNumber}
+      mine={r.mine}
     />
   )
 
@@ -145,7 +162,7 @@ export default async function MatchdaysPage() {
                 </p>
                 <p className="text-sm text-yellow-700/90 dark:text-yellow-300/80">
                   {session.isAdmin
-                    ? 'Unplayed games from earlier matchdays and any newcomer’s backlog — playable anytime.'
+                    ? 'Overdue games from earlier matchdays and catch-up games outside the matchday grid — playable anytime.'
                     : 'Your unplayed games from earlier matchdays — playable anytime.'}
                 </p>
               </div>

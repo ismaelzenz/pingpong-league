@@ -12,7 +12,7 @@ import PlayerAvatar from '@/components/player/PlayerAvatar'
 import GameResultForm from '@/components/game/GameResultForm'
 import AdminGameActions from '@/components/admin/AdminGameActions'
 import AdminEditResultForm from '@/components/admin/AdminEditResultForm'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Hourglass } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +40,9 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   const isParticipant = session.userId === game.homePlayerId || session.userId === game.awayPlayerId
   const isSubmitter = game.submittedBy === session.userId
   const canConfirm = game.status === 'result_entered' && isParticipant && !isSubmitter
+  // Whoever entered the result can't also confirm it — the OTHER player has to. Name them so it's
+  // clear (to everyone, including admins/observers) who the result is waiting on.
+  const confirmerName = game.submittedBy === game.homePlayerId ? awayPlayer?.name : homePlayer?.name
   const today = todayISO()
   const matchdayStarted = !matchday?.weekStart || matchday.weekStart <= today
   const canEnter = (game.status === 'pending' || game.status === 'postponed') && isParticipant && matchdayStarted
@@ -105,6 +108,19 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
         </CardContent>
       </Card>
 
+      {game.status === 'result_entered' && (
+        <Card className="border-amber-400/60 bg-amber-400/10 dark:border-amber-400/50 dark:bg-amber-400/15">
+          <CardContent className="py-4 flex items-center justify-center gap-2 text-center text-sm font-medium text-amber-800 dark:text-amber-200">
+            <Hourglass className="w-4 h-4 shrink-0" />
+            {canConfirm
+              ? 'It’s your turn — confirm the result below.'
+              : isSubmitter
+                ? `You entered the result — waiting for ${confirmerName ?? 'your opponent'} to confirm.`
+                : `${confirmerName ?? 'A player'} needs to confirm this result.`}
+          </CardContent>
+        </Card>
+      )}
+
       {isParticipant && (
         <>
           {game.status === 'pending' && !matchdayStarted && (
@@ -122,14 +138,6 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
               </CardHeader>
               <CardContent>
                 <GameResultForm gameId={game.id} mode="enter" homeName={homePlayer?.name} awayName={awayPlayer?.name} />
-              </CardContent>
-            </Card>
-          )}
-
-          {game.status === 'result_entered' && isSubmitter && (
-            <Card className="border-amber-400/60 bg-amber-400/10 dark:border-amber-400/50 dark:bg-amber-400/15">
-              <CardContent className="py-6 flex items-center justify-center text-center text-sm font-medium text-amber-800 dark:text-amber-200">
-                ⏳ You entered the result. Waiting for your opponent to confirm.
               </CardContent>
             </Card>
           )}

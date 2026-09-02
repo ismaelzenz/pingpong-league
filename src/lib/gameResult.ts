@@ -21,9 +21,12 @@ export interface GamePerspective {
 /** A single game seen from `playerId`'s side: their sets, the opponent's, and the outcome. */
 export function perspective(game: GameLike, playerId: number): GamePerspective {
   const isHome = game.homePlayerId === playerId
-  const mySets = (isHome ? game.homeSets : game.awaySets) ?? 0
-  const oppSets = (isHome ? game.awaySets : game.homeSets) ?? 0
   const forfeited = game.status === 'forfeited'
+  // A forfeit is a game that never got played — it counts as a 0–2 loss for BOTH players (the
+  // stored 0–0 score has no winner), so each side sees itself losing 0–2. This makes a no-show
+  // dent set difference just like an actual loss, everywhere sets are counted.
+  const mySets = forfeited ? 0 : ((isHome ? game.homeSets : game.awaySets) ?? 0)
+  const oppSets = forfeited ? 2 : ((isHome ? game.awaySets : game.homeSets) ?? 0)
   const won = !forfeited && mySets > oppSets
   return { isHome, mySets, oppSets, won, forfeited }
 }

@@ -1,5 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cron/reminder", "schedule": "30 8 * * 4" }
+    { "path": "/api/cron/reminder", "schedule": "30 8 * * 4" },
+    { "path": "/api/cron/auto-confirm", "schedule": "0 6 * * *" }
   ]
 }
