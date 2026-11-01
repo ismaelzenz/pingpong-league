@@ -131,7 +131,7 @@ export default async function MatchdaysPage() {
       </div>
 
       {session.isAdmin && !health.ok && (
-        <Card className="border-yellow-300 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40">
+        <Card className="ring-yellow-400 bg-yellow-50 dark:ring-yellow-500/50 dark:bg-yellow-950/40">
           <CardContent className="py-4 space-y-2">
             <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4" /> Schedule needs attention
@@ -178,7 +178,7 @@ export default async function MatchdaysPage() {
 
       {backlogCount > 0 && (
         <Link href="/matchdays/catch-up" className="block">
-          <Card className="border-orange-300 bg-orange-50 dark:border-orange-500/60 dark:bg-orange-500/15 hover:shadow-md transition-shadow">
+          <Card className="ring-orange-400 bg-orange-50 dark:ring-orange-500/80 dark:bg-orange-500/15 hover:shadow-md transition-shadow">
             <CardContent className="flex items-center gap-3">
               <Hourglass className="w-5 h-5 text-orange-600 dark:text-orange-400 shrink-0" />
               <div className="flex-1 min-w-0">

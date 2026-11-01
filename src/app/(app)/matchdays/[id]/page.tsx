@@ -181,7 +181,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
       )}
 
       {session.isAdmin && localOverIssues.length > 0 && (
-        <Card className="border-yellow-300 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40">
+        <Card className="ring-yellow-400 bg-yellow-50 dark:ring-yellow-500/50 dark:bg-yellow-950/40">
           <CardContent className="py-4 space-y-1.5">
             <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4" /> Duplicate pairing in this matchday
@@ -200,7 +200,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
       )}
 
       {canEdit && (
-        <Card className="border-orange-200 bg-orange-50/40 dark:border-orange-900 dark:bg-orange-950/30">
+        <Card className="ring-orange-300 bg-orange-50/40 dark:ring-orange-500/50 dark:bg-orange-950/30">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Admin: edit line-up</CardTitle>
             <p className="text-sm text-muted-foreground">

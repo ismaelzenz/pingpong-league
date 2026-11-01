@@ -5,7 +5,6 @@ import { asc, desc } from 'drizzle-orm'
 import { computeEloStandings, computeEloTimelines, listEloGames, loadSides } from '@/lib/data/elo'
 import { START_ELO } from '@/lib/domain/elo'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import PlayerLink from '@/components/player/PlayerLink'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import EmptyState from '@/components/common/EmptyState'
 import { joinNames, showElo } from '@/lib/utils'
@@ -13,8 +12,8 @@ import EloTimeline from '@/components/elo/EloTimeline'
 import RecordEloGameForm from '@/components/elo/RecordEloGameForm'
 import EloGameActions from '@/components/elo/EloGameActions'
 import EloLedgerTable from '@/components/elo/EloLedgerTable'
+import EloStandingsTable from '@/components/elo/EloStandingsTable'
 import { TrendingUp } from 'lucide-react'
-import { medal } from '@/lib/utils'
 import DeltaText from '@/components/common/DeltaText'
 import { shortDate } from '@/lib/dates'
 import SectionCard from '@/components/common/SectionCard'
@@ -73,11 +72,11 @@ export default async function EloPage() {
       ) : (
         <>
           {me && (
-            <Card className="border-primary/40 bg-primary/5">
+            <Card className="me-card">
               <CardContent className="py-4 flex items-center gap-4">
                 <PlayerAvatar name={me.name} avatarColor={me.avatarColor} className="h-12 w-12" fallbackClassName="text-sm" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-muted-foreground">Your rating</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide me-text">Your rating</p>
                   <p className="text-3xl font-black leading-tight tabular-nums">{showElo(me.rating)}</p>
                 </div>
                 <div className="text-right text-sm space-y-0.5 shrink-0">
@@ -91,47 +90,9 @@ export default async function EloPage() {
 
           <EloTimeline series={chartSeries} initial={initialSelection} />
 
-          <SectionCard title="ELO scoreboard" compact contentClassName="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="text-left pl-4 pr-2 py-3 font-medium text-muted-foreground">#</th>
-                    <th className="text-left px-2 py-3 font-medium text-muted-foreground w-full">Player</th>
-                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">GP</th>
-                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">W</th>
-                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">L</th>
-                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">Peak</th>
-                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">Last</th>
-                    <th className="text-right px-4 py-3 font-bold text-muted-foreground">ELO</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {standings.map((e, i) => {
-                    const isMe = e.userId === session.userId
-                    return (
-                      <tr key={e.userId} className={`border-b last:border-0 ${isMe ? 'bg-primary/5' : ''}`}>
-                        <td className="pl-4 pr-2 py-3 text-muted-foreground">{medal(i + 1) ?? i + 1}</td>
-                        <td className="px-2 py-3">
-                          <PlayerLink userId={e.userId} currentUserId={session.userId} className="flex items-center gap-2 w-fit">
-                            <PlayerAvatar name={e.name} avatarColor={e.avatarColor} className="h-7 w-7" fallbackClassName="text-xs" />
-                            <span className={`font-medium ${isMe ? 'text-primary' : 'hover:underline'}`}>
-                              {e.name}{isMe && ' (you)'}
-                            </span>
-                          </PlayerLink>
-                        </td>
-                        <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">{e.gamesPlayed}</td>
-                        <td className="px-3 py-3 text-right text-green-600 tabular-nums">{e.wins}</td>
-                        <td className="px-3 py-3 text-right text-red-500 tabular-nums">{e.losses}</td>
-                        <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">{showElo(e.peak)}</td>
-                        <td className="px-3 py-3 text-right">{e.lastDelta != null ? <DeltaText value={e.lastDelta} /> : '—'}</td>
-                        <td className="px-4 py-3 text-right font-bold text-lg tabular-nums">{showElo(e.rating)}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+          {/* overflow-visible: a clipping card would stop the table's heading from sticking. */}
+          <SectionCard title="ELO scoreboard" compact className="overflow-visible" contentClassName="p-0">
+            <EloStandingsTable standings={standings} currentUserId={session.userId} />
           </SectionCard>
         </>
       )}

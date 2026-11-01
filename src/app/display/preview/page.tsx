@@ -6,5 +6,5 @@ import { PREVIEW } from '@/components/display/previewData'
 export const metadata = { title: 'Display preview' }
 
 export default function DisplayPreviewPage() {
-  return <DisplayBoard tournamentName="Zenz Ping Pong League (preview)" data={PREVIEW} />
+  return <DisplayBoard tournamentName="Zenz Ping Pong League (preview)" data={PREVIEW} demoCelebrationMs={4000} />
 }

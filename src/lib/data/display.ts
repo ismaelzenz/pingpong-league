@@ -5,20 +5,19 @@
 import { db } from '@/lib/db'
 import { games, matchdays, participants, users, type GameStatus } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/domain/scoreboard'
+import type { ScoreboardPlayer } from '@/lib/domain/scoreboard'
+import { rankStandings, type StandingRow } from '@/lib/domain/standings'
 import { perspective } from '@/lib/domain/gameResult'
 import { todayISO } from '@/lib/dates'
 import { isCatchUpBacklog } from '@/lib/domain/backlog'
 import { cached } from '@/lib/cache'
 import { isFinished, isUnplayed } from '@/lib/domain/gameStatus'
+import { differenceInCalendarDays } from 'date-fns'
 
 const MIN_GAMES_FOR_WIN_RATE = 4
+/** How many recent results the board keeps an eye on for "new result" banners. */
+const LATEST_RESULTS = 5
 
-export interface LeaderRow extends ScoreboardEntry {
-  rank: number
-  /** Rank change vs before this matchday: >0 climbed, <0 dropped, 0 same, null if unknown. */
-  movement: number | null
-}
 
 export interface FunWallEntry {
   userId: number
@@ -57,16 +56,22 @@ export interface ByePlayer {
 }
 
 export interface DisplayData {
-  leaderboard: LeaderRow[]
+  leaderboard: StandingRow[]
   /** Fun-wall records (on fire, destroyer, clutch, best win rate, iron man, set machine, nail-biter). */
   records: RecordEntry[]
   matchdayNumber: number | null
+  /** The current matchday's week, and whole days left in it (0 on its last day, null once it's
+   *  over — between matchdays the board shows the last one played, with no countdown). */
+  matchdayWeek: { start: string; end: string; daysLeft: number | null } | null
   weekGames: WeekGame[]
   /** Participants with no game this matchday (odd roster → one player rests each round). */
   byePlayers: ByePlayer[]
   /** Unplayed catch-up games — backlog owed outside the weekly grid, playable anytime. Shown so
    *  people can see which extra games are up for grabs and arrange them. */
   catchUpGames: WeekGame[]
+  /** The most recently entered results, newest first — the board diffs these between refreshes to
+   *  spot (and celebrate) a game that's just been played. */
+  latestResults: WeekGame[]
 }
 
 export function computeDisplayData(tournamentId: number): Promise<DisplayData> {
@@ -96,8 +101,8 @@ async function displayData(tournamentId: number, today: string): Promise<Display
 
   const allFinished = allGames.filter(g => isFinished(g.status))
 
-  // Current standings.
-  const current = buildScoreboard(players, allFinished)
+  // Current standings — the same ranking, movement and form as the scoreboard page.
+  const leaderboard = rankStandings(players, allFinished, mds, today)
 
   // "Current" matchday: the one in progress today, else the latest that has any finished game.
   let currentMd = mds.find(m => m.weekStart && m.weekEnd && m.weekStart <= today && today <= m.weekEnd) ?? null
@@ -105,18 +110,6 @@ async function displayData(tournamentId: number, today: string): Promise<Display
     const withGames = mds.filter(m => allFinished.some(g => g.matchdayId === m.id))
     currentMd = withGames.sort((a, b) => b.number - a.number)[0] ?? null
   }
-
-  // Movement: compare each player's rank now vs before this matchday's games were played.
-  let movement: Map<number, number> | null = null
-  if (currentMd) {
-    const baseline = buildScoreboard(players, allFinished.filter(g => g.matchdayId !== currentMd!.id))
-    const baseRank = new Map(baseline.map((e, i) => [e.userId, i]))
-    movement = new Map(current.map((e, i) => [e.userId, (baseRank.get(e.userId) ?? i) - i]))
-  }
-
-  const leaderboard: LeaderRow[] = current.map((e, i) => ({
-    ...e, rank: i + 1, movement: movement ? (movement.get(e.userId) ?? 0) : null,
-  }))
 
   const toWeekGame = (g: typeof allFinished[number]): WeekGame => ({
     id: g.id,
@@ -154,7 +147,17 @@ async function displayData(tournamentId: number, today: string): Promise<Display
     ? players.filter(p => !inGame.has(p.userId)).map(p => ({ userId: p.userId, name: p.name, avatarColor: p.avatarColor }))
     : []
 
-  return { leaderboard, records, matchdayNumber: currentMd?.number ?? null, weekGames, byePlayers, catchUpGames }
+  const matchdayWeek = currentMd?.weekStart && currentMd.weekEnd
+    ? { start: currentMd.weekStart, end: currentMd.weekEnd, daysLeft: currentMd.weekEnd < today ? null : differenceInCalendarDays(new Date(currentMd.weekEnd), new Date(today)) }
+    : null
+
+  const latestResults = allFinished
+    .filter(g => g.status === 'confirmed')
+    .sort((a, b) => (b.submittedAt ?? b.updatedAt).localeCompare(a.submittedAt ?? a.updatedAt) || b.id - a.id)
+    .slice(0, LATEST_RESULTS)
+    .map(toWeekGame)
+
+  return { leaderboard, records, matchdayNumber: currentMd?.number ?? null, matchdayWeek, weekGames, byePlayers, catchUpGames, latestResults }
 }
 
 interface ConfirmedGame {

@@ -21,9 +21,7 @@ export default function AdminGameActions({ gameId, isPostponed }: Props) {
   }
 
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Admin actions</p>
-      <div className="flex gap-2">
+    <div className="flex gap-2">
         <Button
           variant="outline"
           disabled={loading}
@@ -40,7 +38,6 @@ export default function AdminGameActions({ gameId, isPostponed }: Props) {
         >
           Forfeit
         </Button>
-      </div>
     </div>
   )
 }

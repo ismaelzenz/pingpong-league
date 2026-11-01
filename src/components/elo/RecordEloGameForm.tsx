@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Input } from '@/components/ui/input'
+import PlayerSearchList from '@/components/player/PlayerSearchList'
 import { toast } from 'sonner'
 import { useApiAction } from '@/hooks/useApiAction'
 import { cn, joinNames } from '@/lib/utils'
@@ -89,26 +89,20 @@ export default function RecordEloGameForm({ members, me }: Props) {
   const [home, setHome] = useState<number[]>([me.id])
   const [away, setAway] = useState<number[]>([])
   const [arm, setArm] = useState<Side>('away')
-  const [query, setQuery] = useState('')
   const [pending, setPending] = useState<Outcome | null>(null)
 
   const byId = useMemo(() => new Map(members.map(m => [m.id, m])), [members])
   const nameOf = (id: number) => byId.get(id)?.name ?? '—'
 
-  const matches = useMemo(() => {
+  const available = useMemo(() => {
     const taken = new Set([...home, ...away])
-    const q = query.trim().toLowerCase()
-    return members
-      .filter(m => !taken.has(m.id))
-      .filter(m => !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q))
-      .slice(0, 40)
-  }, [members, query, home, away])
+    return members.filter(m => !taken.has(m.id))
+  }, [members, home, away])
 
   const allTaken = home.length + away.length >= members.length
 
   function add(id: number) {
     ;(arm === 'home' ? setHome : setAway)(cur => (cur.includes(id) ? cur : [...cur, id]))
-    setQuery('')
     setPending(null)
   }
 
@@ -131,7 +125,7 @@ export default function RecordEloGameForm({ members, me }: Props) {
       },
       success: 'Game recorded — ratings updated',
     })
-    if (ok) { setHome([me.id]); setAway([]); setPending(null); setQuery(''); setArm('away') }
+    if (ok) { setHome([me.id]); setAway([]); setPending(null); setArm('away') }
   }
 
   if (pending) {
@@ -159,31 +153,13 @@ export default function RecordEloGameForm({ members, me }: Props) {
         <SideBox side="away" ids={away} label="Side B" armed={arm === 'away'} onArm={setArm} onRemove={remove} nameOf={nameOf} />
       </div>
 
-      <div>
-        <Input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder={`Search a name to add to ${arm === 'home' ? 'Side A' : 'Side B'}…`}
-          className="mb-2"
-        />
-        <div className="max-h-40 overflow-y-auto rounded-lg border divide-y">
-          {matches.length === 0 ? (
-            <p className="p-3 text-sm text-muted-foreground">
-              {allTaken ? 'Everyone is already on a side.' : 'No one matches that search.'}
-            </p>
-          ) : matches.map(m => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => add(m.id)}
-              className="w-full flex items-baseline gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent transition-colors"
-            >
-              <span className="shrink-0">{m.name}{m.id === me.id && ' (you)'}</span>
-              <span className="italic text-muted-foreground text-xs truncate">{m.email}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <PlayerSearchList
+        options={available}
+        onPick={add}
+        currentUserId={me.id}
+        placeholder={`Search a name to add to ${arm === 'home' ? 'Side A' : 'Side B'}…`}
+        emptyText={allTaken ? 'Everyone is already on a side.' : 'No one matches that search.'}
+      />
 
       <div>
         <p className="text-sm text-muted-foreground mb-2">Who won, and how?</p>

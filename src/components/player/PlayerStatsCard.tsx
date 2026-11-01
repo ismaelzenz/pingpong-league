@@ -1,53 +1,48 @@
-import { Separator } from '@/components/ui/separator'
-import ResultChip from '@/components/common/ResultChip'
 import type { ScoreboardEntry } from '@/lib/domain/scoreboard'
 import type { computePlayerForm } from '@/lib/domain/playerStats'
 import SectionCard from '@/components/common/SectionCard'
+import FormDots from '@/components/player/FormDots'
 
 /**
- * A player's season at a glance — points and record, sets, rates and recent form. Shared by your own
- * profile and other players' pages; `showGamesPlayed` adds the games count beside the sets.
+ * A player's season at a glance: four headline numbers, one muted line of the rest, and their
+ * recent form in the same dots as the scoreboard. Shared by your own profile and other players' pages.
  */
-export default function PlayerStatsCard({ stats, form, showGamesPlayed = false }: {
+export default function PlayerStatsCard({ stats, form, title = 'This season' }: {
   stats: ScoreboardEntry
   form: ReturnType<typeof computePlayerForm>
-  showGamesPlayed?: boolean
+  title?: string
 }) {
-  const stat = (value: React.ReactNode, label: string, valueClass: string) => (
-    <div>
-      <p className={valueClass}>{value}</p>
+  const tile = (value: React.ReactNode, label: string) => (
+    <div className="rounded-lg bg-muted/40 px-2 py-2.5 text-center">
+      <p className="text-2xl font-black leading-tight tabular-nums">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
     </div>
   )
+  const ppg = stats.gamesPlayed ? (stats.points / stats.gamesPlayed).toFixed(1) : '0'
 
   return (
-    <SectionCard title="Tournament stats" compact>
-      <div className="grid grid-cols-3 gap-4 text-center">
-        {stat(stats.points, 'Points', 'text-3xl font-black text-primary')}
-        {stat(stats.victories, 'Victories', 'text-3xl font-black text-green-600')}
-        {stat(stats.losses, 'Losses', 'text-3xl font-black text-red-500')}
+    <SectionCard
+      title={
+        <span className="flex items-center justify-between gap-3">
+          {title}
+          <FormDots form={form.form} />
+        </span>
+      }
+      compact
+      contentClassName="space-y-3"
+    >
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {tile(stats.points, 'Points')}
+        {tile(
+          <><span className="text-green-600 dark:text-green-500">{stats.victories}</span><span className="text-muted-foreground">–</span><span className="text-red-500">{stats.losses}</span></>,
+          'Won–lost',
+        )}
+        {tile(`${Math.round(form.winPct * 100)}%`, 'Win rate')}
+        {tile(ppg, 'Pts / game')}
       </div>
-      <Separator className="my-4" />
-      <div className={`grid ${showGamesPlayed ? 'grid-cols-3' : 'grid-cols-2'} gap-4 text-center`}>
-        {showGamesPlayed && stat(stats.gamesPlayed, 'Games', 'text-2xl font-bold')}
-        {stat(stats.setsWon, 'Sets Won', 'text-2xl font-bold')}
-        {stat(stats.setsLost, 'Sets Lost', 'text-2xl font-bold')}
-      </div>
-      <Separator className="my-4" />
-      <div className="grid grid-cols-4 gap-3 text-center">
-        {stat(<>{Math.round(form.winPct * 100)}%</>, 'Win rate', 'text-xl font-bold')}
-        {stat(<>{Math.round(form.setWinPct * 100)}%</>, 'Set rate', 'text-xl font-bold')}
-        {stat(stats.gamesPlayed ? (stats.points / stats.gamesPlayed).toFixed(1) : '0', 'Pts/game', 'text-xl font-bold')}
-        {stat(form.longestWinStreak, 'Best streak', 'text-xl font-bold')}
-      </div>
-      {form.form.length > 0 && (
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <span className="text-xs text-muted-foreground">Recent form</span>
-          <div className="flex gap-1">
-            {form.form.map((r, i) => <ResultChip key={i} won={r === 'W'} className="text-[10px]" />)}
-          </div>
-        </div>
-      )}
+      <p className="text-center text-xs text-muted-foreground tabular-nums">
+        {stats.gamesPlayed} played · sets {stats.setsWon}–{stats.setsLost} ({Math.round(form.setWinPct * 100)}%) · best win streak {form.longestWinStreak}
+      </p>
     </SectionCard>
   )
 }

@@ -8,13 +8,16 @@ import ConfirmResultPanel from '@/components/game/ConfirmResultPanel'
 
 interface Props {
   gameId: number
-  /** Player names, used to label the outcome buttons. */
+  /** Player names, for the confirm step's score line. */
   homeName?: string
   awayName?: string
+  /** Short names for the outcome buttons ("You", a first name) — full names truncate on a phone. */
+  homeLabel?: string
+  awayLabel?: string
 }
 
 /** Entering a league game's result: one tap per valid best-of-3 outcome, then a confirm step. */
-export default function GameResultForm({ gameId, homeName = 'Home', awayName = 'Away' }: Props) {
+export default function GameResultForm({ gameId, homeName = 'Home', awayName = 'Away', homeLabel = homeName, awayLabel = awayName }: Props) {
   const { run, loading } = useApiAction()
   const [pending, setPending] = useState<Outcome | null>(null)
 
@@ -49,7 +52,7 @@ export default function GameResultForm({ gameId, homeName = 'Home', awayName = '
             {OUTCOMES.filter(o => o.winner === side).map(o => (
               <OutcomeButton
                 key={o.detail}
-                label={`${side === 'home' ? homeName : awayName} won`}
+                label={`${side === 'home' ? homeLabel : awayLabel} won`}
                 detail={o.detail}
                 disabled={loading}
                 onClick={() => setPending(o)}

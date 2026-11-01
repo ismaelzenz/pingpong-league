@@ -110,14 +110,14 @@ export default function EloLedgerTable({ games, currentUserId, truncated }: Prop
       {/* Its own scroll box: this is the one table with no natural ceiling, so it stays a fixed
           height instead of running the page on forever. Horizontal scroll too — a 4v4 row is wide. */}
       <div className="max-h-[26rem] overflow-y-auto overflow-x-auto rounded-lg border">
-        <table className="w-full min-w-[36rem] text-sm">
+        <table className="w-full text-sm sm:min-w-[36rem]">
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b">
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">Won</th>
               <th className="text-center px-2 py-2 font-medium text-muted-foreground">Score</th>
               <th className="text-left px-3 py-2 font-medium text-muted-foreground">Lost</th>
-              <th className="text-center px-2 py-2 font-medium text-muted-foreground">Type</th>
-              <th className="text-right px-3 py-2 font-medium text-muted-foreground">Date</th>
+              <th className="hidden sm:table-cell text-center px-2 py-2 font-medium text-muted-foreground">Type</th>
+              <th className="hidden sm:table-cell text-right px-3 py-2 font-medium text-muted-foreground">Date</th>
             </tr>
           </thead>
           <tbody>
@@ -130,26 +130,30 @@ export default function EloLedgerTable({ games, currentUserId, truncated }: Prop
             ) : filtered.map(g => {
               const mine = [...g.winners, ...g.losers].some(p => p.userId === currentUserId)
               return (
-                <tr key={g.key} className={cn('border-b last:border-0', mine && 'bg-primary/5')}>
+                <tr key={g.key} className={cn('border-b last:border-0', mine && 'me-tint')}>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                       {g.winners.map(p => <PlayerDelta key={p.userId} p={p} currentUserId={currentUserId} />)}
                     </div>
                   </td>
-                  <td className="px-2 py-2 text-center font-mono font-semibold whitespace-nowrap">
-                    {g.winnerSets}–{g.loserSets}
+                  <td className="px-2 py-2 text-center whitespace-nowrap">
+                    <span className="font-mono font-semibold">{g.winnerSets}–{g.loserSets}</span>
+                    {/* On a phone the Type and Date columns fold in here, under the score. */}
+                    <span className="block text-[11px] text-muted-foreground sm:hidden">
+                      {shortDate(g.playedAt)}{g.source === 'elo' ? ' · ELO' : ''}
+                    </span>
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                       {g.losers.map(p => <PlayerDelta key={p.userId} p={p} currentUserId={currentUserId} />)}
                     </div>
                   </td>
-                  <td className="px-2 py-2 text-center">
+                  <td className="hidden sm:table-cell px-2 py-2 text-center">
                     <Badge variant="outline" className="text-xs font-normal whitespace-nowrap">
                       {g.source === 'elo' ? 'ELO game' : 'League'}
                     </Badge>
                   </td>
-                  <td className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap">
+                  <td className="hidden sm:table-cell px-3 py-2 text-right text-muted-foreground whitespace-nowrap">
                     {shortDate(g.playedAt)}
                   </td>
                 </tr>

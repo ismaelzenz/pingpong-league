@@ -197,7 +197,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       )}
 
       {overdueMatchdays.length > 0 && (
-        <Card className="border-yellow-300 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40">
+        <Card className="ring-yellow-400 bg-yellow-50 dark:ring-yellow-500/50 dark:bg-yellow-950/40">
           <CardContent className="pt-4 pb-4 space-y-2">
             <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300">⚠️ Unplayed games from past matchdays</p>
             <p className="text-xs text-yellow-700 dark:text-yellow-400">The following matchdays have ended with games still pending. Go to each matchday to forfeit or reschedule individual games.</p>

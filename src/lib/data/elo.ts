@@ -237,3 +237,22 @@ async function eloGameRows(opts: { limit?: number; userId?: number } = {}): Prom
 
   return [...byGame.values()].sort((a, b) => b.seq - a.seq)
 }
+
+/** How many games a player page's "Recent games" shows. */
+export const PLAYER_RECENT_GAMES = 10
+
+/**
+ * One player's ELO for their profile page: their standing (null before their first rated game),
+ * rank among everyone rated, and their latest rated games. A plain async function so a page can
+ * start it in the same parallel batch as its own queries.
+ */
+export async function loadPlayerElo(userId: number) {
+  const [standings, recent] = await Promise.all([
+    computeEloStandings(),
+    listEloGames({ userId, limit: PLAYER_RECENT_GAMES }),
+  ])
+  const rank = standings.findIndex(s => s.userId === userId)
+  return { entry: rank >= 0 ? standings[rank] : null, rank: rank + 1, of: standings.length, recent }
+}
+
+export type PlayerElo = Awaited<ReturnType<typeof loadPlayerElo>>

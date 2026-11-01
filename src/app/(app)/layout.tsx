@@ -9,7 +9,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [user, tournament] = await Promise.all([getCurrentUser(session.userId), getLiveTournament()])
 
   return (
-    <div className="min-h-screen flex flex-col">
+    // --me: your avatar colour, which every "this is you" highlight is drawn from (the me-* classes
+    // in globals.css). Unset → their sky-blue default.
+    <div className="min-h-screen flex flex-col" style={user?.avatarColor ? { '--me': user.avatarColor } as React.CSSProperties : undefined}>
       <AppNav name={session.name} email={session.email} isAdmin={session.isAdmin} avatarColor={user?.avatarColor ?? null} tournamentName={tournament?.name ?? null} />
       <IosInstallHint />
       {/* pb-24 on mobile clears the fixed bottom tab bar (h-16) + iOS home indicator; the bar

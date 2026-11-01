@@ -90,8 +90,8 @@ export default function NotificationToggle() {
   if (!isPhone) {
     return (
       <p className="text-sm text-muted-foreground">
-        📱 Notifications are available on the <strong className="text-foreground">phone version</strong>.
-        Open the league on your phone (on iPhone, install it to your Home Screen first) and enable them there.
+        📱 Notifications go to your <strong className="text-foreground">phone</strong>: open the league there
+        (on iPhone, add it to your Home Screen first) and turn them on. What you pick below applies to it.
       </p>
     )
   }
@@ -108,7 +108,7 @@ export default function NotificationToggle() {
   return (
     <div className="flex items-center justify-between gap-3">
       <p className="text-sm text-muted-foreground">
-        Get a nudge when an opponent enters a result to confirm, and when yours is confirmed.
+        Turn on notifications for this phone. Choose what you get below.
       </p>
       {subscribed ? (
         <Button variant="outline" size="sm" onClick={disable} disabled={busy || !ready} className="shrink-0">

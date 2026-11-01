@@ -1,11 +1,21 @@
 import type { DisplayData } from '@/lib/data/display'
+import type { FormResult, StandingRow } from '@/lib/domain/standings'
+
+/** A plausible last-5 for a preview player, in line with their win rate (deterministic, no random). */
+function withForm(r: Omit<StandingRow, 'form'>): StandingRow {
+  const rate = r.victories / Math.max(1, r.gamesPlayed)
+  const form: FormResult[] = [0, 1, 2, 3, 4].map(i => ((i * 7 + r.userId * 3) % 10) / 10 < rate ? 'W' : 'L')
+  return { ...r, form }
+}
 
 // Hardcoded board data for the /display/preview pages — no database, safe in production.
 // Models a 20-player league mid-season (10 games/matchday): mix of played, awaiting-confirmation,
 // postponed and not-yet-played games.
 export const PREVIEW: DisplayData = {
   matchdayNumber: 14,
-  leaderboard: [
+  matchdayWeek: { start: '2026-11-02', end: '2026-11-06', daysLeft: 2 },
+  latestResults: [], // filled in below, from the week's games
+  leaderboard: ([
     { userId: 1, name: 'Nadia', email: '', avatarColor: '#f43f5e', gamesPlayed: 13, victories: 12, losses: 1, setsWon: 26, setsLost: 8, points: 38, rank: 1, movement: 1 },
     { userId: 2, name: 'Marco', email: '', avatarColor: '#0ea5e9', gamesPlayed: 13, victories: 11, losses: 2, setsWon: 24, setsLost: 10, points: 35, rank: 2, movement: -1 },
     { userId: 3, name: 'Priya', email: '', avatarColor: '#8b5cf6', gamesPlayed: 13, victories: 10, losses: 3, setsWon: 23, setsLost: 12, points: 33, rank: 3, movement: 2 },
@@ -29,7 +39,7 @@ export const PREVIEW: DisplayData = {
     { userId: 21, name: 'Timo', email: '', avatarColor: '#fb7185', gamesPlayed: 13, victories: 1, losses: 12, setsWon: 4, setsLost: 26, points: 6, rank: 21, movement: 1 },
     { userId: 22, name: 'Vera', email: '', avatarColor: '#38bdf8', gamesPlayed: 13, victories: 1, losses: 12, setsWon: 4, setsLost: 27, points: 5, rank: 22, movement: -1 },
     { userId: 23, name: 'Wout', email: '', avatarColor: '#c084fc', gamesPlayed: 12, victories: 0, losses: 12, setsWon: 3, setsLost: 25, points: 4, rank: 23, movement: 0 },
-  ],
+  ] as Omit<StandingRow, 'form'>[]).map(withForm),
   records: [
     { key: 'onFire', userId: 1, name: 'Nadia', avatarColor: '#f43f5e', value: '8 wins in a row' },
     { key: 'destroyer', userId: 2, name: 'Marco', avatarColor: '#0ea5e9', value: '11 clean sweeps' },
@@ -74,3 +84,7 @@ export const PREVIEW: DisplayData = {
     { id: 115, homePlayerId: 3, awayPlayerId: 9, homeName: 'Priya', awayName: 'Jonas', homeColor: '#8b5cf6', awayColor: '#6366f1', homeSets: null, awaySets: null, status: 'postponed' },
   ],
 }
+
+// The preview's played games this week, so the demo banner has a real result to show — the first
+// one, whose row is on the board's first page and can be seen to glow.
+PREVIEW.latestResults = PREVIEW.weekGames.filter(g => g.status === 'confirmed')

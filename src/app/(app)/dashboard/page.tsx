@@ -22,8 +22,7 @@ import { getLatestFinishedTournament, computeRecap } from '@/lib/data/recap'
 import { todayISO, deadlineLabel } from '@/lib/dates'
 import { ChevronRight } from 'lucide-react'
 import { UNPLAYED_STATUSES, isFinished, isUnplayed } from '@/lib/domain/gameStatus'
-import RankMovement from '@/components/common/RankMovement'
-import { medal } from '@/lib/utils'
+import StandingsTable from '@/components/scoreboard/StandingsTable'
 import SectionCard from '@/components/common/SectionCard'
 import ShowMoreList from '@/components/common/ShowMoreList'
 
@@ -221,10 +220,10 @@ export default async function DashboardPage() {
 
   let nextAction: { emoji: string; title: string; detail: string; gameId: number; tone: string } | null = null
   if (overdue) {
-    nextAction = { emoji: '⏳', title: 'You have a game to catch up on', detail: `Play ${opponentName(overdue)} as soon as you can.`, gameId: overdue.id, tone: 'border-orange-300 bg-orange-50 dark:border-orange-500/60 dark:bg-orange-500/15' }
+    nextAction = { emoji: '⏳', title: 'You have a game to catch up on', detail: `Play ${opponentName(overdue)} as soon as you can.`, gameId: overdue.id, tone: 'ring-orange-400 bg-orange-50 dark:ring-orange-500/80 dark:bg-orange-500/15' }
   } else if (thisWeekPlay) {
     const dl = deadlineLabel(thisWeekPlay.weekStart, thisWeekPlay.weekEnd)
-    nextAction = { emoji: '🏓', title: 'Play your game this week', detail: `You're up against ${opponentName(thisWeekPlay)}${dl ? ` — ${dl.text}` : ''}.`, gameId: thisWeekPlay.id, tone: 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/60 dark:bg-emerald-500/15' }
+    nextAction = { emoji: '🏓', title: 'Play your game this week', detail: `You're up against ${opponentName(thisWeekPlay)}${dl ? ` — ${dl.text}` : ''}.`, gameId: thisWeekPlay.id, tone: 'ring-emerald-400 bg-emerald-50 dark:ring-emerald-500/80 dark:bg-emerald-500/15' }
   }
 
   // The game in the banner above isn't repeated in the list below it.
@@ -318,52 +317,9 @@ export default async function DashboardPage() {
             <h2 className="font-semibold">Top standings</h2>
             <Link href="/scoreboard" className="text-sm text-primary hover:underline">Full table</Link>
           </div>
-          <Card className="flex-1">
-            <CardContent className="pt-4 p-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left pl-4 pr-1 py-2 text-muted-foreground font-medium">#</th>
-                    <th className="text-left pl-1 pr-4 py-2 text-muted-foreground font-medium w-full">Player</th>
-                    <th className="text-right px-3 py-2 text-muted-foreground font-medium">W</th>
-                    <th className="text-right px-3 py-2 text-muted-foreground font-medium">L</th>
-                    <th className="text-right px-4 py-2 text-muted-foreground font-medium">Pts</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scores.slice(0, 8).map((entry) => {
-                    const isMe = entry.userId === session.userId
-                    return (
-                      <tr key={entry.userId} className={`border-b last:border-0 ${isMe ? 'bg-primary/5' : ''}`}>
-                        <td className="pl-4 pr-1 py-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-6 text-center shrink-0 text-muted-foreground">{medal(entry.rank) ?? entry.rank}</span>
-                            <span className="w-7 shrink-0 text-xs tabular-nums text-center">
-                              <RankMovement movement={entry.movement} />
-                            </span>
-                          </div>
-                        </td>
-                        <td className="pl-1 pr-4 py-2.5">
-                          {isMe ? (
-                            <div className="flex items-center gap-2 min-w-0">
-                              <PlayerAvatar name={entry.name} avatarColor={entry.avatarColor} className="h-6 w-6 shrink-0" fallbackClassName="text-[10px]" />
-                              <span className="text-primary font-medium truncate">{entry.name} (you)</span>
-                            </div>
-                          ) : (
-                            <PlayerLink userId={entry.userId} currentUserId={session.userId} className="flex items-center gap-2 w-fit min-w-0">
-                              <PlayerAvatar name={entry.name} avatarColor={entry.avatarColor} className="h-6 w-6 shrink-0" fallbackClassName="text-[10px]" />
-                              <span className="font-medium truncate hover:underline">{entry.name}</span>
-                            </PlayerLink>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-green-600">{entry.victories}</td>
-                        <td className="px-3 py-2.5 text-right text-red-500">{entry.losses}</td>
-                        <td className="px-4 py-2.5 text-right font-bold">{entry.points}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+          <Card className="flex-1 py-0">
+            <CardContent className="p-0">
+              <StandingsTable rows={scores.slice(0, 8)} columns="compact" currentUserId={session.userId} />
               {scores.length > 8 && (
                 <Link
                   href="/scoreboard"

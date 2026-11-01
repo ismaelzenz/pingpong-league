@@ -2,9 +2,12 @@ import type { ReactNode } from 'react'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import AutoRefresh from '@/components/display/AutoRefresh'
 import DisplayClock from '@/components/display/DisplayClock'
-import type { LeaderRow, WeekGame, FunWallEntry, ByePlayer, RecordEntry, RecordKey } from '@/lib/data/display'
-import { Flame, Bomb, Crown, Target, Medal, CalendarClock, Coffee, Shield, Zap, HeartPulse } from 'lucide-react'
+import type { DisplayData, WeekGame, FunWallEntry, ByePlayer, RecordEntry, RecordKey } from '@/lib/data/display'
+import { shortRange } from '@/lib/dates'
+import { Flame, Bomb, Crown, Target, CalendarClock, Coffee, Shield, Zap, HeartPulse } from 'lucide-react'
 import CatchUpTicker from '@/components/display/CatchUpTicker'
+import StandingsTable from '@/components/scoreboard/StandingsTable'
+import type { StandingRow } from '@/lib/domain/standings'
 import { isFinished } from '@/lib/domain/gameStatus'
 
 /**
@@ -17,14 +20,19 @@ import { isFinished } from '@/lib/domain/gameStatus'
 export function BoardShell({
   tournamentName,
   matchdayNumber,
+  matchdayWeek,
   refreshMs,
   children,
 }: {
   tournamentName: string
   matchdayNumber: number | null
+  matchdayWeek?: DisplayData['matchdayWeek']
   refreshMs?: number
   children: ReactNode
 }) {
+  // The countdown is the nudge: amber on the last two days, so "1 day left" catches the eye.
+  const left = matchdayWeek?.daysLeft
+  const countdown = left == null ? null : left === 0 ? 'Last day' : `${left} day${left === 1 ? '' : 's'} left`
   return (
     <div className="h-screen bg-slate-950 text-slate-100 p-[2vh] flex flex-col overflow-hidden">
       {refreshMs != null && <AutoRefresh intervalMs={refreshMs} />}
@@ -32,7 +40,13 @@ export function BoardShell({
         <div>
           <h1 className="text-[3.4vh] leading-none font-black tracking-tight">{tournamentName}</h1>
           {matchdayNumber != null && (
-            <p className="text-slate-400 text-[1.8vh] mt-[0.5vh]">Matchday {matchdayNumber}</p>
+            <p className="text-slate-400 text-[1.8vh] mt-[0.5vh]">
+              Matchday {matchdayNumber}
+              {matchdayWeek && <> · {shortRange(matchdayWeek.start, matchdayWeek.end)}</>}
+              {countdown && (
+                <> · <span className={left! <= 1 ? 'font-semibold text-amber-300' : 'text-slate-200'}>{countdown}</span></>
+              )}
+            </p>
           )}
         </div>
         <div className="flex items-center gap-[2.5vh] text-slate-300">
@@ -51,64 +65,16 @@ export function BoardShell({
   )
 }
 
-/** Full standings table (all columns). Fills its parent's height; all rows stretch to fit. */
-export function StandingsTable({ rows }: { rows: LeaderRow[] }) {
-  return (
-    <div className="rounded-2xl bg-slate-900/80 ring-1 ring-white/5 overflow-hidden h-full">
-      <table className="w-full h-full">
-        <thead>
-          <tr className="text-slate-400 text-[1.4vh] border-b border-white/10">
-            <th className="text-left pl-[1.6vh] pr-1 py-[0.4vh] font-medium">#</th>
-            <th className="text-left pl-1 py-[0.4vh] font-medium w-full">Player</th>
-            <th className="text-right px-[1.2vh] py-[0.4vh] font-medium">GP</th>
-            <th className="text-right px-[1.2vh] py-[0.4vh] font-medium">W</th>
-            <th className="text-right px-[1.2vh] py-[0.4vh] font-medium">L</th>
-            <th className="text-right px-[1.2vh] py-[0.4vh] font-medium">SW</th>
-            <th className="text-right px-[1.2vh] py-[0.4vh] font-medium">SL</th>
-            <th className="text-right px-[1.6vh] py-[0.4vh] font-bold">Pts</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const medalColor = ['text-yellow-400', 'text-slate-300', 'text-amber-600'][row.rank - 1]
-            return (
-              <tr key={row.userId} className="border-b border-white/5 last:border-0">
-                <td className="pl-[1.6vh] pr-1 py-[0.15vh]">
-                  <div className="flex items-center gap-[0.8vh]">
-                    <span className="w-[2.8vh] flex justify-center shrink-0">
-                      {row.rank <= 3
-                        ? <Medal className={`h-[2.2vh] w-[2.2vh] ${medalColor}`} strokeWidth={2.2} />
-                        : <span className="text-[2vh] font-black text-slate-300 tabular-nums">{row.rank}</span>}
-                    </span>
-                    <Movement value={row.movement} />
-                  </div>
-                </td>
-                <td className="pl-1 py-[0.15vh]">
-                  <div className="flex items-center gap-[1vh] min-w-0">
-                    <PlayerAvatar name={row.name} avatarColor={row.avatarColor} className="h-[2.8vh] w-[2.8vh] shrink-0" fallbackClassName="text-[1.3vh]" />
-                    <span className="font-semibold text-[2.1vh] truncate">{row.name}</span>
-                  </div>
-                </td>
-                <td className="px-[1.2vh] py-[0.15vh] text-right text-slate-400 text-[1.9vh] tabular-nums">{row.gamesPlayed}</td>
-                <td className="px-[1.2vh] py-[0.15vh] text-right text-green-400 font-semibold text-[1.9vh] tabular-nums">{row.victories}</td>
-                <td className="px-[1.2vh] py-[0.15vh] text-right text-red-400 font-semibold text-[1.9vh] tabular-nums">{row.losses}</td>
-                <td className="px-[1.2vh] py-[0.15vh] text-right text-[1.9vh] tabular-nums">{row.setsWon}</td>
-                <td className="px-[1.2vh] py-[0.15vh] text-right text-[1.9vh] tabular-nums">{row.setsLost}</td>
-                <td className="px-[1.6vh] py-[0.15vh] text-right font-black text-[2.4vh] tabular-nums">{row.points}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
-  )
+/** One page of the standings table. Fills its parent's height; rows stretch. */
+export function StandingsPanel({ rows }: { rows: StandingRow[] }) {
+  return <StandingsTable rows={rows} size="tv" />
 }
 
 /**
  * This week's fixtures. Fills its parent's height; rows stretch. Handles postponed games.
  * `summary` overrides the header count (used when only a page of games is passed in for paging).
  */
-export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames }: { weekGames: WeekGame[]; summary?: { played: number; total: number }; byePlayers?: ByePlayer[]; catchUpGames?: WeekGame[] }) {
+export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames, freshIds }: { weekGames: WeekGame[]; summary?: { played: number; total: number }; byePlayers?: ByePlayer[]; catchUpGames?: WeekGame[]; freshIds?: ReadonlySet<number> }) {
   const played = summary ? summary.played : weekGames.filter(g => isFinished(g.status)).length
   const total = summary ? summary.total : weekGames.length
   return (
@@ -132,7 +98,8 @@ export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames }: 
             return (
               <div
                 key={g.id}
-                className={`flex-1 min-h-0 overflow-hidden flex items-center gap-[1.4vh] rounded-xl px-[2vh] ring-1 ${confirmed ? 'bg-slate-800/60 ring-white/10' : postponed ? 'bg-sky-500/5 ring-sky-500/25' : 'bg-slate-800/25 ring-white/5'}`}
+                // A just-played game glows for a few seconds (see ResultCelebration).
+                className={`flex-1 min-h-0 overflow-hidden flex items-center gap-[1.4vh] rounded-xl px-[2vh] ring-1 ${freshIds?.has(g.id) ? 'display-new-result bg-sky-500/15' : confirmed ? 'bg-slate-800/60 ring-white/10' : postponed ? 'bg-sky-500/5 ring-sky-500/25' : 'bg-slate-800/25 ring-white/5'}`}
               >
                 {/* Home: avatar anchored to the far left, name reads inward toward the score */}
                 <div className="flex-1 flex items-center gap-[1.6vh] min-w-0">
@@ -211,7 +178,7 @@ export function RecordsTicker({ records, secondsPerItem = 10 }: { records: Recor
   const loop = [...tiles, ...tiles] // two identical copies → seamless -50% loop
   const duration = Math.max(24, tiles.length * secondsPerItem)
   return (
-    <div className="overflow-hidden">
+    <div className="overflow-hidden display-fade-edges">
       <div className="flex w-max h-[12vh] display-marquee" style={{ animationDuration: `${duration}s` }}>
         {loop.map((t, i) => (
           <div key={`${t.key}-${i}`} className="w-[34vh] shrink-0 mr-[1.6vh] h-full">
@@ -220,20 +187,6 @@ export function RecordsTicker({ records, secondsPerItem = 10 }: { records: Recor
         ))}
       </div>
     </div>
-  )
-}
-
-function Movement({ value }: { value: number | null }) {
-  return (
-    <span className="w-[3vh] shrink-0 text-center text-[1.6vh] font-semibold tabular-nums">
-      {value == null
-        ? null
-        : value > 0
-          ? <span className="text-green-400">▲{value}</span>
-          : value < 0
-            ? <span className="text-red-400">▼{Math.abs(value)}</span>
-            : <span className="text-slate-600">–</span>}
-    </span>
   )
 }
 

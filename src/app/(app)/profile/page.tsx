@@ -6,26 +6,22 @@ import { alias } from 'drizzle-orm/sqlite-core'
 import { computeScoreboard } from '@/lib/data/scoreboard'
 import { getDisplayTournament } from '@/lib/data/tournaments'
 import { computePlayerForm } from '@/lib/domain/playerStats'
-import { perspective } from '@/lib/domain/gameResult'
-import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import PlayerAvatar from '@/components/player/PlayerAvatar'
 import ProfileEditForm from '@/components/profile/ProfileEditForm'
 import ProfileColorForm from '@/components/profile/ProfileColorForm'
 import ChangePasswordForm from '@/components/profile/ChangePasswordForm'
 import NotificationToggle from '@/components/profile/NotificationToggle'
 import NotificationPrefs from '@/components/profile/NotificationPrefs'
-import EloSummary, { loadEloSummary } from '@/components/elo/EloSummary'
 import { withDefaults } from '@/lib/domain/notificationTypes'
 import { FINISHED_STATUSES } from '@/lib/domain/gameStatus'
-import ResultChip from '@/components/common/ResultChip'
 import PlayerStatsCard from '@/components/player/PlayerStatsCard'
+import ProfileHeader from '@/components/player/ProfileHeader'
+import RecentGames from '@/components/player/RecentGames'
+import Disclosure from '@/components/common/Disclosure'
+import { loadPlayerElo } from '@/lib/data/elo'
 import SectionCard from '@/components/common/SectionCard'
 
 export const dynamic = 'force-dynamic'
-
-/** How many games "Recent results" lists. */
-const RECENT_LIMIT = 10
 
 export default async function ProfilePage() {
   const session = await requireSession()
@@ -33,13 +29,13 @@ export default async function ProfilePage() {
   // One parallel batch. The season stats wait only on which tournament to show; nothing else on
   // the page depends on it, so the rest goes out alongside.
   const opponent = alias(users, 'opponent')
-  const [season, userRecord, prefRow, eloData] = await Promise.all([
+  const [season, userRecord, prefRow, elo] = await Promise.all([
     getDisplayTournament().then(async tournament => {
       if (!tournament) return null
       return Promise.all([
         computeScoreboard(tournament.id),
         // My finished games (oldest → newest) with the opponent's name and the matchday number
-        // joined in — feeds both the form/streak stats and the recent-results list.
+        // joined in — feeds the form/streak stats, and the recent-games list's matchdays and forfeits.
         db.select({ game: games, opponentName: opponent.name, matchdayNumber: matchdays.number })
           .from(games)
           .leftJoin(opponent, sql`${opponent.id} = CASE WHEN ${games.homePlayerId} = ${session.userId} THEN ${games.awayPlayerId} ELSE ${games.homePlayerId} END`)
@@ -54,72 +50,47 @@ export default async function ProfilePage() {
     }),
     getCurrentUser(session.userId),
     db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, session.userId)).then(r => r[0]),
-    loadEloSummary(session.userId),
+    loadPlayerElo(session.userId),
   ])
   const [scores, myFinished] = season ?? [[], []]
-  const myStats = scores.find(s => s.userId === session.userId)
+  const rank = scores.findIndex(s => s.userId === session.userId)
+  const myStats = rank >= 0 ? scores[rank] : null
   const myForm = computePlayerForm(myFinished.map(r => r.game), session.userId)
-  // The last 10, newest first.
-  const recentGames = myFinished.slice(-RECENT_LIMIT).reverse()
   const notifPrefs = withDefaults(prefRow)
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold">My Profile</h1>
+    <div className="space-y-6">
+      <ProfileHeader
+        isMe
+        player={{ name: session.name, email: session.email, avatarColor: userRecord?.avatarColor ?? null }}
+        league={myStats ? { rank: rank + 1, of: scores.length, points: myStats.points } : null}
+        elo={elo.entry ? { rating: elo.entry.rating, rank: elo.rank, of: elo.of, peak: elo.entry.peak } : null}
+      />
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4 mb-6">
-            <PlayerAvatar name={session.name} avatarColor={userRecord?.avatarColor} className="h-16 w-16" fallbackClassName="text-xl" />
-            <div>
-              <p className="text-xl font-bold">{session.name}</p>
-              <p className="text-muted-foreground text-sm">{session.email}</p>
-            </div>
-          </div>
-          <Separator className="mb-4" />
-          <div className="space-y-6">
+      {/* Two columns from lg: how you're doing on the left, your settings on the right. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <div className="space-y-6">
+          {myStats && <PlayerStatsCard stats={myStats} form={myForm} />}
+          <RecentGames playerId={session.userId} viewerId={session.userId} elo={elo.recent} league={myFinished} />
+        </div>
+
+        <SectionCard title="Settings" compact contentClassName="space-y-5">
+          <div className="space-y-4">
             <ProfileEditForm currentName={session.name} />
-            <Separator />
             <ProfileColorForm currentColor={userRecord?.avatarColor ?? null} />
           </div>
-        </CardContent>
-      </Card>
-
-      <SectionCard title="Notifications" compact contentClassName="space-y-4">
-        <NotificationToggle />
-        <Separator />
-        <NotificationPrefs initial={notifPrefs} />
-      </SectionCard>
-
-      <SectionCard title="Change password" compact>
-        <ChangePasswordForm />
-      </SectionCard>
-
-      {myStats && (
-        <PlayerStatsCard stats={myStats} form={myForm} />
-      )}
-
-      <EloSummary userId={session.userId} possessive="your" data={eloData} />
-
-      {recentGames.length > 0 && (
-        <SectionCard title="Recent results" compact contentClassName="space-y-2">
-          {recentGames.map(({ game, opponentName, matchdayNumber }) => {
-            const { mySets, oppSets, won } = perspective(game, session.userId)
-            return (
-              <div key={game.id} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <ResultChip won={won} className="text-xs" />
-                  <span>vs {opponentName ?? '—'}</span>
-                </div>
-                <div className="flex items-center gap-3 text-muted-foreground">
-                  <span className="font-mono font-bold text-foreground">{mySets} – {oppSets}</span>
-                  <span className="text-xs w-12 text-right shrink-0">MD {matchdayNumber ?? '?'}</span>
-                </div>
-              </div>
-            )
-          })}
+          <Separator />
+          <div className="space-y-4">
+            <p className="text-sm font-medium">Notifications</p>
+            <NotificationToggle />
+            <NotificationPrefs initial={notifPrefs} />
+          </div>
+          <Separator />
+          <Disclosure label="Change password" closeLabel="Cancel" opensBelow>
+            <ChangePasswordForm />
+          </Disclosure>
         </SectionCard>
-      )}
+      </div>
     </div>
   )
 }

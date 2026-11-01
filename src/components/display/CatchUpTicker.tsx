@@ -42,12 +42,13 @@ export default function CatchUpTicker({ games }: { games: WeekGame[] }) {
   const duration = Math.max(24, games.length * 4)
 
   return (
-    <div className="shrink-0 mt-[0.8vh] flex items-center gap-[1.4vh] rounded-xl bg-sky-400/10 border border-sky-400/30 px-[1.6vh] py-[0.8vh] overflow-hidden">
-      <div className="flex items-center gap-[0.8vh] shrink-0 text-sky-200">
+    <div className="shrink-0 mt-[0.8vh] flex flex-col gap-[0.6vh] rounded-xl bg-sky-400/10 border border-sky-400/30 px-[1.6vh] py-[0.8vh] overflow-hidden">
+      {/* The label gets its own line so it never crowds the names scrolling past. */}
+      <div className="flex items-center gap-[0.8vh] text-sky-200">
         <History className="h-[2.4vh] w-[2.4vh]" />
         <span className="text-[1.6vh] font-semibold uppercase tracking-wide whitespace-nowrap">Catch-up · {games.length} to play</span>
       </div>
-      <div ref={containerRef} className="relative flex-1 min-w-0 overflow-hidden py-[0.5vh]">
+      <div ref={containerRef} className={`relative min-w-0 overflow-hidden ${scroll ? 'display-fade-edges' : ''}`}>
         <div className={`flex w-max ${scroll ? 'display-marquee' : ''}`} style={scroll ? { animationDuration: `${duration}s` } : undefined}>
           <div ref={copyRef} className="flex shrink-0">
             {games.map((g, i) => <Pill key={i} g={g} />)}

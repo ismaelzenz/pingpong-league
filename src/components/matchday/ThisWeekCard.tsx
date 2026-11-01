@@ -5,7 +5,7 @@ import PlayerAvatar from '@/components/player/PlayerAvatar'
 import { deadlineLabel, shortRange } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { ChevronRight, Coffee } from 'lucide-react'
-import type { MatchdayRowData } from '@/components/matchday/MatchdayRow'
+import type { MatchdayRowData, MyMatchday } from '@/components/matchday/MatchdayRow'
 
 /**
  * The matchday that matters right now, at the top of the Matchdays page: the viewer's game (with
@@ -41,25 +41,7 @@ export default function ThisWeekCard({ row, label, me, gameId }: {
         </div>
 
         {mine?.opponent && me ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/40 p-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex -space-x-2 shrink-0">
-                <PlayerAvatar name={me.name} avatarColor={me.avatarColor} className="h-10 w-10 ring-2 ring-card" fallbackClassName="text-sm" />
-                <PlayerAvatar name={mine.opponent.name} avatarColor={mine.opponent.avatarColor} className="h-10 w-10 ring-2 ring-card" fallbackClassName="text-sm" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold truncate">You vs {mine.opponent.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {mine.result
-                    ? (mine.result.forfeited ? 'Forfeited' : `${mine.result.won ? 'Won' : 'Lost'} ${mine.result.mySets}–${mine.result.oppSets}`)
-                    : 'Not played yet'}
-                </p>
-              </div>
-            </div>
-            {gameId && !mine.result && (
-              <Link href={`/games/${gameId}`} className={cn(buttonVariants({ size: 'sm' }), 'w-full sm:w-auto')}>Enter result →</Link>
-            )}
-          </div>
+          <MyGame me={me} mine={mine} opponent={mine.opponent} gameId={gameId} />
         ) : mine?.resting ? (
           <p className="flex items-center gap-2 rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
             <Coffee className="w-4 h-4" /> You&apos;re resting this matchday.
@@ -82,4 +64,43 @@ export default function ThisWeekCard({ row, label, me, gameId }: {
       </CardContent>
     </Card>
   )
+}
+
+/**
+ * The viewer's own game this matchday. The whole panel opens the game — before the result (to
+ * enter it) and after (to see it, or correct it).
+ */
+function MyGame({ me, mine, opponent, gameId }: {
+  me: { name: string; avatarColor: string | null }
+  mine: MyMatchday
+  opponent: NonNullable<MyMatchday['opponent']>
+  gameId: number | null
+}) {
+  const game = (
+    <>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex -space-x-2 shrink-0">
+          <PlayerAvatar name={me.name} avatarColor={me.avatarColor} className="h-10 w-10 ring-2 ring-card" fallbackClassName="text-sm" />
+          <PlayerAvatar name={opponent.name} avatarColor={opponent.avatarColor} className="h-10 w-10 ring-2 ring-card" fallbackClassName="text-sm" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-semibold truncate">You vs {opponent.name}</p>
+          <p className={cn('text-xs', !mine.result ? 'text-muted-foreground'
+            : mine.result.won ? 'font-medium text-green-600 dark:text-green-500' : 'font-medium text-red-500')}>
+            {mine.result
+              ? (mine.result.forfeited ? 'Forfeited' : `${mine.result.won ? 'Won' : 'Lost'} ${mine.result.mySets}–${mine.result.oppSets}`)
+              : 'Not played yet'}
+          </p>
+        </div>
+      </div>
+      {/* Inside the link, so a span styled as a button rather than a nested link. */}
+      {mine.result
+        ? <ChevronRight className="w-4 h-4 shrink-0 text-muted-foreground" />
+        : <span className={cn(buttonVariants({ size: 'sm' }), 'w-full sm:w-auto')}>Enter result →</span>}
+    </>
+  )
+  const cls = 'flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/40 p-3'
+  return gameId
+    ? <Link href={`/games/${gameId}`} className={cn(cls, 'transition-colors hover:bg-muted/70')}>{game}</Link>
+    : <div className={cls}>{game}</div>
 }

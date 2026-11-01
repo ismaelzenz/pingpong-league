@@ -1,16 +1,16 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { requireSession } from '@/lib/auth/session'
 import { db } from '@/lib/db'
-import { games, users, matchdays } from '@/lib/db/schema'
-import { and, asc, eq, ne, or } from 'drizzle-orm'
+import { games, users, matchdays, eloHistory } from '@/lib/db/schema'
+import { and, asc, eq, or } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
-import { todayISO } from '@/lib/dates'
+import { todayISO, shortDate, shortRange } from '@/lib/dates'
 import GameStatusBadge from '@/components/game/GameStatusBadge'
 import { isFinished, isUnplayed } from '@/lib/domain/gameStatus'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import PlayerLink from '@/components/player/PlayerLink'
-import PlayerAvatar from '@/components/player/PlayerAvatar'
+import { Card, CardContent } from '@/components/ui/card'
+import GameScoreCard from '@/components/game/GameScoreCard'
+import GameRow from '@/components/game/GameRow'
+import Disclosure from '@/components/common/Disclosure'
 import GameResultForm from '@/components/game/GameResultForm'
 import PostponeButton from '@/components/game/PostponeButton'
 import ReportResultForm from '@/components/game/ReportResultForm'
@@ -32,7 +32,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
     game: games,
     homePlayer: { id: homeUser.id, name: homeUser.name, avatarColor: homeUser.avatarColor },
     awayPlayer: { id: awayUser.id, name: awayUser.name, avatarColor: awayUser.avatarColor },
-    matchday: { id: matchdays.id, number: matchdays.number, weekStart: matchdays.weekStart },
+    matchday: { id: matchdays.id, number: matchdays.number, weekStart: matchdays.weekStart, weekEnd: matchdays.weekEnd },
   })
     .from(games)
     .leftJoin(homeUser, eq(homeUser.id, games.homePlayerId))
@@ -46,31 +46,35 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   const awayPlayer = row.awayPlayer ?? undefined
   const matchday = row.matchday ?? undefined
 
-  // Every other meeting between these two this season — the one thing you actually want to know
-  // while looking at a fixture ("didn't they beat me last time?") and previously only reachable by
-  // going to the other player's profile.
-  const otherMeetings = await db.select({
-    id: games.id,
-    status: games.status,
-    homePlayerId: games.homePlayerId,
-    awayPlayerId: games.awayPlayerId,
-    homeSets: games.homeSets,
-    awaySets: games.awaySets,
-    isCatchUp: games.isCatchUp,
-    mdNumber: matchdays.number,
-    weekStart: matchdays.weekStart,
-  })
-    .from(games)
-    .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
-    .where(and(
-      eq(games.tournamentId, game.tournamentId),
-      ne(games.id, game.id),
-      or(
-        and(eq(games.homePlayerId, game.homePlayerId), eq(games.awayPlayerId, game.awayPlayerId)),
-        and(eq(games.homePlayerId, game.awayPlayerId), eq(games.awayPlayerId, game.homePlayerId)),
-      ),
-    ))
-    .orderBy(asc(matchdays.number), asc(games.id))
+  // Every meeting between these two this season, this one included — the one thing you actually
+  // want to know while looking at a fixture ("didn't they beat me last time?") — plus what this
+  // game did to each player's rating, once it's rated.
+  const [meetings, eloRows] = await Promise.all([
+    db.select({
+      id: games.id,
+      status: games.status,
+      homePlayerId: games.homePlayerId,
+      awayPlayerId: games.awayPlayerId,
+      homeSets: games.homeSets,
+      awaySets: games.awaySets,
+      isCatchUp: games.isCatchUp,
+      mdNumber: matchdays.number,
+    })
+      .from(games)
+      .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
+      .where(and(
+        eq(games.tournamentId, game.tournamentId),
+        or(
+          and(eq(games.homePlayerId, game.homePlayerId), eq(games.awayPlayerId, game.awayPlayerId)),
+          and(eq(games.homePlayerId, game.awayPlayerId), eq(games.awayPlayerId, game.homePlayerId)),
+        ),
+      ))
+      .orderBy(asc(matchdays.number), asc(games.id)),
+    db.select({ userId: eloHistory.userId, delta: eloHistory.delta })
+      .from(eloHistory)
+      .where(and(eq(eloHistory.source, 'league'), eq(eloHistory.refId, game.id))),
+  ])
+  const eloDelta = new Map(eloRows.map(r => [r.userId, r.delta]))
 
   const isParticipant = session.userId === game.homePlayerId || session.userId === game.awayPlayerId
   // Who put the current score on the board — the corrector if there's been one, otherwise whoever
@@ -91,170 +95,116 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   const isFutureMatchday = !!matchday?.weekStart && matchday.weekStart > today
   const canEnter = isUnplayed(game.status) && isParticipant
   const canPostpone = isUnplayed(game.status) && (isParticipant || session.isAdmin)
-  const canAdminAct = session.isAdmin && !isFinished(game.status)
+
+  const home = { id: game.homePlayerId, name: homePlayer?.name ?? '—', avatarColor: homePlayer?.avatarColor ?? null }
+  const away = { id: game.awayPlayerId, name: awayPlayer?.name ?? '—', avatarColor: awayPlayer?.avatarColor ?? null }
+  // Outcome buttons: "You won", "Cristiano won" — a full name truncates on a phone.
+  const short = (p: { id: number; name: string }) => p.id === session.userId ? 'You' : p.name.split(' ')[0]
+  const isPostponed = game.status === 'postponed'
+
+  // The line under the score: when and by whom it was recorded, or what state the game is in.
+  const recordedAt = game.correctedAt ?? game.submittedAt ?? game.confirmedAt
+  const footer = game.status === 'confirmed' ? (
+    <>
+      Recorded by {setterName === 'You' ? 'you' : (setterName ?? 'an admin')}
+      {recordedAt && ` · ${shortDate(recordedAt.replace(' ', 'T'))}`}
+      {game.correctedAt && ' · corrected since'}
+    </>
+  ) : game.status === 'forfeited' ? (
+    'Forfeited — a 0–2 loss for both players, with no ELO change.'
+  ) : isPostponed ? (
+    <span className="font-medium text-amber-700 dark:text-amber-400">Postponed — play it whenever you both can, then enter the result.</span>
+  ) : isParticipant && isFutureMatchday ? (
+    'This is a future matchday. Played it early? Enter the result below — it counts straight away.'
+  ) : null
+
+  // Head-to-head, oriented like this page and summed up from the viewer's side when they're in it.
+  const playerById = new Map([[home.id, home], [away.id, away]])
+  const decided = meetings.filter(m => m.status === 'confirmed' && m.homeSets != null && m.awaySets != null)
+  const winsOf = (id: number) => decided.filter(m => (m.homePlayerId === id) === (m.homeSets! > m.awaySets!)).length
+  const [first, second] = isParticipant && session.userId === away.id ? [away, home] : [home, away]
+  const [aWins, bWins] = [winsOf(first.id), winsOf(second.id)]
+  const lead = (p: typeof home) => (p.id === session.userId ? 'You lead' : `${p.name} leads`)
+  const h2hSummary = decided.length === 0 ? 'No meetings played yet'
+    : aWins === bWins ? `Level ${aWins}–${bWins}`
+    : aWins > bWins ? `${lead(first)} ${aWins}–${bWins}` : `${lead(second)} ${bWins}–${aWins}`
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto">
+    <div className="space-y-4 max-w-lg mx-auto">
       <div>
         <BackLink href={matchday ? `/matchdays/${matchday.id}` : '/matchdays'} className="mb-2">
           {matchday ? `Matchday ${matchday.number}` : 'Matchdays'}
         </BackLink>
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Game details</h1>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold">{game.isCatchUp ? 'Catch-up game' : matchday ? `Matchday ${matchday.number}` : 'Game'}</h1>
+            {!game.isCatchUp && matchday?.weekStart && matchday.weekEnd && (
+              <p className="text-sm text-muted-foreground">{shortRange(matchday.weekStart, matchday.weekEnd)}</p>
+            )}
+          </div>
           <GameStatusBadge status={game.status} look="detail" />
         </div>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-around text-center gap-4">
-            <PlayerLink userId={game.homePlayerId} currentUserId={session.userId} className="flex-1 flex flex-col items-center gap-2">
-              <PlayerAvatar name={homePlayer?.name} avatarColor={homePlayer?.avatarColor} className="h-14 w-14" fallbackClassName="text-base" />
-              <div>
-                <p className="text-sm text-muted-foreground">Home</p>
-                <p className={`font-bold text-lg ${homePlayer?.id === session.userId ? 'text-primary' : ''}`}>
-                  {homePlayer?.name ?? '—'}{homePlayer?.id === session.userId && ' (you)'}
-                </p>
-              </div>
-            </PlayerLink>
-            <div className="text-center px-2">
-              {game.homeSets !== null && game.awaySets !== null ? (
-                <div className="flex items-center gap-3">
-                  <span className={`text-4xl font-black ${game.homeSets > game.awaySets ? 'text-green-600' : game.homeSets < game.awaySets ? 'text-red-500' : ''}`}>
-                    {game.homeSets}
-                  </span>
-                  <span className="text-2xl text-muted-foreground">–</span>
-                  <span className={`text-4xl font-black ${game.awaySets > game.homeSets ? 'text-green-600' : game.awaySets < game.homeSets ? 'text-red-500' : ''}`}>
-                    {game.awaySets}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-3xl font-black text-muted-foreground">vs</span>
-              )}
-              {matchday && <p className="text-xs text-muted-foreground mt-1">Matchday {matchday.number}</p>}
-            </div>
-            <PlayerLink userId={game.awayPlayerId} currentUserId={session.userId} className="flex-1 flex flex-col items-center gap-2">
-              <PlayerAvatar name={awayPlayer?.name} avatarColor={awayPlayer?.avatarColor} className="h-14 w-14" fallbackClassName="text-base" />
-              <div>
-                <p className="text-sm text-muted-foreground">Away</p>
-                <p className={`font-bold text-lg ${awayPlayer?.id === session.userId ? 'text-primary' : ''}`}>
-                  {awayPlayer?.name ?? '—'}{awayPlayer?.id === session.userId && ' (you)'}
-                </p>
-              </div>
-            </PlayerLink>
-          </div>
-        </CardContent>
-      </Card>
+      <GameScoreCard game={game} home={home} away={away} viewerId={session.userId} eloDelta={eloDelta} footer={footer} />
 
-      {isParticipant && (
-        <>
-          {game.status === 'pending' && isFutureMatchday && (
-            <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/40">
-              <CardContent className="pt-4 pb-4 text-sm text-blue-800 dark:text-blue-300">
-                📅 This game belongs to a future matchday. If you&apos;ve played it early, go ahead and enter
-                the result — it counts straight away.
-              </CardContent>
-            </Card>
-          )}
-
-          {canEnter && (
-            <SectionCard title="Enter result" compact>
-              <GameResultForm gameId={game.id} homeName={homePlayer?.name} awayName={awayPlayer?.name} />
-            </SectionCard>
-          )}
-
-          {canReport && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Not the right score?</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {setterName ? `${setterName} recorded` : 'The recorded result is'}{' '}
-                  <strong>{homePlayer?.name} {game.homeSets} – {game.awaySets} {awayPlayer?.name}</strong>.
-                  If that’s wrong, put it right — no approval needed.
-                </p>
-              </CardHeader>
-              <CardContent>
-                <ReportResultForm
-                  gameId={game.id}
-                  homeName={homePlayer?.name ?? 'Home'}
-                  awayName={awayPlayer?.name ?? 'Away'}
-                  homeSets={game.homeSets!}
-                  awaySets={game.awaySets!}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {canPostpone && (
-            <Card>
-              <CardContent className="pt-4 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Game actions</p>
-                <PostponeButton gameId={game.id} isPostponed={game.status === 'postponed'} />
-              </CardContent>
-            </Card>
-          )}
-        </>
-      )}
-
-      {otherMeetings.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Head-to-head</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {homePlayer?.name} vs {awayPlayer?.name} this season — tap one to open it.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {otherMeetings.map(m => {
-              const played = m.homeSets != null && m.awaySets != null &&
-                isFinished(m.status)
-              // Scores are stored from that game's own home/away side, which can be the reverse of
-              // this one — show them in this page's order so the two rows read consistently.
-              const sameOrientation = m.homePlayerId === game.homePlayerId
-              const left = sameOrientation ? m.homeSets : m.awaySets
-              const right = sameOrientation ? m.awaySets : m.homeSets
-              return (
-                <Link
-                  key={m.id}
-                  href={`/games/${m.id}`}
-                  className="flex items-center justify-between gap-3 rounded-md -mx-2 px-2 py-2 hover:bg-accent transition-colors"
-                >
-                  <span className="text-sm text-muted-foreground shrink-0">
-                    {m.isCatchUp ? 'Catch-up' : `Matchday ${m.mdNumber ?? '?'}`}
-                  </span>
-                  {played ? (
-                    <span className="font-mono font-bold tabular-nums">{left} – {right}</span>
-                  ) : (
-                    <span className="text-sm font-medium text-primary">
-                      {m.status === 'postponed' ? 'Postponed' : 'Not played yet'} →
-                    </span>
-                  )}
-                </Link>
-              )
-            })}
-          </CardContent>
-        </Card>
-      )}
-
-      {game.status === 'confirmed' && (
-        <div className="text-center text-sm text-muted-foreground py-4">
-          ✅ Result recorded{game.correctedAt ? ' (corrected since)' : ''}. The scoreboard and ELO ratings are up to date.
+      {canReport && (
+        <div className="px-1">
+          <Disclosure label="Wrong score? Report it" closeLabel="Never mind — it’s right" opensBelow>
+            <ReportResultForm
+              gameId={game.id}
+              homeName={short(home)}
+              awayName={short(away)}
+              homeSets={game.homeSets!}
+              awaySets={game.awaySets!}
+            />
+          </Disclosure>
         </div>
       )}
 
-      {canAdminAct && (
-        <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/30">
-          <CardContent className="pt-4">
-            <AdminGameActions gameId={game.id} isPostponed={game.status === 'postponed'} />
-          </CardContent>
-        </Card>
+      {canEnter && (
+        <SectionCard title="Enter result" compact contentClassName="space-y-4">
+          <GameResultForm gameId={game.id} homeName={home.name} awayName={away.name} homeLabel={short(home)} awayLabel={short(away)} />
+          {canPostpone && <PostponeButton gameId={game.id} isPostponed={isPostponed} inline />}
+        </SectionCard>
       )}
 
-      {session.isAdmin && isFinished(game.status) && (
-        <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/30">
-          <CardContent className="pt-4 space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Admin: correct result</p>
-            <AdminEditResultForm gameId={game.id} homeSets={game.homeSets} awaySets={game.awaySets} />
+      {meetings.length > 1 && (
+        <SectionCard
+          title={<span className="flex items-baseline justify-between gap-3">Head-to-head <span className="text-sm font-normal text-muted-foreground">{h2hSummary}</span></span>}
+          compact
+          className="gap-0 pb-0"
+          contentClassName="p-0"
+        >
+          <div className="divide-y border-t">
+            {meetings.map(m => (
+              <GameRow
+                key={m.id}
+                current={m.id === game.id}
+                label={m.isCatchUp ? 'Catch-up' : `Matchday ${m.mdNumber ?? '?'}`}
+                game={{
+                  id: m.id,
+                  status: m.status,
+                  homeSets: m.homeSets,
+                  awaySets: m.awaySets,
+                  homePlayer: playerById.get(m.homePlayerId) ?? home,
+                  awayPlayer: playerById.get(m.awayPlayerId) ?? away,
+                }}
+              />
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {session.isAdmin && (
+        <Card className="ring-orange-300 bg-orange-50/50 dark:ring-orange-500/50 dark:bg-orange-950/30">
+          <CardContent className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Admin{isFinished(game.status) ? ' · correct result' : ''}
+            </p>
+            {isFinished(game.status)
+              ? <AdminEditResultForm gameId={game.id} homeSets={game.homeSets} awaySets={game.awaySets} />
+              : <AdminGameActions gameId={game.id} isPostponed={isPostponed} />}
           </CardContent>
         </Card>
       )}

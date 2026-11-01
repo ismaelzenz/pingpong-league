@@ -1,13 +1,12 @@
 'use client'
 
-import { useState } from 'react'
 import { useApiAction } from '@/hooks/useApiAction'
 import { OUTCOMES } from '@/lib/domain/gameResult'
 import OutcomeButton from '@/components/game/OutcomeButton'
-import { AlertTriangle } from 'lucide-react'
 
 interface Props {
   gameId: number
+  /** Short names for the outcome buttons ("You", a first name). */
   homeName: string
   awayName: string
   homeSets: number
@@ -17,28 +16,14 @@ interface Props {
 /**
  * The replacement for the old confirm/dispute step. Results are auto-approved on entry, so the
  * other player doesn't approve anything — they only step in when the score on the board is wrong,
- * and then they just enter the right one. Collapsed behind a link so the common case (the score is
- * fine) stays out of the way.
+ * and then they just enter the right one. The page folds it behind a "Wrong score?" toggle so the
+ * common case (the score is fine) stays out of the way.
  */
 export default function ReportResultForm({ gameId, homeName, awayName, homeSets, awaySets }: Props) {
   const { run, loading } = useApiAction()
-  const [open, setOpen] = useState(false)
 
   // Every result except the one already recorded.
   const outcomes = OUTCOMES.filter(o => !(o.homeSets === homeSets && o.awaySets === awaySets))
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
-      >
-        <AlertTriangle className="w-3.5 h-3.5" />
-        Report a wrong result
-      </button>
-    )
-  }
 
   return (
     <div className="space-y-3">
@@ -62,13 +47,6 @@ export default function ReportResultForm({ gameId, homeName, awayName, homeSets,
           />
         ))}
       </div>
-      <button
-        type="button"
-        onClick={() => setOpen(false)}
-        className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
-      >
-        Never mind — the result is right
-      </button>
     </div>
   )
 }

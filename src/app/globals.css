@@ -147,6 +147,67 @@
   will-change: transform;
 }
 
+/* ── "This is you" highlights, in your own avatar colour ─────────────────────────────────
+   --me is set from the viewer's avatar colour on the app layout; sky blue when they haven't
+   picked one. Everything is mixed from it, so any of the ten avatar colours — dark slate
+   included — stays readable on both themes. Unlayered, so these win over Tailwind utilities
+   (e.g. a Card's own ring colour). */
+:root { --me: #0ea5e9; }
+.me-tint { background-color: color-mix(in oklab, var(--me) 12%, transparent); }
+.me-card {
+  background-color: color-mix(in oklab, var(--me) 7%, var(--card));
+  --tw-ring-color: color-mix(in oklab, var(--me) 45%, transparent);
+}
+.me-text { color: color-mix(in oklab, var(--me) 80%, black); }
+.dark .me-text { color: color-mix(in oklab, var(--me) 60%, white); }
+.me-edge { border-left-color: var(--me); }
+.me-ring { --tw-ring-color: var(--me); }
+.me-divider { border-color: color-mix(in oklab, var(--me) 25%, transparent); }
+
+/* Scrolling strips fade out at both ends, so tiles slide in and out of view instead of being
+   sliced off at the edge. */
+.display-fade-edges {
+  mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+}
+
+/* The standings' page-turn countdown: a bar filling over one page's time on screen. */
+@keyframes display-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.display-progress {
+  animation-name: display-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* A just-played result: a soft glow that pulses a few times, then settles. */
+@keyframes display-new-result {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(56 189 248 / 0); }
+  50% { box-shadow: 0 0 0 0.4vh rgb(56 189 248 / 0.55); }
+}
+.display-new-result {
+  animation: display-new-result 1.6s ease-in-out 5;
+}
+
+/* The new-result banner sliding up into view. */
+@keyframes display-banner-in {
+  from { transform: translateY(120%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.display-banner-in {
+  animation: display-banner-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* …and sliding back down out of view when its time is up. */
+@keyframes display-banner-out {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(120%); opacity: 0; }
+}
+.display-banner-out {
+  animation: display-banner-out 0.6s cubic-bezier(0.5, 0, 0.75, 0) both;
+}
+
 /* ── App-wide hover feedback ──────────────────────────────────────────────────────────
    A subtle background shift so it's always clear which card or table row is under the
    cursor. Cards must be styled unlayered so this wins over their own `bg-card`; it only
