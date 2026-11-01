@@ -24,7 +24,9 @@ interface RunOptions<T> {
  *   await run(`/api/tournaments/${id}`, { method: 'DELETE', confirm: 'Delete?', success: 'Deleted' })
  *
  * Returns the parsed response on success, or `null` if the user cancelled or the request failed
- * (the error toast is shown automatically), so callers can branch on the result.
+ * (the error toast is shown automatically), so callers can branch on the result. Failures are
+ * reported specifically — an unreachable server, a route's own error message, or the status code —
+ * rather than collapsing everything into one unhelpful line.
  */
 export function useApiAction() {
   const router = useRouter()
@@ -36,13 +38,30 @@ export function useApiAction() {
 
     setLoading(true)
     try {
-      const res = await fetch(url, {
-        method,
-        headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-      })
+      let res: Response
+      try {
+        res = await fetch(url, {
+          method,
+          headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+        })
+      } catch {
+        // fetch only rejects when the request never got an answer — offline, or the server is down.
+        // Worth saying so plainly: "something went wrong" sends people hunting for a bug in the app.
+        throw new Error('Couldn’t reach the server — check your connection and try again.')
+      }
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error ?? 'Something went wrong')
+      // A 401 means the cookie no longer identifies anyone (signed out elsewhere, or the account
+      // is gone). Toasting alone would leave them tapping a button that can never work, so send
+      // them to the login page.
+      if (res.status === 401) {
+        toast.error(data?.error ?? 'Please sign in again.')
+        router.push('/login')
+        return null
+      }
+      // Fall back to the status code rather than a bare "something went wrong", so an unexpected
+      // failure still tells you (and anyone you report it to) what actually happened.
+      if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status} ${res.statusText || 'error'})`)
       if (success) toast.success(typeof success === 'function' ? success(data as T) : success)
       if (refresh) router.refresh()
       return data as T

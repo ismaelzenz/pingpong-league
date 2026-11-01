@@ -124,16 +124,14 @@ export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames }: 
         <div className="flex-1 flex flex-col gap-[0.8vh] min-h-0">
           {weekGames.map((g) => {
             const confirmed = g.status === 'confirmed' || g.status === 'forfeited'
-            const awaiting = g.status === 'result_entered'
             const postponed = g.status === 'postponed'
-            const hasScore = g.homeSets != null && g.awaySets != null
             // Only a confirmed result is final, so only then do we bold the winner.
             const homeWon = confirmed && (g.homeSets ?? 0) > (g.awaySets ?? 0)
             const awayWon = confirmed && (g.awaySets ?? 0) > (g.homeSets ?? 0)
             return (
               <div
                 key={g.id}
-                className={`flex-1 min-h-0 overflow-hidden flex items-center gap-[1.4vh] rounded-xl px-[2vh] ring-1 ${confirmed ? 'bg-slate-800/60 ring-white/10' : awaiting ? 'bg-amber-500/5 ring-amber-500/25' : postponed ? 'bg-sky-500/5 ring-sky-500/25' : 'bg-slate-800/25 ring-white/5'}`}
+                className={`flex-1 min-h-0 overflow-hidden flex items-center gap-[1.4vh] rounded-xl px-[2vh] ring-1 ${confirmed ? 'bg-slate-800/60 ring-white/10' : postponed ? 'bg-sky-500/5 ring-sky-500/25' : 'bg-slate-800/25 ring-white/5'}`}
               >
                 {/* Home: avatar anchored to the far left, name reads inward toward the score */}
                 <div className="flex-1 flex items-center gap-[1.6vh] min-w-0">
@@ -143,11 +141,6 @@ export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames }: 
                 <div className="shrink-0 w-[12vh] flex flex-col items-center justify-center leading-none">
                   {confirmed ? (
                     <span className="font-mono font-black text-white text-[3.9vh] tabular-nums">{g.homeSets}–{g.awaySets}</span>
-                  ) : awaiting && hasScore ? (
-                    <>
-                      <span className="font-mono font-black text-amber-400 text-[3.9vh] tabular-nums">{g.homeSets}–{g.awaySets}</span>
-                      <span className="mt-[0.4vh] text-[1.4vh] font-semibold uppercase tracking-wide text-amber-400/80">to confirm</span>
-                    </>
                   ) : postponed ? (
                     <div className="flex flex-col items-center gap-[0.3vh] text-sky-300/90">
                       <CalendarClock className="h-[2.4vh] w-[2.4vh]" />

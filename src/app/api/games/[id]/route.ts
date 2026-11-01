@@ -4,6 +4,8 @@ import { games, matchdays, participants } from '@/lib/db/schema'
 import { requireUser, requireAdmin } from '@/lib/apiAuth'
 import { sendPush } from '@/lib/push'
 import { isValidResult } from '@/lib/gameResult'
+import { winnersOf } from '@/lib/elo'
+import { syncEloForGame } from '@/lib/eloLedger'
 import { todayISO } from '@/lib/dates'
 import { eq } from 'drizzle-orm'
 
@@ -36,72 +38,71 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (game.status !== 'pending' && game.status !== 'postponed') {
       return NextResponse.json({ error: 'Result already entered or game finished' }, { status: 400 })
     }
+    if (!isParticipant) return NextResponse.json({ error: 'Only the players can enter a result' }, { status: 403 })
     if (!isValidResult(homeSets, awaySets)) return NextResponse.json({ error: 'Invalid result' }, { status: 400 })
 
-    const matchday = await db.select({ weekStart: matchdays.weekStart }).from(matchdays).where(eq(matchdays.id, game.matchdayId)).then(r => r[0])
-    const today = todayISO()
-    if (!matchday?.weekStart || matchday.weekStart > today) {
-      return NextResponse.json({ error: 'Cannot enter result for a future matchday' }, { status: 400 })
-    }
+    // A future matchday is no longer a barrier. People play ahead — someone's away next week, or
+    // two players are both free today — and refusing the result just meant it got entered late or
+    // not at all. The matchday still says when the game was *scheduled*; `submittedAt` records
+    // when it was actually played.
 
+    // Auto-approved: whichever player was quicker to the phone settles it. `submittedAt` doubles as
+    // when the game was played — it's the moment a player stood there and typed the score in — and
+    // it's what orders the ELO ledger, so it's set once here and never moved by a later correction.
+    const now = new Date().toISOString()
     await db.update(games).set({
       homeSets,
       awaySets,
-      status: 'result_entered',
+      status: 'confirmed',
       submittedBy: session.userId,
-      submittedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      submittedAt: now,
+      // No confirmedBy: nobody confirmed it, the system approved it on entry.
+      confirmedAt: now,
+      updatedAt: now,
     }).where(eq(games.id, gameId))
 
-    // Nudge the opponent to confirm — fired after the response so it doesn't add latency.
+    await syncEloForGame('league', gameId, winnersOf({ homePlayerIds: [game.homePlayerId], awayPlayerIds: [game.awayPlayerId], homeSets, awaySets }))
+
+    // Tell the opponent it's on the board — and that they can correct it if it's wrong.
     const opponentId = game.homePlayerId === session.userId ? game.awayPlayerId : game.homePlayerId
     after(() => sendPush(opponentId, {
-      title: 'Confirm a result',
-      body: `${session.name} entered ${homeSets}–${awaySets}. Tap to confirm.`,
+      title: 'Result recorded',
+      body: `${session.name} entered ${homeSets}–${awaySets}. Tap to check it — you can report it if it's wrong.`,
       url: `/games/${gameId}`,
-    }, 'resultToConfirm'))
+    }, 'resultRecorded'))
 
-  } else if (action === 'confirm') {
-    if (game.status !== 'result_entered') return NextResponse.json({ error: 'Nothing to confirm' }, { status: 400 })
-    if (session.userId === game.submittedBy) return NextResponse.json({ error: 'Cannot confirm your own result' }, { status: 403 })
-
-    await db.update(games).set({
-      status: 'confirmed',
-      confirmedBy: session.userId,
-      confirmedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }).where(eq(games.id, gameId))
-
-    if (game.submittedBy) {
-      const submitterId = game.submittedBy
-      after(() => sendPush(submitterId, {
-        title: 'Result confirmed',
-        body: `${session.name} confirmed your result.`,
-        url: `/games/${gameId}`,
-      }, 'resultConfirmed'))
+  } else if (action === 'report') {
+    // "Report a wrong result": either player can overwrite a recorded score with the right one.
+    // No approval step here either — the correction stands the moment it's submitted.
+    if (game.status !== 'confirmed') return NextResponse.json({ error: 'No recorded result to correct' }, { status: 400 })
+    if (!isParticipant) return NextResponse.json({ error: 'Only the players can correct a result' }, { status: 403 })
+    if (!isValidResult(homeSets, awaySets)) return NextResponse.json({ error: 'Invalid result' }, { status: 400 })
+    if (homeSets === game.homeSets && awaySets === game.awaySets) {
+      return NextResponse.json({ error: 'That is already the recorded result' }, { status: 400 })
     }
 
-  } else if (action === 'dispute') {
-    if (game.status !== 'result_entered') return NextResponse.json({ error: 'Nothing to dispute' }, { status: 400 })
-    if (session.userId === game.submittedBy) return NextResponse.json({ error: 'Cannot dispute your own result' }, { status: 403 })
-
+    const now = new Date().toISOString()
     await db.update(games).set({
-      homeSets: null,
-      awaySets: null,
-      status: 'pending',
-      submittedBy: null,
-      submittedAt: null,
-      updatedAt: new Date().toISOString(),
+      homeSets,
+      awaySets,
+      correctedBy: session.userId,
+      correctedAt: now,
+      updatedAt: now,
+      // submittedAt is deliberately untouched: the game was still played when it was played.
     }).where(eq(games.id, gameId))
 
-    if (game.submittedBy) {
-      const submitterId = game.submittedBy
-      after(() => sendPush(submitterId, {
-        title: 'Result disputed',
-        body: `${session.name} disputed the result — please re-enter the score.`,
-        url: `/games/${gameId}`,
-      }, 'resultDisputed'))
-    }
+    // Ratings only ever depended on who won, so a 2–0 → 2–1 fix reshuffles the league table and
+    // leaves every rating alone; a flipped winner replays the ledger from that game onward.
+    const eloChanged = await syncEloForGame('league', gameId, winnersOf({ homePlayerIds: [game.homePlayerId], awayPlayerIds: [game.awayPlayerId], homeSets, awaySets }))
+
+    const otherId = game.homePlayerId === session.userId ? game.awayPlayerId : game.homePlayerId
+    after(() => sendPush(otherId, {
+      title: 'Result corrected',
+      body: `${session.name} changed the score to ${homeSets}–${awaySets}.`,
+      url: `/games/${gameId}`,
+    }, 'resultCorrected'))
+
+    return NextResponse.json({ ok: true, eloChanged })
 
   } else if (action === 'postpone') {
     if (!['pending', 'postponed'].includes(game.status)) return NextResponse.json({ error: 'Cannot postpone' }, { status: 400 })
@@ -155,14 +156,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
     if (!isValidResult(homeSets, awaySets)) return NextResponse.json({ error: 'Invalid result' }, { status: 400 })
 
+    const now = new Date().toISOString()
     await db.update(games).set({
       homeSets,
       awaySets,
       status: 'confirmed',
       confirmedBy: session.userId,
-      confirmedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      confirmedAt: now,
+      // A game the admin scores from scratch has no entry timestamp yet — give it one, since
+      // that's what places it in the ELO ledger's chronology.
+      submittedAt: game.submittedAt ?? now,
+      updatedAt: now,
     }).where(eq(games.id, gameId))
+
+    await syncEloForGame('league', gameId, winnersOf({ homePlayerIds: [game.homePlayerId], awayPlayerIds: [game.awayPlayerId], homeSets, awaySets }))
 
   } else if (action === 'forfeit') {
     if (!session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
@@ -175,6 +182,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       awaySets: 0,
       updatedAt: new Date().toISOString(),
     }).where(eq(games.id, gameId))
+
+    // A forfeit has no winner, so it drops out of ELO entirely — if the game had been rated
+    // before, this pulls it back out and replays what came after.
+    await syncEloForGame('league', gameId, null)
 
   } else {
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })

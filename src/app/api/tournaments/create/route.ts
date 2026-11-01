@@ -9,7 +9,8 @@ export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
   if (guard instanceof NextResponse) return guard
 
-  const { name, startDate } = await req.json() as { name?: string; startDate?: string }
+  const { name, startDate, countsForElo } = await req.json() as
+    { name?: string; startDate?: string; countsForElo?: boolean }
   if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 })
 
   // Optional first-week date ('yyyy-MM-dd'). Kept null if empty/invalid.
@@ -20,8 +21,15 @@ export async function POST(req: NextRequest) {
   // admin promotes them.
   const hasLive = !!(await getLiveTournament())
 
+  // Counts toward ELO unless the admin says otherwise — a real season is the common case, and
+  // a test copy that silently moved everyone's rating would be much worse than one that doesn't.
   const [tournament] = await db.insert(tournaments)
-    .values({ name: name.trim(), startDate: cleanStart, isLive: !hasLive })
+    .values({
+      name: name.trim(),
+      startDate: cleanStart,
+      isLive: !hasLive,
+      countsForElo: countsForElo !== false,
+    })
     .returning()
   return NextResponse.json({ tournament })
 }

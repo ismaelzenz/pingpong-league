@@ -5,21 +5,19 @@
 // opt-OUT: a player with no saved row (or a missing field) is treated as opted-in, which
 // keeps behaviour identical to before this feature existed.
 
+// `resultToConfirm` / `resultConfirmed` / `resultDisputed` used to live here, back when a result
+// needed the opponent's approval. Results are auto-approved now, so they're gone from the list —
+// their columns survive in the DB only so existing preference rows keep loading.
 export const NOTIFICATION_TYPES = [
   {
-    key: 'resultToConfirm',
-    label: 'Result to confirm',
-    description: 'When an opponent enters a score and needs you to confirm it.',
+    key: 'resultRecorded',
+    label: 'Result recorded',
+    description: 'When an opponent enters the score for one of your games.',
   },
   {
-    key: 'resultConfirmed',
-    label: 'Result confirmed',
-    description: 'When an opponent confirms a result you entered.',
-  },
-  {
-    key: 'resultDisputed',
-    label: 'Result disputed',
-    description: 'When an opponent disputes your result and it needs re-entering.',
+    key: 'resultCorrected',
+    label: 'Result corrected',
+    description: 'When an opponent changes a score that was already recorded.',
   },
   {
     key: 'gamePostponed',

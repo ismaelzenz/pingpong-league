@@ -40,5 +40,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // `manifest.webmanifest` is excluded alongside the static assets: the browser fetches it to
+  // install the PWA, often before anyone has signed in, and redirecting it to /login makes that
+  // fetch fail with a console error instead of serving the manifest.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }

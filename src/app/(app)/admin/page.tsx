@@ -19,6 +19,10 @@ import AddPlayerForm from '@/components/admin/AddPlayerForm'
 import BreakWeeksForm from '@/components/admin/BreakWeeksForm'
 import StartDateForm from '@/components/admin/StartDateForm'
 import SetLiveButton from '@/components/admin/SetLiveButton'
+import EloTournamentToggle from '@/components/admin/EloTournamentToggle'
+import WhatsNewControl from '@/components/admin/WhatsNewControl'
+import { SETTINGS, getBoolSetting } from '@/lib/settings'
+import { WHATS_NEW } from '@/lib/whatsNew'
 import InviteLink from '@/components/admin/InviteLink'
 import DeleteUserButton from '@/components/admin/DeleteUserButton'
 import ArchiveUserButton from '@/components/admin/ArchiveUserButton'
@@ -54,6 +58,21 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     manageable.find(x => x.isLive) ??
     manageable[0] ??
     null
+
+  // "What's new" banner state: the league-wide switch, plus how many members have dismissed the
+  // current note (which is what "show again" would undo).
+  const [whatsNewEnabled, allMembers] = await Promise.all([
+    getBoolSetting(SETTINGS.whatsNewEnabled),
+    db.select({ seen: users.whatsNewSeen }).from(users).where(isNull(users.archivedAt)),
+  ])
+  const whatsNewDismissed = allMembers.filter(m => m.seen === WHATS_NEW.version).length
+
+  // Results already on the books for this season — what's at stake if ELO is switched on midway.
+  const selectedRecordedGames = selected
+    ? await db.select({ id: games.id }).from(games)
+        .where(and(eq(games.tournamentId, selected.id), eq(games.status, 'confirmed')))
+        .then(r => r.length)
+    : 0
 
   // Check for matchdays that have ended but still have unplayed games (selected tournament).
   const today = todayISO()
@@ -240,6 +259,41 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">What&apos;s new banner</CardTitle>
+              <CardDescription>
+                The release note members see at the top of every page. It stays up until you turn it
+                off; each person only sees it until they dismiss it.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WhatsNewControl
+                enabled={whatsNewEnabled}
+                dismissedCount={whatsNewDismissed}
+                totalMembers={allMembers.length}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">ELO</CardTitle>
+              <CardDescription>
+                Whether this season&apos;s results move players&apos; lifetime ELO ratings. Changeable at any
+                time — switching it on midway asks what to do with the games already played.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EloTournamentToggle
+                tournamentId={selected.id}
+                countsForElo={selected.countsForElo}
+                eloCountsFrom={selected.eloCountsFrom}
+                playedGames={selectedRecordedGames}
+              />
+            </CardContent>
+          </Card>
 
           {selected.status === 'registration' && (
             <Card>

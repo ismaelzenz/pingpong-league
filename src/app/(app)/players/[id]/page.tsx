@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import GameCard from '@/components/game/GameCard'
+import EloSummary from '@/components/elo/EloSummary'
 import { ChevronLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -232,6 +233,8 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         </Card>
       )}
 
+      <EloSummary userId={playerId} possessive="their" />
+
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Head-to-head vs you</CardTitle>
@@ -298,7 +301,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                         <div className="flex items-center gap-2">
                           <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs bg-muted text-muted-foreground">📅</span>
                           <span className="text-muted-foreground">
-                            {g.status === 'result_entered' ? 'Awaiting confirmation' : g.status === 'postponed' ? 'Postponed' : 'Scheduled'}
+                            {g.status === 'postponed' ? 'Postponed' : 'Scheduled'}
                           </span>
                         </div>
                         <span className="text-xs text-muted-foreground">MD {matchdayMap[g.matchdayId] ?? '?'}</span>

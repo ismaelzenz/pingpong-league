@@ -2,15 +2,15 @@ import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import PlayerLink from '@/components/player/PlayerLink'
-import GameCardActions from '@/components/game/GameCardActions'
 import { cn } from '@/lib/utils'
-import { todayISO, deadlineLabel } from '@/lib/dates'
+import { deadlineLabel } from '@/lib/dates'
 import type { GameStatus } from '@/lib/db/schema'
 
 const statusConfig: Record<GameStatus, { label: string; className: string }> = {
   pending: { label: 'Pending', className: 'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-300' },
-  result_entered: { label: 'Awaiting confirmation', className: 'border-yellow-400 text-yellow-700 dark:border-yellow-600 dark:text-yellow-400' },
-  confirmed: { label: 'Confirmed', className: 'border-green-400 text-green-700 dark:border-green-600 dark:text-green-400' },
+  // Legacy: results are auto-approved now, so nothing new lands here — only rows from before.
+  result_entered: { label: 'Recorded', className: 'border-green-400 text-green-700 dark:border-green-600 dark:text-green-400' },
+  confirmed: { label: 'Recorded', className: 'border-green-400 text-green-700 dark:border-green-600 dark:text-green-400' },
   postponed: { label: 'Postponed', className: 'border-blue-400 text-blue-700 dark:border-blue-600 dark:text-blue-400' },
   forfeited: { label: 'Forfeited', className: 'border-red-400 text-red-600 dark:border-red-600 dark:text-red-400' },
 }
@@ -43,10 +43,9 @@ export default function GameCard({ game, currentUserId, className }: Props) {
 
   const isParticipant = currentUserId === game.homePlayerId || currentUserId === game.awayPlayerId
   const unplayed = game.status === 'pending' || game.status === 'postponed'
-  const started = !game.weekStart || game.weekStart <= todayISO()
 
-  const canConfirm = game.status === 'result_entered' && isParticipant && game.submittedBy !== currentUserId
-  const canEnter = unplayed && isParticipant && started
+  // Playing ahead is allowed, so a not-yet-started matchday doesn't hide the prompt.
+  const canEnter = unplayed && isParticipant
   // Deadline nudge only for the players who still owe the game.
   const deadline = unplayed && isParticipant ? deadlineLabel(game.weekStart ?? null, game.weekEnd ?? null) : null
 
@@ -87,12 +86,10 @@ export default function GameCard({ game, currentUserId, className }: Props) {
             </Badge>
           </div>
         </div>
-        {canConfirm ? (
-          <GameCardActions gameId={game.id} />
-        ) : canEnter ? (
+        {canEnter && (
           // Plain hint (no z-10) so a tap falls through to the card's overlay link → the game page.
           <p className="mt-2 text-xs font-medium text-primary">Enter your result →</p>
-        ) : null}
+        )}
       </CardContent>
     </Card>
   )

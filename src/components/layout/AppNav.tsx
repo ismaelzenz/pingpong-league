@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Shield, Home, Trophy, CalendarDays, BookOpen, Sun, Moon, Swords, Menu, Award, Dices } from 'lucide-react'
+import { LogOut, User, Shield, Home, Trophy, CalendarDays, BookOpen, Sun, Moon, Swords, Menu, Award, Dices, TrendingUp } from 'lucide-react'
 
 interface Props {
   name: string
@@ -24,6 +24,7 @@ interface Props {
 const navLinks = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/scoreboard', label: 'Scoreboard', icon: Trophy },
+  { href: '/elo', label: 'ELO', icon: TrendingUp },
   { href: '/matchdays', label: 'Matchdays', icon: CalendarDays },
 ]
 
@@ -36,12 +37,11 @@ export default function AppNav({ name, email, isAdmin, avatarColor, tournamentNa
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === href : pathname.startsWith(href)
 
-  // Bottom tab bar (mobile): main sections + Admin (if admin). Profile is rendered separately
-  // below because it shows the user's avatar instead of a plain icon.
-  const bottomLinks = [
-    ...navLinks,
-    ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: Shield }] : []),
-  ]
+  // Bottom tab bar (mobile): the four main sections, plus Profile which is rendered separately
+  // below because it shows the user's avatar instead of a plain icon. Admin deliberately isn't
+  // here — a sixth tab squeezes every label past the point of being readable on a phone, and
+  // admins already reach it from the account menu.
+  const bottomLinks = navLinks
 
   async function handleSignOut() {
     await fetch('/api/auth/logout', { method: 'POST' })

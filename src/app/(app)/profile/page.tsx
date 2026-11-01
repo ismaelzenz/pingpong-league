@@ -1,7 +1,7 @@
 import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { games, users, matchdays, notificationPrefs } from '@/lib/db/schema'
-import { eq, inArray, or, and } from 'drizzle-orm'
+import { desc, eq, inArray, or, and } from 'drizzle-orm'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { getDisplayTournament } from '@/lib/tournament'
 import { computePlayerForm } from '@/lib/playerStats'
@@ -14,6 +14,7 @@ import ProfileColorForm from '@/components/profile/ProfileColorForm'
 import ChangePasswordForm from '@/components/profile/ChangePasswordForm'
 import NotificationToggle from '@/components/profile/NotificationToggle'
 import NotificationPrefs from '@/components/profile/NotificationPrefs'
+import EloSummary from '@/components/elo/EloSummary'
 import { withDefaults } from '@/lib/notificationTypes'
 
 export const dynamic = 'force-dynamic'
@@ -26,6 +27,10 @@ export default async function ProfilePage() {
   const scores = tournament ? await computeScoreboard(tournament.id) : []
   const myStats = scores.find(s => s.userId === session.userId)
 
+  // The last 10 games, newest first. The sort has to be DESCENDING before the limit — ordering
+  // ascending and then taking 10 returns the ten OLDEST games, which is what "Recent results" was
+  // quietly showing.
+  const RECENT_LIMIT = 10
   const recentGames = tournament
     ? await db.select().from(games)
         .where(and(
@@ -33,8 +38,8 @@ export default async function ProfilePage() {
           or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
           inArray(games.status, ['confirmed', 'forfeited'])
         ))
-        .orderBy(games.confirmedAt)
-        .limit(10)
+        .orderBy(desc(games.confirmedAt))
+        .limit(RECENT_LIMIT)
     : []
 
   // All finished games (oldest → newest) for accurate form/streak stats.
@@ -176,6 +181,8 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
       )}
+
+      <EloSummary userId={session.userId} possessive="your" />
 
       {recentGames.length > 0 && (
         <Card>

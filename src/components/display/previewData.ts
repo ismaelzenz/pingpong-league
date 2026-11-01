@@ -45,7 +45,7 @@ export const PREVIEW: DisplayData = {
     { id: 1, homePlayerId: 1, awayPlayerId: 20, homeName: 'Nadia', awayName: 'Noah', homeColor: '#f43f5e', awayColor: '#f59e0b', homeSets: 2, awaySets: 0, status: 'confirmed' },
     { id: 2, homePlayerId: 2, awayPlayerId: 19, homeName: 'Marco', awayName: 'Klara', homeColor: '#0ea5e9', awayColor: '#7c3aed', homeSets: 2, awaySets: 1, status: 'confirmed' },
     { id: 3, homePlayerId: 3, awayPlayerId: 18, homeName: 'Priya', awayName: 'Ines', homeColor: '#8b5cf6', awayColor: '#e11d48', homeSets: 2, awaySets: 0, status: 'confirmed' },
-    { id: 4, homePlayerId: 4, awayPlayerId: 17, homeName: 'Lucas', awayName: 'Gijs', homeColor: '#22c55e', awayColor: '#65a30d', homeSets: 2, awaySets: 1, status: 'result_entered' },
+    { id: 4, homePlayerId: 4, awayPlayerId: 17, homeName: 'Lucas', awayName: 'Gijs', homeColor: '#22c55e', awayColor: '#65a30d', homeSets: 2, awaySets: 1, status: 'confirmed' },
     { id: 5, homePlayerId: 5, awayPlayerId: 16, homeName: 'Sofia', awayName: 'Fatima', homeColor: '#eab308', awayColor: '#06b6d4', homeSets: null, awaySets: null, status: 'pending' },
     { id: 6, homePlayerId: 6, awayPlayerId: 15, homeName: 'Daan', awayName: 'Erik', homeColor: '#ec4899', awayColor: '#d946ef', homeSets: null, awaySets: null, status: 'postponed' },
     { id: 7, homePlayerId: 7, awayPlayerId: 14, homeName: 'Ravi', awayName: 'Carla', homeColor: '#f97316', awayColor: '#3b82f6', homeSets: null, awaySets: null, status: 'postponed' },

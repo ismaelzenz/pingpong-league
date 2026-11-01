@@ -6,7 +6,8 @@ const rules = [
   { icon: '🏓', title: 'Best of 3 sets', body: 'first to win 2 sets wins the match.' },
   { icon: '📅', title: '1 game per week', body: 'each matchday covers one week.' },
   { icon: '🏆', title: 'Scoring', body: '1 point per set won, +1 bonus point for winning the match. Win 2–0: 3 pts. Win 2–1: 3 pts, opponent gets 1 pt.' },
-  { icon: '✅', title: 'Results', body: 'one player enters the score, the opponent confirms it.' },
+  { icon: '✅', title: 'Results', body: 'either player enters the score and it counts right away — if it’s wrong, the other one corrects it.' },
+  { icon: '📈', title: 'ELO rating', body: 'a lifetime rating alongside the league table. Everyone starts at 1000; beat someone rated above you and you gain more.' },
 ]
 
 function RulesList() {

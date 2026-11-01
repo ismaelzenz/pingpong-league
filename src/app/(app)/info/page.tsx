@@ -1,7 +1,7 @@
 import { getSession } from '@/lib/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  BookOpen, Trophy, CalendarDays, ClipboardCheck, Timer, Users, Shield, AlertTriangle, UserPlus, Swords,
+  BookOpen, Trophy, CalendarDays, ClipboardCheck, Timer, Users, Shield, AlertTriangle, UserPlus, Swords, TrendingUp,
 } from 'lucide-react'
 
 export const metadata = { title: 'How it works' }
@@ -46,27 +46,36 @@ export default async function InfoPage() {
         <p>🆕 <strong className="text-foreground">New here?</strong> While registration is open, sign in and tap <strong className="text-foreground">Join the tournament</strong> on your dashboard (or from an invite link). Once the season has started, an admin adds latecomers.</p>
         <ol className="list-decimal pl-5 space-y-1.5">
           <li>Open your <strong className="text-foreground">dashboard</strong> — it shows your <strong className="text-foreground">catch-up games</strong> (overdue/backlog) and your <strong className="text-foreground">upcoming games</strong>. For the full list of your games, use <strong className="text-foreground">My games</strong> (in the account menu).</li>
-          <li><strong className="text-foreground">Play your match</strong> Monday–Friday, its matchday week. Catch-up games can be played anytime.</li>
-          <li>One player <strong className="text-foreground">enters the score</strong>; the other <strong className="text-foreground">confirms</strong> it.</li>
+          <li><strong className="text-foreground">Play your match</strong> Monday–Friday, its matchday week — or earlier if it suits you both. Catch-up games can be played anytime.</li>
+          <li>Either player <strong className="text-foreground">enters the score</strong> — it counts straight away. If it’s wrong, the other one puts it right.</li>
           <li>Check the <strong className="text-foreground">Scoreboard</strong>, and tap any player&apos;s avatar to see their stats and your head-to-head.</li>
         </ol>
-        <p>That&apos;s the whole loop: play → report → confirm → repeat.</p>
+        <p>That&apos;s the whole loop: play → enter the score → repeat.</p>
         <p className="text-xs">📱 Tip: install it on your phone for an app-like experience. On <strong className="text-foreground">iPhone you must use Safari</strong> — open the link in Safari → Share → <strong className="text-foreground">Add to Home Screen</strong>. Adding it from Chrome or an in-app browser (like Teams) only makes a bookmark and won&apos;t work. On Android, use the browser menu → Add to Home Screen.</p>
-        <p className="text-xs">🔔 Turn on notifications in <strong className="text-foreground">My profile → Notifications</strong>, where you can pick which ones to receive: when it&apos;s your turn to <strong className="text-foreground">confirm a result</strong>, when your result is <strong className="text-foreground">confirmed</strong> or <strong className="text-foreground">disputed</strong>, when a game is <strong className="text-foreground">postponed</strong>, and a <strong className="text-foreground">weekly reminder</strong> if you haven&apos;t played that week. (On iPhone, install via Safari first.)</p>
+        <p className="text-xs">🔔 Turn on notifications in <strong className="text-foreground">My profile → Notifications</strong>, where you can pick which ones to receive: when an opponent <strong className="text-foreground">records a result</strong> for one of your games, when a recorded result is <strong className="text-foreground">corrected</strong>, when a game is <strong className="text-foreground">postponed</strong>, and a <strong className="text-foreground">weekly reminder</strong> if you haven&apos;t played that week. (On iPhone, install via Safari first.)</p>
       </Section>
 
-      <Section icon={ClipboardCheck} title="Entering & confirming results">
+      <Section icon={ClipboardCheck} title="Entering results">
         <ul className="space-y-2">
-          <li>Either player can <strong className="text-foreground">enter</strong> a result (not before the matchday&apos;s week has started).</li>
-          <li>The game then shows <strong className="text-foreground">Awaiting confirmation</strong> — the <em>other</em> player confirms it (you can&apos;t confirm your own entry).</li>
-          <li>If it&apos;s wrong, the other player can <strong className="text-foreground">dispute</strong> it, clearing it back to pending.</li>
+          <li>Either player can <strong className="text-foreground">enter</strong> a result, including for a <strong className="text-foreground">future matchday</strong> if you played it early. There&apos;s <strong className="text-foreground">no confirmation step</strong> — it&apos;s recorded and counts immediately.</li>
+          <li>The other player is notified. If the score is wrong, they tap <strong className="text-foreground">Report a wrong result</strong> and enter the right one, which replaces it on the spot.</li>
+          <li>The moment a result is entered is saved as <strong className="text-foreground">when the game was played</strong>. A later correction doesn&apos;t move that timestamp.</li>
           <li>Either player or an admin can <strong className="text-foreground">postpone</strong> a pending game.</li>
-          <li>Once <strong className="text-foreground">confirmed</strong>, the result is final and the scoreboard updates automatically.</li>
+        </ul>
+      </Section>
+
+      <Section icon={TrendingUp} title="ELO ratings">
+        <ul className="space-y-2">
+          <li>Everyone starts at <strong className="text-foreground">1000</strong>. Win and you take points off your opponent; lose and they take them off you.</li>
+          <li>How many depends on the gap between you: beating someone far above you is worth a lot, beating someone far below you is worth almost nothing. Your first few games move faster, so a newcomer settles at their real level quickly.</li>
+          <li>Only <strong className="text-foreground">who won</strong> matters — 2–0 and 2–1 shift the same. So correcting a score to 2–1 changes the league table but leaves ELO untouched; correcting it to a different <em>winner</em> recalculates it.</li>
+          <li>ELO is <strong className="text-foreground">lifetime and across seasons</strong>, unlike the league table which resets each season. Forfeits don&apos;t count — there&apos;s no winner to rate.</li>
+          <li><strong className="text-foreground">ELO games</strong>: played someone outside the league? Log it on the <strong className="text-foreground">ELO</strong> page and it counts toward ratings (and nothing else).</li>
         </ul>
       </Section>
 
       <Section icon={Timer} title="Catch-up games">
-        <p>A <strong className="text-foreground">catch-up game</strong> is one owed outside the normal weekly grid. It shows in the <strong className="text-foreground">Catch-up</strong> section of your dashboard, under <strong className="text-foreground">My games</strong>, on the <strong className="text-foreground">Matchdays</strong> page, and on the players&apos; profiles — so everyone (and admins) can find an outstanding game. Play it anytime — it counts toward the scoreboard once confirmed.</p>
+        <p>A <strong className="text-foreground">catch-up game</strong> is one owed outside the normal weekly grid. It shows in the <strong className="text-foreground">Catch-up</strong> section of your dashboard, under <strong className="text-foreground">My games</strong>, on the <strong className="text-foreground">Matchdays</strong> page, and on the players&apos; profiles — so everyone (and admins) can find an outstanding game. Play it anytime — it counts toward the scoreboard as soon as the result is entered.</p>
         <p>You&apos;ll see them when a game is <strong className="text-foreground">overdue</strong> (its week passed unplayed) or as a newcomer&apos;s <strong className="text-foreground">backlog</strong> (see below). They aren&apos;t part of any matchday&apos;s line-up, so they don&apos;t change a matchday&apos;s played count or who rests.</p>
       </Section>
 

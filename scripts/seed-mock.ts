@@ -5,8 +5,10 @@
  *
  * Produces a 10-player double round-robin (18 matchdays, 5 games each) where **matchday 14 is
  * the current week**: matchdays 1–13 are fully played with confirmed results, matchday 14 is
- * partly played (some confirmed, one awaiting confirmation, some still to play), and 15–18 are
+ * partly played (some recorded, one recorded-then-corrected, some still to play), and 15–18 are
  * upcoming. All players share the password below; the first two use admin emails.
+ *
+ * Also rebuilds the ELO ledger at the end, so the /elo page has a full history to draw.
  *
  * SAFETY: refuses to run unless TURSO_DATABASE_URL is a local `file:` URL, so it can never wipe
  * or reseed production. It reads .env.local (same as the app in dev).
@@ -20,6 +22,7 @@ import bcrypt from 'bcryptjs'
 import { startOfWeek, subWeeks, addWeeks, addDays, format } from 'date-fns'
 import * as schema from '../src/lib/db/schema'
 import { generateSchedule } from '../src/lib/schedule'
+import { buildLedger, type RatableGame } from '../src/lib/elo'
 
 const { users, tournaments, participants, matchdays, games } = schema
 
@@ -72,6 +75,9 @@ async function main() {
   console.log(`Seeding mock data into ${url} …`)
 
   // ── Wipe existing data (children first for FK safety) ──────────────────────────────────
+  await db.delete(schema.eloHistory)
+  await db.delete(schema.eloGamePlayers)
+  await db.delete(schema.eloGames)
   await db.delete(games)
   await db.delete(matchdays)
   await db.delete(participants)
@@ -98,7 +104,7 @@ async function main() {
     isLive: boolean
     firstMonday: Date
     finishedAt?: Date
-    stateFor: (matchdayNumber: number, gameIndex: number) => 'confirmed' | 'entered' | 'pending'
+    stateFor: (matchdayNumber: number, gameIndex: number) => 'confirmed' | 'corrected' | 'pending'
   }) {
     const [t] = await db.insert(tournaments).values({
       name: opts.name,
@@ -112,7 +118,7 @@ async function main() {
 
     const schedule = generateSchedule(ids)
     const rows: (typeof games.$inferInsert)[] = []
-    const counts = { confirmed: 0, entered: 0, pending: 0 }
+    const counts = { confirmed: 0, corrected: 0, pending: 0 }
     for (const md of schedule) {
       const weekStart = addWeeks(opts.firstMonday, md.number - 1)
       const [mdRow] = await db.insert(matchdays).values({
@@ -128,12 +134,18 @@ async function main() {
         const state = opts.stateFor(md.number, i)
         if (state === 'confirmed') {
           const s = score(Math.random() < 0.5)
-          rows.push({ ...base, status: 'confirmed', ...s, submittedBy: g.home, confirmedBy: g.away, submittedAt: playedAt, confirmedAt: playedAt })
+          // Auto-approved on entry: no confirmedBy, and submittedAt doubles as when it was played.
+          rows.push({ ...base, status: 'confirmed', ...s, submittedBy: g.home, submittedAt: playedAt, confirmedAt: playedAt })
           counts.confirmed++
-        } else if (state === 'entered') {
+        } else if (state === 'corrected') {
+          // A result the away player put right afterwards — the score changed, the played-at didn't.
           const s = score(Math.random() < 0.5)
-          rows.push({ ...base, status: 'result_entered', ...s, submittedBy: g.home, submittedAt: addDays(weekStart, 1).toISOString() })
-          counts.entered++
+          rows.push({
+            ...base, status: 'confirmed', ...s,
+            submittedBy: g.home, submittedAt: playedAt, confirmedAt: playedAt,
+            correctedBy: g.away, correctedAt: addDays(weekStart, 2).toISOString(),
+          })
+          counts.corrected++
         } else {
           rows.push({ ...base, status: 'pending' })
           counts.pending++
@@ -178,13 +190,33 @@ async function main() {
     status: 'active',
     isLive: true,
     firstMonday: subWeeks(currentMonday, ACTIVE_MATCHDAY - 1),
-    stateFor: (n, i) => (n < ACTIVE_MATCHDAY ? 'confirmed' : n > ACTIVE_MATCHDAY ? 'pending' : i < 2 ? 'confirmed' : i === 2 ? 'entered' : 'pending'),
+    stateFor: (n, i) => (n < ACTIVE_MATCHDAY ? 'confirmed' : n > ACTIVE_MATCHDAY ? 'pending' : i < 2 ? 'confirmed' : i === 2 ? 'corrected' : 'pending'),
   })
+
+  // ── ELO ledger ─────────────────────────────────────────────────────────────────────────
+  // Replay every seeded result so the /elo page opens on real curves rather than a flat 1000.
+  // Mirrors rebuildEloLedger(), inlined because the seed talks to its own client.
+  const rated: RatableGame[] = (await db.select().from(games))
+    .filter(g => g.status === 'confirmed' && g.homeSets != null && g.awaySets != null && g.homeSets !== g.awaySets)
+    .map(g => ({
+      source: 'league' as const,
+      refId: g.id,
+      homePlayerIds: [g.homePlayerId],
+      awayPlayerIds: [g.awayPlayerId],
+      homeSets: g.homeSets!,
+      awaySets: g.awaySets!,
+      playedAt: g.submittedAt ?? g.confirmedAt ?? g.createdAt,
+    }))
+  const ledger = buildLedger(rated)
+  for (let i = 0; i < ledger.length; i += 200) {
+    await db.insert(schema.eloHistory).values(ledger.slice(i, i + 200))
+  }
 
   console.log('\n✅ Mock data seeded.')
   console.log(`   ${PLAYERS.length} players.`)
   console.log(`   Finished: ${older.tournament.name} + ${prev.tournament.name} — ${prev.matchdays} matchdays each, all played (view /recap + Past seasons).`)
-  console.log(`   Active:   ${active.tournament.name} — matchday ${ACTIVE_MATCHDAY} in progress (confirmed ${active.counts.confirmed}, awaiting ${active.counts.entered}, pending ${active.counts.pending}).`)
+  console.log(`   Active:   ${active.tournament.name} — matchday ${ACTIVE_MATCHDAY} in progress (recorded ${active.counts.confirmed}, corrected ${active.counts.corrected}, pending ${active.counts.pending}).`)
+  console.log(`   ELO:      ${rated.length} rated games replayed into the ledger (view /elo).`)
   console.log(`\n   Log in as ADMIN:  ${PLAYERS[0].email}  /  ${PASSWORD}`)
   console.log(`   (all players share the password "${PASSWORD}")\n`)
 

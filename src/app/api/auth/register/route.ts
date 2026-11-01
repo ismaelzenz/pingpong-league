@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { getSession, establishSession } from '@/lib/session'
+import { WHATS_NEW } from '@/lib/whatsNew'
 import { eq } from 'drizzle-orm'
 
 export async function POST(req: NextRequest) {
@@ -18,10 +19,13 @@ export async function POST(req: NextRequest) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10)
+  // A brand-new member starts already caught up: "no more confirming results" means nothing to
+  // someone who never confirmed one, and opening the app to a changelog is a poor first impression.
   const [user] = await db.insert(users).values({
     email: email.toLowerCase(),
     name,
     passwordHash,
+    whatsNewSeen: WHATS_NEW.version,
   }).returning()
 
   const session = await getSession()

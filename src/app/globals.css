@@ -174,3 +174,69 @@ button:hover > [data-slot="card"],
     background-color: var(--accent);
   }
 }
+/* ── Data-viz palette (ELO rating timeline) ───────────────────────────────────────────
+   A categorical series palette kept separate from the UI theme tokens: the six hues are
+   ordered so that every ADJACENT pair stays distinguishable under protanopia/deuteranopia/
+   tritanopia (worst pair ΔE 9.1 light / 8.4 dark, OKLab ×100), which is what makes six
+   overlapping lines readable. The dark column is the same six hues re-stepped for the dark
+   surface — not an automatic flip. Reordering these slots breaks the guarantee.
+
+   On the light surface three of them fall below 3:1 against the background, so the chart
+   always ships direct labels at each line's end plus the ledger table below it — identity
+   never rests on colour alone. */
+.elo-viz {
+  --series-1: #2a78d6; /* blue    */
+  --series-2: #eb6834; /* orange  */
+  --series-3: #1baf7a; /* aqua    */
+  --series-4: #eda100; /* yellow  */
+  --series-5: #e87ba4; /* magenta */
+  --series-6: #008300; /* green   */
+}
+.dark .elo-viz {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+}
+
+/* ── "What's new" banner: a light that travels around the border ──────────────────────────────
+   A conic gradient on an oversized pseudo-element, rotated. The frame carries 2px of padding and
+   the content sits on an opaque surface inside it, so only that 2px rim shows the gradient — which
+   reads as a bright arc sweeping the perimeter. `inset: -150%` keeps the rotating square large
+   enough that its corners never cut into the visible rim.
+
+   The frame keeps its own faint background so the border is still there while the bright arc is on
+   the far side, rather than the card appearing to lose an edge. */
+@keyframes whats-new-sweep {
+  to { transform: rotate(1turn); }
+}
+.whats-new-frame {
+  position: relative;
+  padding: 2px;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--primary) 22%, transparent);
+}
+.whats-new-frame::before {
+  content: '';
+  position: absolute;
+  inset: -150%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 55%,
+    #38bdf8 72%,
+    #d946ef 82%,
+    #fbbf24 92%,
+    transparent 100%
+  );
+  animation: whats-new-sweep 4s linear infinite;
+}
+/* The content layer paints above the rotating gradient. */
+.whats-new-frame > * {
+  position: relative;
+}
+/* Motion here is decorative — it must never be the reason someone can't read the note. */
+@media (prefers-reduced-motion: reduce) {
+  .whats-new-frame::before { animation: none; }
+}

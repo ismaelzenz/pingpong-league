@@ -12,6 +12,9 @@ import GameCard from '@/components/game/GameCard'
 import HowItWorks from '@/components/common/HowItWorks'
 import JoinTournamentButton from '@/components/common/JoinTournamentButton'
 import EmptyState from '@/components/common/EmptyState'
+import WhatsNewBanner from '@/components/layout/WhatsNewBanner'
+import { shouldShowWhatsNew } from '@/lib/whatsNew'
+import { SETTINGS, getBoolSetting } from '@/lib/settings'
 import { computeStandingsWithMovement } from '@/lib/standings'
 import { getLiveTournament } from '@/lib/tournament'
 import { getLatestFinishedTournament, computeRecap } from '@/lib/recap'
@@ -25,11 +28,21 @@ export default async function DashboardPage() {
 
   const tournament = await getLiveTournament()
 
+  // The release note lives here rather than in the layout: home is where people land and where
+  // they have a moment to read, whereas a push notification deep-links straight to a game and a
+  // changelog on top of that is just something in the way of entering a score.
+  const [me, whatsNewEnabled] = await Promise.all([
+    db.select({ whatsNewSeen: users.whatsNewSeen }).from(users).where(eq(users.id, session.userId)).then(r => r[0]),
+    getBoolSetting(SETTINGS.whatsNewEnabled),
+  ])
+  const showWhatsNew = shouldShowWhatsNew(me?.whatsNewSeen, whatsNewEnabled)
+
   if (!tournament) {
     const lastFinished = await getLatestFinishedTournament()
     const champion = lastFinished ? (await computeRecap(lastFinished.id, lastFinished.name)).champion : null
     return (
       <div className="space-y-6 max-w-2xl mx-auto">
+        {showWhatsNew && <WhatsNewBanner />}
         {lastFinished && (
           <Card className="border-yellow-400/50 bg-gradient-to-b from-yellow-400/10 to-transparent">
             <CardContent className="py-8 flex flex-col items-center text-center gap-4">
@@ -79,6 +92,7 @@ export default async function DashboardPage() {
   if (tournament.status === 'registration') {
     return (
       <div className="space-y-6">
+        {showWhatsNew && <WhatsNewBanner />}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">{tournament.name}</h1>
@@ -216,6 +230,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {showWhatsNew && <WhatsNewBanner />}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold truncate">{tournament.name}</h1>
