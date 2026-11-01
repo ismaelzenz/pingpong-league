@@ -121,7 +121,10 @@ export interface EloLedgerEntry {
  * Chronological order for rating. `playedAt` is the timestamp the result was entered; ties (two
  * results submitted in the same second) fall back to the row id so a rebuild is deterministic.
  */
-function compareRatable(a: RatableGame, b: RatableGame): number {
+export function compareRatable(
+  a: Pick<RatableGame, 'playedAt' | 'source' | 'refId'>,
+  b: Pick<RatableGame, 'playedAt' | 'source' | 'refId'>,
+): number {
   return a.playedAt.localeCompare(b.playedAt) || a.source.localeCompare(b.source) || a.refId - b.refId
 }
 
@@ -132,13 +135,21 @@ function compareRatable(a: RatableGame, b: RatableGame): number {
  *
  * Games with no winner (a 0–0 forfeit, or any tie) and games missing a side are skipped: there's
  * nothing to transfer.
+ *
+ * `from` continues an existing ledger instead of starting it: the players' current ratings and the
+ * next free `seq`. Appending one new game this way is exactly the step a full replay would take for
+ * it — same inputs, same arithmetic — which is what lets `syncEloForGame` skip the replay when a
+ * result lands at the end of the chain.
  */
-export function buildLedger(rated: RatableGame[]): EloLedgerEntry[] {
-  const rating = new Map<number, number>()
+export function buildLedger(
+  rated: RatableGame[],
+  from: { ratings: Map<number, number>; nextSeq: number } = { ratings: new Map(), nextSeq: 0 },
+): EloLedgerEntry[] {
+  const rating = new Map(from.ratings)
   const ratingOf = (id: number) => rating.get(id) ?? START_ELO
 
   const entries: EloLedgerEntry[] = []
-  let seq = 0
+  let seq = from.nextSeq
 
   for (const g of [...rated].sort(compareRatable)) {
     if (g.homeSets === g.awaySets) continue // no winner → nothing to rate
