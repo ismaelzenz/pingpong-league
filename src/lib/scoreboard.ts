@@ -105,16 +105,17 @@ export function buildScoreboard(players: ScoreboardPlayer[], finishedGames: Fini
 }
 
 export async function computeScoreboard(tournamentId: number): Promise<ScoreboardEntry[]> {
-  const playerList = await db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
-    .from(participants)
-    .leftJoin(users, eq(users.id, participants.userId))
-    .where(eq(participants.tournamentId, tournamentId))
-
-  const finishedGames = await db.select().from(games)
-    .where(and(
-      eq(games.tournamentId, tournamentId),
-      inArray(games.status, ['confirmed', 'forfeited'])
-    ))
+  const [playerList, finishedGames] = await Promise.all([
+    db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
+      .from(participants)
+      .leftJoin(users, eq(users.id, participants.userId))
+      .where(eq(participants.tournamentId, tournamentId)),
+    db.select().from(games)
+      .where(and(
+        eq(games.tournamentId, tournamentId),
+        inArray(games.status, ['confirmed', 'forfeited'])
+      )),
+  ])
 
   const players: ScoreboardPlayer[] = playerList.map(p => ({
     userId: p.userId!,

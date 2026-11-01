@@ -24,20 +24,21 @@ export default async function MatchdaysPage() {
     return <EmptyState emoji="🏓" title="No active tournament" hint="Once a season starts, its matchdays and fixtures will appear here." />
   }
 
-  const allMatchdays = await db.select().from(matchdays)
-    .where(eq(matchdays.tournamentId, tournament.id))
-    .orderBy(matchdays.number)
-
-  const allGamesRaw = await db.select().from(games)
-    .where(eq(games.tournamentId, tournament.id))
+  const [allMatchdays, allGamesRaw, rosterRows] = await Promise.all([
+    db.select().from(matchdays)
+      .where(eq(matchdays.tournamentId, tournament.id))
+      .orderBy(matchdays.number),
+    db.select().from(games)
+      .where(eq(games.tournamentId, tournament.id)),
+    db.select({ id: users.id, name: users.name })
+      .from(participants)
+      .leftJoin(users, eq(users.id, participants.userId))
+      .where(eq(participants.tournamentId, tournament.id)),
+  ])
   const allGames = allGamesRaw.filter(g => !g.isCatchUp) // catch-up games aren't part of any matchday line-up
 
   // Schedule-health check: did manual edits break the "each pair exactly twice" rule?
-  const roster = (await db.select({ id: users.id, name: users.name })
-    .from(participants)
-    .leftJoin(users, eq(users.id, participants.userId))
-    .where(eq(participants.tournamentId, tournament.id)))
-    .filter((p): p is { id: number; name: string } => p.id != null)
+  const roster = rosterRows.filter((p): p is { id: number; name: string } => p.id != null)
   const matchdayNumberById = new Map(allMatchdays.map(m => [m.id, m.number]))
   const health = analyzeSchedule(allGamesRaw, matchdayNumberById, roster)
 

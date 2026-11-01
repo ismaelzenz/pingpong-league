@@ -1,6 +1,7 @@
 // End-of-season recap: champion, podium, season awards, league totals and per-player streaks
 // for a FINISHED tournament. Reuses the shared scoreboard scoring so the recap matches the table.
 
+import { cache } from 'react'
 import { db } from '@/lib/db'
 import { games, matchdays, participants, tournaments, users } from '@/lib/db/schema'
 import { and, desc, eq, inArray } from 'drizzle-orm'
@@ -82,25 +83,30 @@ export async function getFinishedTournaments() {
 }
 
 /** A specific tournament, but only if it has finished; null otherwise (so recaps stay finished-only). */
-export async function getFinishedTournamentById(id: number) {
+// Request-cached: the recap page's `generateMetadata` and the page itself both look it up.
+export const getFinishedTournamentById = cache(async (id: number) => {
   return db.select().from(tournaments)
     .where(and(eq(tournaments.id, id), eq(tournaments.status, 'finished')))
     .limit(1)
     .then(r => r[0] ?? null)
-}
+})
 
 export async function computeRecap(tournamentId: number, tournamentName: string): Promise<RecapData> {
-  const playerList = await db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
-    .from(participants)
-    .leftJoin(users, eq(users.id, participants.userId))
-    .where(eq(participants.tournamentId, tournamentId))
+  const [playerList, finished, mds] = await Promise.all([
+    db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
+      .from(participants)
+      .leftJoin(users, eq(users.id, participants.userId))
+      .where(eq(participants.tournamentId, tournamentId)),
+    db.select().from(games)
+      .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, ['confirmed', 'forfeited']))),
+    db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays)
+      .where(eq(matchdays.tournamentId, tournamentId)),
+  ])
   const players: ScoreboardPlayer[] = playerList.map(p => ({
     userId: p.userId!, name: p.name!, email: p.email!, avatarColor: p.avatarColor ?? null,
   }))
   const byId = new Map(players.map(p => [p.userId, p]))
 
-  const finished = await db.select().from(games)
-    .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, ['confirmed', 'forfeited'])))
   const confirmed = finished.filter(g => g.status === 'confirmed')
 
   const sorted = buildScoreboard(players, finished)
@@ -154,8 +160,6 @@ export async function computeRecap(tournamentId: number, tournamentName: string)
   const accList = [...acc.entries()].map(([userId, s]) => ({ userId, ...s }))
 
   // ── Most improved: rank climb from mid-season to final ─────────────────────────────────
-  const mds = await db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays)
-    .where(eq(matchdays.tournamentId, tournamentId))
   const maxNumber = mds.reduce((m, x) => Math.max(m, x.number), 0)
   const midNumber = Math.floor(maxNumber / 2)
   const midMatchdayIds = new Set(mds.filter(m => m.number <= midNumber).map(m => m.id))

@@ -1,8 +1,9 @@
 import Link from 'next/link'
-import { requireSession } from '@/lib/session'
+import { requireSession, getCurrentUser } from '@/lib/session'
 import { db } from '@/lib/db'
 import { participants, games, users, matchdays } from '@/lib/db/schema'
 import { eq, or, inArray, and, lte, gte } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/sqlite-core'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -26,13 +27,12 @@ export const dynamic = 'force-dynamic'
 export default async function DashboardPage() {
   const session = await requireSession()
 
-  const tournament = await getLiveTournament()
-
   // The release note lives here rather than in the layout: home is where people land and where
   // they have a moment to read, whereas a push notification deep-links straight to a game and a
   // changelog on top of that is just something in the way of entering a score.
-  const [me, whatsNewEnabled] = await Promise.all([
-    db.select({ whatsNewSeen: users.whatsNewSeen }).from(users).where(eq(users.id, session.userId)).then(r => r[0]),
+  const [tournament, me, whatsNewEnabled] = await Promise.all([
+    getLiveTournament(),
+    getCurrentUser(session.userId),
     getBoolSetting(SETTINGS.whatsNewEnabled),
   ])
   const showWhatsNew = shouldShowWhatsNew(me?.whatsNewSeen, whatsNewEnabled)
@@ -78,18 +78,15 @@ export default async function DashboardPage() {
     )
   }
 
-  const myParticipation = await db.select().from(participants)
-    .where(and(eq(participants.tournamentId, tournament.id), eq(participants.userId, session.userId)))
-    .then(r => r[0] ?? null)
-
-  const enrolledPlayers = await db
-    .select({ id: users.id, name: users.name, avatarColor: users.avatarColor })
-    .from(participants)
-    .leftJoin(users, eq(users.id, participants.userId))
-    .where(eq(participants.tournamentId, tournament.id))
-    .orderBy(participants.joinedAt)
-
   if (tournament.status === 'registration') {
+    const enrolledPlayers = await db
+      .select({ id: users.id, name: users.name, avatarColor: users.avatarColor })
+      .from(participants)
+      .leftJoin(users, eq(users.id, participants.userId))
+      .where(eq(participants.tournamentId, tournament.id))
+      .orderBy(participants.joinedAt)
+    const myParticipation = enrolledPlayers.some(p => p.id === session.userId)
+
     return (
       <div className="space-y-6">
         {showWhatsNew && <WhatsNewBanner />}
@@ -157,31 +154,49 @@ export default async function DashboardPage() {
     )
   }
 
-  // Active tournament
-  const myPendingGames = await db.select({
-    game: games,
-    homePlayer: { id: users.id, name: users.name, email: users.email },
-    matchday: { number: matchdays.number, weekStart: matchdays.weekStart, weekEnd: matchdays.weekEnd },
-  })
-    .from(games)
-    .leftJoin(users, eq(users.id, games.homePlayerId))
-    .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
-    .where(and(
-      eq(games.tournamentId, tournament.id),
-      or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
-      inArray(games.status, ['pending', 'result_entered', 'postponed'])
-    ))
+  // Active tournament. Everything below is independent, so it goes out in one parallel batch.
+  const today = todayISO()
+  const homeUser = alias(users, 'home_user')
+  const awayUser = alias(users, 'away_user')
+  const [myPendingGames, scores, weekGames] = await Promise.all([
+    db.select({
+      game: games,
+      homePlayer: { id: homeUser.id, name: homeUser.name, email: homeUser.email },
+      awayPlayer: { id: awayUser.id, name: awayUser.name, email: awayUser.email },
+      matchday: { number: matchdays.number, weekStart: matchdays.weekStart, weekEnd: matchdays.weekEnd },
+    })
+      .from(games)
+      .leftJoin(homeUser, eq(homeUser.id, games.homePlayerId))
+      .leftJoin(awayUser, eq(awayUser.id, games.awayPlayerId))
+      .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
+      .where(and(
+        eq(games.tournamentId, tournament.id),
+        or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
+        inArray(games.status, ['pending', 'postponed'])
+      ))
+      // Explicit, so "the game to play next" below doesn't depend on whichever index SQLite uses.
+      .orderBy(games.id),
+    computeStandingsWithMovement(tournament.id),
+    // This week's matchday progress: the regular games of the matchday whose Mon–Fri window
+    // covers today. Joined in one query, so no separate "which matchday is current" lookup.
+    db.select({ status: games.status, matchdayId: matchdays.id, number: matchdays.number })
+      .from(games)
+      .innerJoin(matchdays, eq(matchdays.id, games.matchdayId))
+      .where(and(
+        eq(matchdays.tournamentId, tournament.id),
+        lte(matchdays.weekStart, today),
+        gte(matchdays.weekEnd, today),
+        eq(games.isCatchUp, false),
+      )),
+  ])
 
-  // Enrich with away player names
-  const enrichedGames = await Promise.all(myPendingGames.map(async row => {
-    const awayPlayer = await db.select({ id: users.id, name: users.name, email: users.email })
-      .from(users).where(eq(users.id, row.game.awayPlayerId)).then(r => r[0])
-    return { ...row.game, homePlayer: row.homePlayer, awayPlayer, matchday: row.matchday, weekStart: row.matchday?.weekStart ?? null, weekEnd: row.matchday?.weekEnd ?? null }
+  const enrichedGames = myPendingGames.map(row => ({
+    ...row.game, homePlayer: row.homePlayer, awayPlayer: row.awayPlayer, matchday: row.matchday,
+    weekStart: row.matchday?.weekStart ?? null, weekEnd: row.matchday?.weekEnd ?? null,
   }))
 
   // Catch-up = explicit backlog games (a newcomer's owed games) plus any regular game
   // whose matchday week has already started but is still unplayed (overdue).
-  const today = todayISO()
   const catchUpGames = enrichedGames
     .filter(g => g.isCatchUp || (g.weekStart && g.weekStart <= today))
     .sort((a, b) => (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0))
@@ -190,27 +205,13 @@ export default async function DashboardPage() {
     .sort((a, b) => (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0))
     .slice(0, 4)
 
-  const scores = await computeStandingsWithMovement(tournament.id)
-
-  // This week's matchday progress (the in-progress matchday whose Mon–Fri window covers today).
-  const currentMatchday = await db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays)
-    .where(and(
-      eq(matchdays.tournamentId, tournament.id),
-      lte(matchdays.weekStart, today),
-      gte(matchdays.weekEnd, today),
-    ))
-    .then(r => r[0] ?? null)
-  const weekGames = currentMatchday
-    ? await db.select({ status: games.status }).from(games)
-        .where(and(eq(games.matchdayId, currentMatchday.id), eq(games.isCatchUp, false)))
-    : []
+  const currentMatchday = weekGames[0] ? { id: weekGames[0].matchdayId, number: weekGames[0].number } : null
   const weekPlayed = weekGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
   const weekPct = weekGames.length ? Math.round((weekPlayed / weekGames.length) * 100) : 0
 
-  // The single most important thing for this player to do right now (confirm > catch up > play).
+  // The single most important thing for this player to do right now (catch up > play).
   const opponentName = (g: (typeof enrichedGames)[number]) =>
     g.homePlayerId === session.userId ? (g.awayPlayer?.name ?? '—') : (g.homePlayer?.name ?? '—')
-  const toConfirm = enrichedGames.find(g => g.status === 'result_entered' && g.submittedBy !== session.userId)
   const overdue = enrichedGames.find(g =>
     (g.status === 'pending' || g.status === 'postponed') &&
     (g.isCatchUp || (g.weekEnd != null && g.weekEnd < today)))
@@ -219,9 +220,7 @@ export default async function DashboardPage() {
     g.weekStart && g.weekEnd && g.weekStart <= today && today <= g.weekEnd)
 
   let nextAction: { emoji: string; title: string; detail: string; gameId: number; tone: string } | null = null
-  if (toConfirm) {
-    nextAction = { emoji: '✅', title: 'A result needs your confirmation', detail: `${opponentName(toConfirm)} entered a score — check it's right.`, gameId: toConfirm.id, tone: 'border-amber-400/60 bg-amber-400/10 dark:border-amber-400/50 dark:bg-amber-400/15' }
-  } else if (overdue) {
+  if (overdue) {
     nextAction = { emoji: '⏳', title: 'You have a game to catch up on', detail: `Play ${opponentName(overdue)} as soon as you can.`, gameId: overdue.id, tone: 'border-orange-300 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/40' }
   } else if (thisWeekPlay) {
     const dl = deadlineLabel(thisWeekPlay.weekStart, thisWeekPlay.weekEnd)

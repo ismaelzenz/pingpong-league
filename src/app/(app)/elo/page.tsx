@@ -1,7 +1,7 @@
 import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { eloGames, users } from '@/lib/db/schema'
-import { asc, desc, inArray, isNull } from 'drizzle-orm'
+import { asc, desc } from 'drizzle-orm'
 import { computeEloStandings, computeEloTimelines, listEloGames, loadSides } from '@/lib/eloLedger'
 import { START_ELO } from '@/lib/elo'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,24 +37,19 @@ export default async function EloPage() {
   const session = await requireSession()
 
   const LEDGER_LIMIT = 400
-  const [standings, timelines, ledgerGames, roster, casual, sides] = await Promise.all([
+  const [standings, timelines, ledgerGames, everyone, casual, sides] = await Promise.all([
     computeEloStandings(),
     computeEloTimelines(),
     listEloGames({ limit: LEDGER_LIMIT }),
-    db.select({ id: users.id, name: users.name, email: users.email })
-      .from(users).where(isNull(users.archivedAt)).orderBy(asc(users.name)),
+    // Every member, archived included: the active ones feed the player picker, and all of them
+    // name the casual games below (an archived player can still appear in an old game).
+    db.select({ id: users.id, name: users.name, email: users.email, archivedAt: users.archivedAt })
+      .from(users).orderBy(asc(users.name)),
     db.select().from(eloGames).orderBy(desc(eloGames.playedAt)).limit(15),
     loadSides(),
   ])
-
-  const casualIds = [...new Set(casual.flatMap(g => {
-    const s = sides.get(g.id)
-    return [...(s?.home ?? []), ...(s?.away ?? [])]
-  }))]
-  const casualPeople = casualIds.length
-    ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, casualIds))
-    : []
-  const nameOf = new Map(casualPeople.map(p => [p.id, p.name]))
+  const roster = everyone.filter(u => !u.archivedAt).map(({ id, name, email }) => ({ id, name, email }))
+  const nameOf = new Map(everyone.map(p => [p.id, p.name]))
   const namesFor = (ids: number[] | undefined) => joinNames((ids ?? []).map(id => nameOf.get(id) ?? '—'))
   const myRank = standings.findIndex(s => s.userId === session.userId)
   const me = myRank >= 0 ? standings[myRank] : null

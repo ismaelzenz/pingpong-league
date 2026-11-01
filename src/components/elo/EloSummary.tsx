@@ -10,15 +10,29 @@ import { Separator } from '@/components/ui/separator'
 import { ChevronRight } from 'lucide-react'
 
 /**
- * One player's ELO at a glance, for their profile page: where they stand, their best ever, and the
- * last handful of games with what each one cost or earned them. The full table and the comparison
- * chart live on /elo — this is the hook that gets people there.
+ * The data behind `EloSummary`. Separate from the component so a page can start it in the same
+ * parallel batch as its own queries — an async child component only starts fetching once the page
+ * above it has finished, which put these reads at the end of the page's chain.
  */
-export default async function EloSummary({ userId, possessive }: { userId: number; possessive: string }) {
+export async function loadEloSummary(userId: number) {
   const [standings, recent] = await Promise.all([
     computeEloStandings(),
     listEloGames({ userId, limit: RECENT_LIMIT }),
   ])
+  return { standings, recent }
+}
+
+/**
+ * One player's ELO at a glance, for their profile page: where they stand, their best ever, and the
+ * last handful of games with what each one cost or earned them. The full table and the comparison
+ * chart live on /elo — this is the hook that gets people there.
+ */
+export default function EloSummary({ userId, possessive, data }: {
+  userId: number
+  possessive: string
+  data: Awaited<ReturnType<typeof loadEloSummary>>
+}) {
+  const { standings, recent } = data
 
   const rank = standings.findIndex(s => s.userId === userId)
   const entry = rank >= 0 ? standings[rank] : null

@@ -144,6 +144,14 @@ async function main() {
 
     CREATE INDEX IF NOT EXISTS elo_history_user_seq ON elo_history(user_id, seq);
     CREATE INDEX IF NOT EXISTS elo_history_ref ON elo_history(source, ref_id);
+
+    -- Nearly every page filters games by season, matchday or player. Without these each of those
+    -- reads scans every game of every season (and Turso bills per row read).
+    CREATE INDEX IF NOT EXISTS games_tournament_status ON games(tournament_id, status);
+    CREATE INDEX IF NOT EXISTS games_matchday ON games(matchday_id);
+    CREATE INDEX IF NOT EXISTS games_home_player ON games(home_player_id);
+    CREATE INDEX IF NOT EXISTS games_away_player ON games(away_player_id);
+    CREATE INDEX IF NOT EXISTS push_subscriptions_user ON push_subscriptions(user_id);
   `)
 
   // Add new columns to existing tables (safe to re-run)

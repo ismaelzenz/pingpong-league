@@ -4,6 +4,7 @@ import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { games, users, matchdays } from '@/lib/db/schema'
 import { and, asc, eq, ne, or } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/sqlite-core'
 import { todayISO } from '@/lib/dates'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -30,14 +31,26 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   const { id } = await params
   const session = await requireSession()
 
-  const game = await db.select().from(games).where(eq(games.id, parseInt(id))).then(r => r[0] ?? null)
-  if (!game) notFound()
-
-  const [homePlayer, awayPlayer, matchday] = await Promise.all([
-    db.select({ id: users.id, name: users.name, avatarColor: users.avatarColor }).from(users).where(eq(users.id, game.homePlayerId)).then(r => r[0]),
-    db.select({ id: users.id, name: users.name, avatarColor: users.avatarColor }).from(users).where(eq(users.id, game.awayPlayerId)).then(r => r[0]),
-    db.select({ id: matchdays.id, number: matchdays.number, weekStart: matchdays.weekStart }).from(matchdays).where(eq(matchdays.id, game.matchdayId)).then(r => r[0]),
-  ])
+  // The game, both players and its matchday in one joined query.
+  const homeUser = alias(users, 'home_user')
+  const awayUser = alias(users, 'away_user')
+  const row = await db.select({
+    game: games,
+    homePlayer: { id: homeUser.id, name: homeUser.name, avatarColor: homeUser.avatarColor },
+    awayPlayer: { id: awayUser.id, name: awayUser.name, avatarColor: awayUser.avatarColor },
+    matchday: { id: matchdays.id, number: matchdays.number, weekStart: matchdays.weekStart },
+  })
+    .from(games)
+    .leftJoin(homeUser, eq(homeUser.id, games.homePlayerId))
+    .leftJoin(awayUser, eq(awayUser.id, games.awayPlayerId))
+    .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
+    .where(eq(games.id, parseInt(id)))
+    .then(r => r[0] ?? null)
+  if (!row) notFound()
+  const { game } = row
+  const homePlayer = row.homePlayer ?? undefined
+  const awayPlayer = row.awayPlayer ?? undefined
+  const matchday = row.matchday ?? undefined
 
   // Every other meeting between these two this season — the one thing you actually want to know
   // while looking at a fixture ("didn't they beat me last time?") and previously only reachable by

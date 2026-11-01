@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { matchdays, games, users, participants } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/sqlite-core'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import GameCard from '@/components/game/GameCard'
@@ -21,16 +22,35 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
   const matchday = await db.select().from(matchdays).where(eq(matchdays.id, parseInt(id))).then(r => r[0] ?? null)
   if (!matchday) notFound()
 
-  // Catch-up games are only FK-pinned to a matchday; they aren't part of its line-up.
-  const allDayGames = await db.select().from(games).where(eq(games.matchdayId, matchday.id)).orderBy(games.id)
-  const dayGames = allDayGames.filter(g => !g.isCatchUp)
-
-  const enriched = await Promise.all(dayGames.map(async g => {
-    const homePlayer = await db.select({ id: users.id, name: users.name, email: users.email })
-      .from(users).where(eq(users.id, g.homePlayerId)).then(r => r[0])
-    const awayPlayer = await db.select({ id: users.id, name: users.name, email: users.email })
-      .from(users).where(eq(users.id, g.awayPlayerId)).then(r => r[0])
-    return { ...g, homePlayer, awayPlayer, matchday: { number: matchday.number }, weekStart: matchday.weekStart, weekEnd: matchday.weekEnd }
+  // Everything else depends only on the matchday, so it goes out in one parallel batch. The
+  // whole-tournament reads are for the admin-only schedule-health check below.
+  const homeUser = alias(users, 'home_user')
+  const awayUser = alias(users, 'away_user')
+  const [dayRows, roster, tournamentGames, tournamentMatchdays] = await Promise.all([
+    // Catch-up games are only FK-pinned to a matchday; they aren't part of its line-up.
+    db.select({
+      game: games,
+      homePlayer: { id: homeUser.id, name: homeUser.name, email: homeUser.email },
+      awayPlayer: { id: awayUser.id, name: awayUser.name, email: awayUser.email },
+    })
+      .from(games)
+      .leftJoin(homeUser, eq(homeUser.id, games.homePlayerId))
+      .leftJoin(awayUser, eq(awayUser.id, games.awayPlayerId))
+      .where(and(eq(games.matchdayId, matchday.id), eq(games.isCatchUp, false)))
+      .orderBy(games.id),
+    db.select({ id: users.id, name: users.name })
+      .from(participants)
+      .leftJoin(users, eq(users.id, participants.userId))
+      .where(eq(participants.tournamentId, matchday.tournamentId)),
+    session.isAdmin ? db.select().from(games).where(eq(games.tournamentId, matchday.tournamentId)) : null,
+    session.isAdmin
+      ? db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays).where(eq(matchdays.tournamentId, matchday.tournamentId))
+      : null,
+  ])
+  const dayGames = dayRows.map(r => r.game)
+  const enriched = dayRows.map(r => ({
+    ...r.game, homePlayer: r.homePlayer, awayPlayer: r.awayPlayer,
+    matchday: { number: matchday.number }, weekStart: matchday.weekStart, weekEnd: matchday.weekEnd,
   }))
 
   // Show the viewer's own game first (highlighted) so they don't have to scan the whole list.
@@ -41,10 +61,6 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
 
   // Players enrolled in the tournament who have no game this matchday are on a bye
   // (this is how odd player counts are handled — one or more players sit out each round).
-  const roster = await db.select({ id: users.id, name: users.name })
-    .from(participants)
-    .leftJoin(users, eq(users.id, participants.userId))
-    .where(eq(participants.tournamentId, matchday.tournamentId))
   const playingIds = new Set(dayGames.flatMap(g => [g.homePlayerId, g.awayPlayerId]))
   const byePlayers = roster.filter(p => p.id != null && !playingIds.has(p.id))
 
@@ -57,10 +73,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
   // Schedule-health check across the whole tournament, narrowed to over-scheduled pairs
   // that appear in this matchday — so an editing admin sees what's wrong here.
   let localOverIssues: { aName: string; bName: string; count: number; matchdayNumbers: number[] }[] = []
-  if (session.isAdmin) {
-    const tournamentGames = await db.select().from(games).where(eq(games.tournamentId, matchday.tournamentId))
-    const tournamentMatchdays = await db.select({ id: matchdays.id, number: matchdays.number })
-      .from(matchdays).where(eq(matchdays.tournamentId, matchday.tournamentId))
+  if (tournamentGames && tournamentMatchdays) {
     const health = analyzeSchedule(tournamentGames, new Map(tournamentMatchdays.map(m => [m.id, m.number])), rosterPlayers)
 
     const nameById = new Map(rosterPlayers.map(p => [p.id, p.name]))

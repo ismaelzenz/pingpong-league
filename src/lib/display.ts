@@ -68,20 +68,23 @@ export interface DisplayData {
 }
 
 export async function computeDisplayData(tournamentId: number): Promise<DisplayData> {
-  const playerList = await db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
-    .from(participants)
-    .leftJoin(users, eq(users.id, participants.userId))
-    .where(eq(participants.tournamentId, tournamentId))
+  // Three parallel reads. The season's games are read once and split below (finished, this week's,
+  // the backlog) rather than queried three times.
+  const [playerList, allGames, mds] = await Promise.all([
+    db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
+      .from(participants)
+      .leftJoin(users, eq(users.id, participants.userId))
+      .where(eq(participants.tournamentId, tournamentId)),
+    db.select().from(games).where(eq(games.tournamentId, tournamentId)).orderBy(games.id),
+    db.select().from(matchdays).where(eq(matchdays.tournamentId, tournamentId)),
+  ])
 
   const players: ScoreboardPlayer[] = playerList.map(p => ({
     userId: p.userId!, name: p.name!, email: p.email!, avatarColor: p.avatarColor ?? null,
   }))
   const playerById = new Map(players.map(p => [p.userId, p]))
 
-  const allFinished = await db.select().from(games)
-    .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, ['confirmed', 'forfeited'])))
-
-  const mds = await db.select().from(matchdays).where(eq(matchdays.tournamentId, tournamentId))
+  const allFinished = allGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited')
 
   // Current standings.
   const current = buildScoreboard(players, allFinished)
@@ -121,15 +124,15 @@ export async function computeDisplayData(tournamentId: number): Promise<DisplayD
 
   // This week's fixtures (current matchday, excluding catch-up games).
   const weekGames: WeekGame[] = currentMd
-    ? (await db.select().from(games).where(and(eq(games.matchdayId, currentMd.id), eq(games.isCatchUp, false)))).map(toWeekGame)
+    ? allGames.filter(g => g.matchdayId === currentMd!.id && !g.isCatchUp).map(toWeekGame)
     : []
 
   // Catch-up backlog: unplayed games people still owe that AREN'T part of this week's fixtures —
   // explicit catch-up games plus any overdue game from an earlier matchday. See {@link isCatchUpBacklog};
   // the Catch-up games page reuses the same rule so the two never drift.
   const weekStartByMd = new Map(mds.map(m => [m.id, m.weekStart]))
-  const catchUpGames: WeekGame[] = (await db.select().from(games)
-    .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, ['pending', 'postponed']))))
+  const catchUpGames: WeekGame[] = allGames
+    .filter(g => g.status === 'pending' || g.status === 'postponed')
     .filter(g => isCatchUpBacklog(g, weekStartByMd, currentMd?.id ?? null, today))
     .map(toWeekGame)
 

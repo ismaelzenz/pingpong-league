@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { games, users, matchdays } from '@/lib/db/schema'
-import { eq, inArray, or, and } from 'drizzle-orm'
+import { eq, inArray, or, and, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/sqlite-core'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { getDisplayTournament } from '@/lib/tournament'
 import { computePlayerForm } from '@/lib/playerStats'
@@ -12,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import GameCard from '@/components/game/GameCard'
-import EloSummary from '@/components/elo/EloSummary'
+import EloSummary, { loadEloSummary } from '@/components/elo/EloSummary'
 import { ChevronLeft } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -26,51 +27,67 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   // Your own avatar links to your editable profile instead.
   if (playerId === session.userId) redirect('/profile')
 
-  const player = await db.select({ id: users.id, name: users.name, email: users.email, avatarColor: users.avatarColor })
-    .from(users).where(eq(users.id, playerId)).then(r => r[0] ?? null)
+  // One parallel batch: the player, everything about the season on show (which waits only on
+  // picking the tournament), and their ELO card.
+  const opponent = alias(users, 'opponent')
+  const mine = or(eq(games.homePlayerId, playerId), eq(games.awayPlayerId, playerId))
+  const opponentOn = sql`${opponent.id} = CASE WHEN ${games.homePlayerId} = ${playerId} THEN ${games.awayPlayerId} ELSE ${games.homePlayerId} END`
+  const [player, season, eloData] = await Promise.all([
+    db.select({ id: users.id, name: users.name, email: users.email, avatarColor: users.avatarColor })
+      .from(users).where(eq(users.id, playerId)).then(r => r[0] ?? null),
+    getDisplayTournament().then(async tournament => {
+      if (!tournament) return null
+      return Promise.all([
+        computeScoreboard(tournament.id),
+        // All of this player's finished games, with the opponent's name and matchday number.
+        db.select({ game: games, opponentName: opponent.name, matchdayNumber: matchdays.number })
+          .from(games)
+          .leftJoin(opponent, opponentOn)
+          .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
+          .where(and(eq(games.tournamentId, tournament.id), mine, inArray(games.status, ['confirmed', 'forfeited'])))
+          .orderBy(games.confirmedAt),
+        // Scheduled games between the two of you that haven't been played yet.
+        db.select({ id: games.id, status: games.status, matchdayNumber: matchdays.number })
+          .from(games)
+          .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
+          .where(and(
+            eq(games.tournamentId, tournament.id),
+            inArray(games.status, ['pending', 'postponed']),
+            or(
+              and(eq(games.homePlayerId, playerId), eq(games.awayPlayerId, session.userId)),
+              and(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, playerId)),
+            ),
+          ))
+          .orderBy(games.matchdayId),
+        // This player's catch-up games (owed games that live outside the regular matchday grid,
+        // so they never appear in any matchday). Surfacing them here lets an admin open one and
+        // forfeit/postpone it — otherwise there's no way to reach a catch-up game.
+        db.select({ game: games, opponentName: opponent.name })
+          .from(games)
+          .leftJoin(opponent, opponentOn)
+          .where(and(eq(games.tournamentId, tournament.id), eq(games.isCatchUp, true), mine))
+          .orderBy(games.id),
+      ])
+    }),
+    loadEloSummary(playerId),
+  ])
   if (!player) notFound()
 
-  const tournament = await getDisplayTournament()
-
-  const scores = tournament ? await computeScoreboard(tournament.id) : []
+  const tournament = await getDisplayTournament() // request-cached: already resolved above
+  const [scores, playerRows, upcomingH2H, catchUpRows] = season ?? [[], [], [], []]
   const stats = scores.find(s => s.userId === playerId)
   const rank = scores.findIndex(s => s.userId === playerId)
-
-  // All of this player's finished games in the current tournament.
-  const playerGames = tournament
-    ? await db.select().from(games)
-        .where(and(
-          eq(games.tournamentId, tournament.id),
-          or(eq(games.homePlayerId, playerId), eq(games.awayPlayerId, playerId)),
-          inArray(games.status, ['confirmed', 'forfeited'])
-        ))
-        .orderBy(games.confirmedAt)
-    : []
-
-  // Resolve opponent names + matchday numbers in one pass.
-  const opponentIds = [...new Set(playerGames.map(g =>
-    g.homePlayerId === playerId ? g.awayPlayerId : g.homePlayerId
-  ))]
-  const opponents = opponentIds.length
-    ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, opponentIds))
-    : []
-  const opponentMap = Object.fromEntries(opponents.map(o => [o.id, o.name]))
-
-  const matchdayIds = [...new Set(playerGames.map(g => g.matchdayId))]
-  const mds = matchdayIds.length
-    ? await db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays).where(inArray(matchdays.id, matchdayIds))
-    : []
-  const matchdayMap = Object.fromEntries(mds.map(m => [m.id, m.number]))
+  const playerGames = playerRows.map(r => r.game)
 
   // Build a per-game view from this player's perspective.
-  const results = playerGames.map(g => {
+  const results = playerRows.map(({ game: g, opponentName, matchdayNumber }) => {
     const { isHome, mySets, oppSets, won, forfeited } = perspective(g, playerId)
     const opponentId = isHome ? g.awayPlayerId : g.homePlayerId
     return {
       gameId: g.id,
       opponentId,
-      opponentName: opponentMap[opponentId] ?? '—',
-      matchdayNumber: matchdayMap[g.matchdayId] ?? '?',
+      opponentName: opponentName ?? '—',
+      matchdayNumber: matchdayNumber ?? '?',
       theirSets: mySets,
       oppSets,
       won,
@@ -83,49 +100,10 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   const playerWins = h2h.filter(r => r.won).length
   const myWins = h2h.length - playerWins
 
-  // Scheduled games between the two of you that haven't been played yet.
-  const upcomingH2H = tournament
-    ? await db.select({ id: games.id, matchdayId: games.matchdayId, status: games.status })
-        .from(games)
-        .where(and(
-          eq(games.tournamentId, tournament.id),
-          inArray(games.status, ['pending', 'result_entered', 'postponed']),
-          or(
-            and(eq(games.homePlayerId, playerId), eq(games.awayPlayerId, session.userId)),
-            and(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, playerId)),
-          ),
-        ))
-        .orderBy(games.matchdayId)
-    : []
-
-  // Resolve matchday numbers for any upcoming games not already in the map.
-  const missingMdIds = [...new Set(upcomingH2H.map(g => g.matchdayId))].filter(mid => !(mid in matchdayMap))
-  if (missingMdIds.length) {
-    const extra = await db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays).where(inArray(matchdays.id, missingMdIds))
-    for (const m of extra) matchdayMap[m.id] = m.number
-  }
-
-  // This player's catch-up games (owed games that live outside the regular matchday grid, so
-  // they never appear in any matchday). Surfacing them here lets an admin open one and
-  // forfeit/postpone it — otherwise there's no way to reach a catch-up game.
-  const catchUpRows = tournament
-    ? await db.select().from(games)
-        .where(and(
-          eq(games.tournamentId, tournament.id),
-          eq(games.isCatchUp, true),
-          or(eq(games.homePlayerId, playerId), eq(games.awayPlayerId, playerId)),
-        ))
-        .orderBy(games.id)
-    : []
-  const catchUpOppIds = [...new Set(catchUpRows.map(g => g.homePlayerId === playerId ? g.awayPlayerId : g.homePlayerId))]
-  const catchUpOpps = catchUpOppIds.length
-    ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, catchUpOppIds))
-    : []
-  const catchUpNames = new Map(catchUpOpps.map(o => [o.id, o.name]))
-  const catchUpGames = catchUpRows.map(g => ({
+  const catchUpGames = catchUpRows.map(({ game: g, opponentName }) => ({
     ...g,
-    homePlayer: { id: g.homePlayerId, name: g.homePlayerId === playerId ? player.name : (catchUpNames.get(g.homePlayerId) ?? '—') },
-    awayPlayer: { id: g.awayPlayerId, name: g.awayPlayerId === playerId ? player.name : (catchUpNames.get(g.awayPlayerId) ?? '—') },
+    homePlayer: { id: g.homePlayerId, name: g.homePlayerId === playerId ? player.name : (opponentName ?? '—') },
+    awayPlayer: { id: g.awayPlayerId, name: g.awayPlayerId === playerId ? player.name : (opponentName ?? '—') },
   }))
 
   const playerForm = computePlayerForm(playerGames, playerId)
@@ -233,7 +211,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         </Card>
       )}
 
-      <EloSummary userId={playerId} possessive="their" />
+      <EloSummary userId={playerId} possessive="their" data={eloData} />
 
       <Card>
         <CardHeader className="pb-3">
@@ -304,7 +282,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                             {g.status === 'postponed' ? 'Postponed' : 'Scheduled'}
                           </span>
                         </div>
-                        <span className="text-xs text-muted-foreground">MD {matchdayMap[g.matchdayId] ?? '?'}</span>
+                        <span className="text-xs text-muted-foreground">MD {g.matchdayNumber ?? '?'}</span>
                       </Link>
                     ))}
                   </div>

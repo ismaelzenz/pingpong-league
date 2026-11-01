@@ -26,7 +26,7 @@ export default async function CatchUpPage() {
   }
 
   const [allGames, mds, rosterRaw] = await Promise.all([
-    db.select().from(games).where(eq(games.tournamentId, tournament.id)),
+    db.select().from(games).where(eq(games.tournamentId, tournament.id)).orderBy(games.id),
     db.select().from(matchdays).where(eq(matchdays.tournamentId, tournament.id)),
     db.select({ id: users.id, name: users.name })
       .from(participants)

@@ -1,7 +1,8 @@
-import { requireSession } from '@/lib/session'
+import { requireSession, getCurrentUser } from '@/lib/session'
 import { db } from '@/lib/db'
 import { games, users, matchdays, notificationPrefs } from '@/lib/db/schema'
-import { desc, eq, inArray, or, and } from 'drizzle-orm'
+import { eq, inArray, or, and, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/sqlite-core'
 import { computeScoreboard } from '@/lib/scoreboard'
 import { getDisplayTournament } from '@/lib/tournament'
 import { computePlayerForm } from '@/lib/playerStats'
@@ -14,66 +15,48 @@ import ProfileColorForm from '@/components/profile/ProfileColorForm'
 import ChangePasswordForm from '@/components/profile/ChangePasswordForm'
 import NotificationToggle from '@/components/profile/NotificationToggle'
 import NotificationPrefs from '@/components/profile/NotificationPrefs'
-import EloSummary from '@/components/elo/EloSummary'
+import EloSummary, { loadEloSummary } from '@/components/elo/EloSummary'
 import { withDefaults } from '@/lib/notificationTypes'
 
 export const dynamic = 'force-dynamic'
 
+/** How many games "Recent results" lists. */
+const RECENT_LIMIT = 10
+
 export default async function ProfilePage() {
   const session = await requireSession()
 
-  const tournament = await getDisplayTournament()
-
-  const scores = tournament ? await computeScoreboard(tournament.id) : []
+  // One parallel batch. The season stats wait only on which tournament to show; nothing else on
+  // the page depends on it, so the rest goes out alongside.
+  const opponent = alias(users, 'opponent')
+  const [season, userRecord, prefRow, eloData] = await Promise.all([
+    getDisplayTournament().then(async tournament => {
+      if (!tournament) return null
+      return Promise.all([
+        computeScoreboard(tournament.id),
+        // My finished games (oldest → newest) with the opponent's name and the matchday number
+        // joined in — feeds both the form/streak stats and the recent-results list.
+        db.select({ game: games, opponentName: opponent.name, matchdayNumber: matchdays.number })
+          .from(games)
+          .leftJoin(opponent, sql`${opponent.id} = CASE WHEN ${games.homePlayerId} = ${session.userId} THEN ${games.awayPlayerId} ELSE ${games.homePlayerId} END`)
+          .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
+          .where(and(
+            eq(games.tournamentId, tournament.id),
+            or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
+            inArray(games.status, ['confirmed', 'forfeited'])
+          ))
+          .orderBy(games.confirmedAt),
+      ])
+    }),
+    getCurrentUser(session.userId),
+    db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, session.userId)).then(r => r[0]),
+    loadEloSummary(session.userId),
+  ])
+  const [scores, myFinished] = season ?? [[], []]
   const myStats = scores.find(s => s.userId === session.userId)
-
-  // The last 10 games, newest first. The sort has to be DESCENDING before the limit — ordering
-  // ascending and then taking 10 returns the ten OLDEST games, which is what "Recent results" was
-  // quietly showing.
-  const RECENT_LIMIT = 10
-  const recentGames = tournament
-    ? await db.select().from(games)
-        .where(and(
-          eq(games.tournamentId, tournament.id),
-          or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
-          inArray(games.status, ['confirmed', 'forfeited'])
-        ))
-        .orderBy(desc(games.confirmedAt))
-        .limit(RECENT_LIMIT)
-    : []
-
-  // All finished games (oldest → newest) for accurate form/streak stats.
-  const allFinishedGames = tournament
-    ? await db.select().from(games)
-        .where(and(
-          eq(games.tournamentId, tournament.id),
-          or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
-          inArray(games.status, ['confirmed', 'forfeited'])
-        ))
-        .orderBy(games.confirmedAt)
-    : []
-  const myForm = computePlayerForm(allFinishedGames, session.userId)
-
-  const opponentIds = [...new Set(recentGames.map(g =>
-    g.homePlayerId === session.userId ? g.awayPlayerId : g.homePlayerId
-  ))]
-  const opponents = opponentIds.length
-    ? await db.select({ id: users.id, name: users.name }).from(users)
-        .where(inArray(users.id, opponentIds))
-    : []
-  const opponentMap = Object.fromEntries(opponents.map(o => [o.id, o.name]))
-
-  const matchdayNums: Record<number, number> = {}
-  for (const g of recentGames) {
-    if (!matchdayNums[g.matchdayId]) {
-      const md = await db.select({ number: matchdays.number }).from(matchdays).where(eq(matchdays.id, g.matchdayId)).then(r => r[0])
-      if (md) matchdayNums[g.matchdayId] = md.number
-    }
-  }
-
-  const userRecord = await db.select({ avatarColor: users.avatarColor }).from(users).where(eq(users.id, session.userId)).then(r => r[0])
-
-  const prefRow = await db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, session.userId)).then(r => r[0])
+  const myForm = computePlayerForm(myFinished.map(r => r.game), session.userId)
+  // The last 10, newest first.
+  const recentGames = myFinished.slice(-RECENT_LIMIT).reverse()
   const notifPrefs = withDefaults(prefRow)
 
   return (
@@ -182,7 +165,7 @@ export default async function ProfilePage() {
         </Card>
       )}
 
-      <EloSummary userId={session.userId} possessive="your" />
+      <EloSummary userId={session.userId} possessive="your" data={eloData} />
 
       {recentGames.length > 0 && (
         <Card>
@@ -190,20 +173,19 @@ export default async function ProfilePage() {
             <CardTitle className="text-base">Recent results</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {recentGames.map(game => {
-              const { isHome, mySets, oppSets, won } = perspective(game, session.userId)
-              const opponentId = isHome ? game.awayPlayerId : game.homePlayerId
+            {recentGames.map(({ game, opponentName, matchdayNumber }) => {
+              const { mySets, oppSets, won } = perspective(game, session.userId)
               return (
                 <div key={game.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${won ? 'bg-green-500' : 'bg-red-500'}`}>
                       {won ? 'W' : 'L'}
                     </span>
-                    <span>vs {opponentMap[opponentId] ?? '—'}</span>
+                    <span>vs {opponentName ?? '—'}</span>
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground">
                     <span className="font-mono font-bold text-foreground">{mySets} – {oppSets}</span>
-                    <span className="text-xs w-12 text-right shrink-0">MD {matchdayNums[game.matchdayId] ?? '?'}</span>
+                    <span className="text-xs w-12 text-right shrink-0">MD {matchdayNumber ?? '?'}</span>
                   </div>
                 </div>
               )

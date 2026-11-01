@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { games, users, matchdays } from '@/lib/db/schema'
-import { eq, or, and, inArray } from 'drizzle-orm'
+import { eq, or, and } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/sqlite-core'
 import { getDisplayTournament } from '@/lib/tournament'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -56,25 +57,24 @@ export default async function MyGamesPage() {
     )
   }
 
+  // Games with both players' names and the matchday number joined in — one round trip.
+  const homeUser = alias(users, 'home_user')
+  const awayUser = alias(users, 'away_user')
   const rows = await db
-    .select({ game: games, mdNumber: matchdays.number })
+    .select({ game: games, mdNumber: matchdays.number, homeName: homeUser.name, awayName: awayUser.name })
     .from(games)
     .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
+    .leftJoin(homeUser, eq(homeUser.id, games.homePlayerId))
+    .leftJoin(awayUser, eq(awayUser.id, games.awayPlayerId))
     .where(and(
       eq(games.tournamentId, tournament.id),
       or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
     ))
 
-  const playerIds = [...new Set(rows.flatMap(r => [r.game.homePlayerId, r.game.awayPlayerId]))]
-  const players = playerIds.length
-    ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, playerIds))
-    : []
-  const nameOf = new Map(players.map(p => [p.id, p.name]))
-
   const enriched = rows.map(r => ({
     ...r.game,
-    homePlayer: { id: r.game.homePlayerId, name: nameOf.get(r.game.homePlayerId) ?? '—' },
-    awayPlayer: { id: r.game.awayPlayerId, name: nameOf.get(r.game.awayPlayerId) ?? '—' },
+    homePlayer: { id: r.game.homePlayerId, name: r.homeName ?? '—' },
+    awayPlayer: { id: r.game.awayPlayerId, name: r.awayName ?? '—' },
     matchday: r.mdNumber != null ? { number: r.mdNumber } : null,
   }))
 

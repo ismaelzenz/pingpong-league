@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireAdminSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { tournaments, participants, users, matchdays, games } from '@/lib/db/schema'
-import { eq, and, lt, inArray, isNull } from 'drizzle-orm'
+import { eq, and, lt, inArray, count } from 'drizzle-orm'
 import { todayISO } from '@/lib/dates'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -46,7 +46,21 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   const { t } = await searchParams
 
-  const allTournaments = await db.select().from(tournaments).orderBy(tournaments.createdAt)
+  // Two parallel batches: what doesn't depend on which tournament is selected, then what does.
+  const [allTournaments, whatsNewEnabled, allAccounts, homePlayers, awayPlayers] = await Promise.all([
+    db.select().from(tournaments).orderBy(tournaments.createdAt),
+    getBoolSetting(SETTINGS.whatsNewEnabled),
+    // One read of the users table serves the account list, the add-player picker and the
+    // "what's new" dismissal count.
+    db.select({ id: users.id, name: users.name, email: users.email, archivedAt: users.archivedAt, seen: users.whatsNewSeen })
+      .from(users).orderBy(users.name),
+    // Which users still have games (can't be account-deleted until removed from them).
+    db.selectDistinct({ id: games.homePlayerId }).from(games),
+    db.selectDistinct({ id: games.awayPlayerId }).from(games),
+  ])
+  const usersInGames = new Set<number>([...homePlayers, ...awayPlayers].map(r => r.id))
+  const activeAccounts = allAccounts.filter(u => !u.archivedAt)
+
   const manageable = allTournaments.filter(x => x.status !== 'finished')
   const finished = allTournaments.filter(x => x.status === 'finished')
 
@@ -61,55 +75,45 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   // "What's new" banner state: the league-wide switch, plus how many members have dismissed the
   // current note (which is what "show again" would undo).
-  const [whatsNewEnabled, allMembers] = await Promise.all([
-    getBoolSetting(SETTINGS.whatsNewEnabled),
-    db.select({ seen: users.whatsNewSeen }).from(users).where(isNull(users.archivedAt)),
-  ])
-  const whatsNewDismissed = allMembers.filter(m => m.seen === WHATS_NEW.version).length
+  const whatsNewDismissed = activeAccounts.filter(m => m.seen === WHATS_NEW.version).length
 
-  // Results already on the books for this season — what's at stake if ELO is switched on midway.
-  const selectedRecordedGames = selected
-    ? await db.select({ id: games.id }).from(games)
-        .where(and(eq(games.tournamentId, selected.id), eq(games.status, 'confirmed')))
-        .then(r => r.length)
-    : 0
-
-  // Check for matchdays that have ended but still have unplayed games (selected tournament).
   const today = todayISO()
-  const overdueMatchdays: { id: number; number: number; count: number }[] = []
-  if (selected?.status === 'active') {
-    const pastMatchdays = await db.select({ id: matchdays.id, number: matchdays.number })
-      .from(matchdays)
-      .where(and(eq(matchdays.tournamentId, selected.id), lt(matchdays.weekEnd, today)))
-    for (const md of pastMatchdays) {
-      const unplayed = await db.select().from(games)
-        .where(and(eq(games.matchdayId, md.id), inArray(games.status, ['pending', 'postponed'])))
-      if (unplayed.length > 0) overdueMatchdays.push({ id: md.id, number: md.number, count: unplayed.length })
-    }
-  }
-
-  const participantsWithProfiles = selected
-    ? await db.select({ participant: participants, user: users })
-        .from(participants)
-        .leftJoin(users, eq(users.id, participants.userId))
-        .where(eq(participants.tournamentId, selected.id))
-        .orderBy(participants.joinedAt)
-    : []
+  const [selectedRecordedGames, overdueMatchdays, participantsWithProfiles] = await Promise.all([
+    // Results already on the books for this season — what's at stake if ELO is switched on midway.
+    selected
+      ? db.select({ n: count() }).from(games)
+          .where(and(eq(games.tournamentId, selected.id), eq(games.status, 'confirmed')))
+          .then(r => r[0]?.n ?? 0)
+      : 0,
+    // Matchdays that have ended but still have unplayed games — counted in one grouped query.
+    selected?.status === 'active'
+      ? db.select({ id: matchdays.id, number: matchdays.number, count: count() })
+          .from(matchdays)
+          .innerJoin(games, eq(games.matchdayId, matchdays.id))
+          .where(and(
+            eq(matchdays.tournamentId, selected.id),
+            lt(matchdays.weekEnd, today),
+            inArray(games.status, ['pending', 'postponed']),
+          ))
+          .groupBy(matchdays.id, matchdays.number)
+          .orderBy(matchdays.number)
+      : [],
+    selected
+      ? db.select({ participant: participants, user: users })
+          .from(participants)
+          .leftJoin(users, eq(users.id, participants.userId))
+          .where(eq(participants.tournamentId, selected.id))
+          .orderBy(participants.joinedAt)
+      : [],
+  ])
 
   // Users with an account who aren't yet in the selected tournament — eligible to be added
   // by an admin (during registration, since self-join is disabled, or mid-season).
   let eligibleUsers: { id: number; name: string; email: string }[] = []
   if (selected && selected.status !== 'finished') {
     const enrolledIds = new Set(participantsWithProfiles.map(p => p.participant.userId))
-    const allUsers = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(isNull(users.archivedAt))
-    eligibleUsers = allUsers.filter(u => !enrolledIds.has(u.id)).sort((a, b) => a.name.localeCompare(b.name))
+    eligibleUsers = activeAccounts.filter(u => !enrolledIds.has(u.id)).sort((a, b) => a.name.localeCompare(b.name))
   }
-
-  // All accounts + which users still have games (can't be account-deleted until removed from them).
-  const allAccounts = await db.select({ id: users.id, name: users.name, email: users.email, archivedAt: users.archivedAt }).from(users).orderBy(users.name)
-  const homePlayers = await db.selectDistinct({ id: games.homePlayerId }).from(games)
-  const awayPlayers = await db.selectDistinct({ id: games.awayPlayerId }).from(games)
-  const usersInGames = new Set<number>([...homePlayers, ...awayPlayers].map(r => r.id))
 
   return (
     <div className="space-y-6">
@@ -272,7 +276,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               <WhatsNewControl
                 enabled={whatsNewEnabled}
                 dismissedCount={whatsNewDismissed}
-                totalMembers={allMembers.length}
+                totalMembers={activeAccounts.length}
               />
             </CardContent>
           </Card>

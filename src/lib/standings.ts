@@ -15,17 +15,18 @@ export interface StandingRow extends ScoreboardEntry {
  * current matchday's games were played. Shared by the scoreboard page and the display board.
  */
 export async function computeStandingsWithMovement(tournamentId: number): Promise<StandingRow[]> {
-  const playerList = await db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
-    .from(participants)
-    .leftJoin(users, eq(users.id, participants.userId))
-    .where(eq(participants.tournamentId, tournamentId))
+  const [playerList, finished, mds] = await Promise.all([
+    db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
+      .from(participants)
+      .leftJoin(users, eq(users.id, participants.userId))
+      .where(eq(participants.tournamentId, tournamentId)),
+    db.select().from(games)
+      .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, ['confirmed', 'forfeited']))),
+    db.select().from(matchdays).where(eq(matchdays.tournamentId, tournamentId)),
+  ])
   const players: ScoreboardPlayer[] = playerList.map(p => ({
     userId: p.userId!, name: p.name!, email: p.email!, avatarColor: p.avatarColor ?? null,
   }))
-
-  const finished = await db.select().from(games)
-    .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, ['confirmed', 'forfeited'])))
-  const mds = await db.select().from(matchdays).where(eq(matchdays.tournamentId, tournamentId))
 
   const current = buildScoreboard(players, finished)
 

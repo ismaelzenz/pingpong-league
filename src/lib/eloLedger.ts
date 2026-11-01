@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { eloGamePlayers, eloGames, eloHistory, games, tournaments, users } from '@/lib/db/schema'
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, exists, inArray, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/sqlite-core'
 import { buildLedger, START_ELO, type RatableGame, type EloSource } from '@/lib/elo'
 
 /** The app's database, or a transaction on it — so the rebuild can read inside its own transaction. */
@@ -231,24 +232,19 @@ export async function computeEloStandings(): Promise<EloStanding[]> {
     ratingAfter: eloHistory.ratingAfter,
     playedAt: eloHistory.playedAt,
     seq: eloHistory.seq,
-  }).from(eloHistory).orderBy(eloHistory.seq)
-
-  if (rows.length === 0) return []
-
-  const ids = [...new Set(rows.map(r => r.userId))]
-  const people = await db.select({ id: users.id, name: users.name, avatarColor: users.avatarColor })
-    .from(users).where(inArray(users.id, ids))
-  const person = new Map(people.map(p => [p.id, p]))
+    // Names ride along on the same query rather than costing a second round trip.
+    name: users.name,
+    avatarColor: users.avatarColor,
+  }).from(eloHistory).leftJoin(users, eq(users.id, eloHistory.userId)).orderBy(eloHistory.seq, eloHistory.id)
 
   const byUser = new Map<number, EloStanding>()
   for (const r of rows) {
     let e = byUser.get(r.userId)
     if (!e) {
-      const p = person.get(r.userId)
       e = {
         userId: r.userId,
-        name: p?.name ?? '—',
-        avatarColor: p?.avatarColor ?? null,
+        name: r.name ?? '—',
+        avatarColor: r.avatarColor ?? null,
         rating: START_ELO,
         peak: START_ELO,
         gamesPlayed: 0,
@@ -301,14 +297,11 @@ export async function computeEloTimelines(): Promise<EloTimeline[]> {
     delta: eloHistory.delta,
     playedAt: eloHistory.playedAt,
     seq: eloHistory.seq,
-  }).from(eloHistory).orderBy(eloHistory.seq)
+    name: users.name,
+    avatarColor: users.avatarColor,
+  }).from(eloHistory).leftJoin(users, eq(users.id, eloHistory.userId)).orderBy(eloHistory.seq, eloHistory.id)
 
   if (rows.length === 0) return []
-
-  const ids = [...new Set(rows.map(r => r.userId))]
-  const people = await db.select({ id: users.id, name: users.name, avatarColor: users.avatarColor })
-    .from(users).where(inArray(users.id, ids))
-  const person = new Map(people.map(p => [p.id, p]))
 
   // Every series opens on a shared baseline: one day before the very first rated game anyone
   // played, at 1000. A shared date (rather than each player's own first game) is what makes the
@@ -321,11 +314,10 @@ export async function computeEloTimelines(): Promise<EloTimeline[]> {
   for (const r of rows) {
     let t = byUser.get(r.userId)
     if (!t) {
-      const p = person.get(r.userId)
       t = {
         userId: r.userId,
-        name: p?.name ?? '—',
-        avatarColor: p?.avatarColor ?? null,
+        name: r.name ?? '—',
+        avatarColor: r.avatarColor ?? null,
         points: [{ seq: -1, playedAt: baselineAt, rating: START_ELO, delta: 0 }],
       }
       byUser.set(r.userId, t)
@@ -365,9 +357,18 @@ export interface EloGameRow {
  */
 export async function listEloGames(opts: { limit?: number; userId?: number } = {}): Promise<EloGameRow[]> {
   const { limit = 400, userId } = opts
+  // Filtering by player has to keep the *whole* game — you want to see who you beat, not just your
+  // own line — so the filter is "games this player appears in", done in SQL so a profile page
+  // doesn't read the whole league's ledger to show ten of its own games.
+  const mine = alias(eloHistory, 'mine')
+  const inMyGames = userId != null
+    ? exists(db.select({ one: sql`1` }).from(mine).where(and(
+        eq(mine.userId, userId), eq(mine.source, eloHistory.source), eq(mine.refId, eloHistory.refId))))
+    : undefined
+
   // Take the most recent `limit` games by pulling their entries in reverse order. Two players per
   // 1v1, more for a team game, so over-fetch rows and trim to whole games afterwards.
-  const rows = await db.select({
+  const scoped = await db.select({
     userId: eloHistory.userId,
     source: eloHistory.source,
     refId: eloHistory.refId,
@@ -378,20 +379,11 @@ export async function listEloGames(opts: { limit?: number; userId?: number } = {
     ratingAfter: eloHistory.ratingAfter,
     playedAt: eloHistory.playedAt,
     seq: eloHistory.seq,
-  }).from(eloHistory).orderBy(desc(eloHistory.seq), desc(eloHistory.id))
-
-  // Filtering by player has to keep the *whole* game — you want to see who you beat, not just your
-  // own line — so pick the games they appear in first, then keep every entry from those games.
-  const mine = userId != null
-    ? new Set(rows.filter(r => r.userId === userId).map(r => `${r.source}:${r.refId}`))
-    : null
-  const scoped = mine ? rows.filter(r => mine.has(`${r.source}:${r.refId}`)) : rows
-
-  const ids = [...new Set(scoped.map(r => r.userId))]
-  const people = ids.length
-    ? await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, ids))
-    : []
-  const nameOf = new Map(people.map(p => [p.id, p.name]))
+    name: users.name,
+  }).from(eloHistory)
+    .leftJoin(users, eq(users.id, eloHistory.userId))
+    .where(inMyGames)
+    .orderBy(desc(eloHistory.seq), desc(eloHistory.id))
 
   const byGame = new Map<string, EloGameRow>()
   for (const r of scoped) {
@@ -414,7 +406,7 @@ export async function listEloGames(opts: { limit?: number; userId?: number } = {
     }
     const entry: EloGameSidePlayer = {
       userId: r.userId,
-      name: nameOf.get(r.userId) ?? '—',
+      name: r.name ?? '—',
       delta: r.delta,
       ratingAfter: r.ratingAfter,
     }

@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { getIronSession, type IronSession } from 'iron-session'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -37,7 +38,23 @@ export async function getSession(): Promise<IronSession<SessionData>> {
  * session pointing at a missing user is treated as signed out.
  */
 async function sessionUserExists(userId: number): Promise<boolean> {
-  return !!(await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).then(r => r[0]))
+  return !!(await getUserRow(userId))
+}
+
+/**
+ * The signed-in member's own row — the fields pages need about "me" beyond what the cookie holds.
+ *
+ * Wrapped in React's `cache()` so a render reads it once: the layout and the page both guard with
+ * `requireSession` and both want the avatar colour, and without this each would pay its own round
+ * trip for the same row.
+ */
+const getUserRow = cache(async (userId: number) =>
+  db.select({ id: users.id, avatarColor: users.avatarColor, whatsNewSeen: users.whatsNewSeen })
+    .from(users).where(eq(users.id, userId)).then(r => r[0] ?? null))
+
+/** The signed-in member's row (see `getUserRow`). Call after a `requireSession` guard. */
+export async function getCurrentUser(userId: number) {
+  return getUserRow(userId)
 }
 
 /**

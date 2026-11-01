@@ -1,7 +1,4 @@
-import { requireSession } from '@/lib/session'
-import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { requireSession, getCurrentUser } from '@/lib/session'
 import { getLiveTournament } from '@/lib/tournament'
 import AppNav from '@/components/layout/AppNav'
 import IosInstallHint from '@/components/layout/IosInstallHint'
@@ -9,10 +6,7 @@ import IosInstallHint from '@/components/layout/IosInstallHint'
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession()
 
-  const [user, tournament] = await Promise.all([
-    db.select({ avatarColor: users.avatarColor }).from(users).where(eq(users.id, session.userId)).then(r => r[0]),
-    getLiveTournament(),
-  ])
+  const [user, tournament] = await Promise.all([getCurrentUser(session.userId), getLiveTournament()])
 
   return (
     <div className="min-h-screen flex flex-col">
