@@ -6,7 +6,8 @@ import { games, users, matchdays } from '@/lib/db/schema'
 import { and, asc, eq, ne, or } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
 import { todayISO } from '@/lib/dates'
-import { Badge } from '@/components/ui/badge'
+import GameStatusBadge from '@/components/game/GameStatusBadge'
+import { isFinished, isUnplayed } from '@/lib/gameStatus'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PlayerLink from '@/components/player/PlayerLink'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
@@ -14,18 +15,9 @@ import GameResultForm from '@/components/game/GameResultForm'
 import ReportResultForm from '@/components/game/ReportResultForm'
 import AdminGameActions from '@/components/admin/AdminGameActions'
 import AdminEditResultForm from '@/components/admin/AdminEditResultForm'
-import { ChevronLeft } from 'lucide-react'
+import BackLink from '@/components/common/BackLink'
 
 export const dynamic = 'force-dynamic'
-
-const statusConfig: Record<string, { label: string; variant: 'default' | 'outline' | 'secondary' | 'destructive' }> = {
-  pending: { label: 'Not played yet', variant: 'outline' },
-  // Legacy status from the old confirm flow — kept so historical rows still render.
-  result_entered: { label: 'Recorded', variant: 'default' },
-  confirmed: { label: 'Recorded', variant: 'default' },
-  postponed: { label: 'Postponed', variant: 'secondary' },
-  forfeited: { label: 'Forfeited', variant: 'destructive' },
-}
 
 export default async function GameDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -95,25 +87,19 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
   // Playing ahead of schedule is allowed, so a future matchday no longer blocks entry — it's just
   // worth pointing out, in case someone opened the wrong week's game.
   const isFutureMatchday = !!matchday?.weekStart && matchday.weekStart > today
-  const canEnter = (game.status === 'pending' || game.status === 'postponed') && isParticipant
-  const canPostpone = (game.status === 'pending' || game.status === 'postponed') && (isParticipant || session.isAdmin)
-  const canAdminAct = session.isAdmin && !['confirmed', 'forfeited'].includes(game.status)
-
-  const config = statusConfig[game.status] ?? statusConfig.pending
+  const canEnter = isUnplayed(game.status) && isParticipant
+  const canPostpone = isUnplayed(game.status) && (isParticipant || session.isAdmin)
+  const canAdminAct = session.isAdmin && !isFinished(game.status)
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
       <div>
-        <Link
-          href={matchday ? `/matchdays/${matchday.id}` : '/matchdays'}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2 -ml-2 px-2 py-1 rounded-md hover:bg-accent transition-colors"
-        >
-          <ChevronLeft className="w-4 h-4" />
+        <BackLink href={matchday ? `/matchdays/${matchday.id}` : '/matchdays'} className="mb-2">
           {matchday ? `Matchday ${matchday.number}` : 'Matchdays'}
-        </Link>
+        </BackLink>
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Game details</h1>
-          <Badge variant={config.variant}>{config.label}</Badge>
+          <GameStatusBadge status={game.status} look="detail" />
         </div>
       </div>
 
@@ -224,7 +210,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
           <CardContent className="space-y-2">
             {otherMeetings.map(m => {
               const played = m.homeSets != null && m.awaySets != null &&
-                (m.status === 'confirmed' || m.status === 'forfeited')
+                isFinished(m.status)
               // Scores are stored from that game's own home/away side, which can be the reverse of
               // this one — show them in this page's order so the two rows read consistently.
               const sameOrientation = m.homePlayerId === game.homePlayerId
@@ -267,7 +253,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
         </Card>
       )}
 
-      {session.isAdmin && (game.status === 'confirmed' || game.status === 'forfeited') && (
+      {session.isAdmin && isFinished(game.status) && (
         <Card className="border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/30">
           <CardContent className="pt-4 space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Admin: correct result</p>

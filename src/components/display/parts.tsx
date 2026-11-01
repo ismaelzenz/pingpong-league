@@ -5,6 +5,7 @@ import DisplayClock from '@/components/display/DisplayClock'
 import type { LeaderRow, WeekGame, FunWallEntry, ByePlayer, RecordEntry, RecordKey } from '@/lib/display'
 import { Flame, Bomb, Crown, Target, Medal, CalendarClock, Coffee, Shield, Zap, HeartPulse } from 'lucide-react'
 import CatchUpTicker from '@/components/display/CatchUpTicker'
+import { isFinished } from '@/lib/gameStatus'
 
 /**
  * Shared building blocks for the office-TV board, composed differently by each layout variant
@@ -108,7 +109,7 @@ export function StandingsTable({ rows }: { rows: LeaderRow[] }) {
  * `summary` overrides the header count (used when only a page of games is passed in for paging).
  */
 export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames }: { weekGames: WeekGame[]; summary?: { played: number; total: number }; byePlayers?: ByePlayer[]; catchUpGames?: WeekGame[] }) {
-  const played = summary ? summary.played : weekGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
+  const played = summary ? summary.played : weekGames.filter(g => isFinished(g.status)).length
   const total = summary ? summary.total : weekGames.length
   return (
     <div className="h-full flex flex-col rounded-2xl bg-slate-900/80 ring-1 ring-white/5 p-[1.6vh]">
@@ -123,7 +124,7 @@ export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames }: 
       ) : (
         <div className="flex-1 flex flex-col gap-[0.8vh] min-h-0">
           {weekGames.map((g) => {
-            const confirmed = g.status === 'confirmed' || g.status === 'forfeited'
+            const confirmed = isFinished(g.status)
             const postponed = g.status === 'postponed'
             // Only a confirmed result is final, so only then do we bold the winner.
             const homeWon = confirmed && (g.homeSets ?? 0) > (g.awaySets ?? 0)

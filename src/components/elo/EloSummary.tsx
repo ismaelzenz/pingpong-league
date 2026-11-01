@@ -1,13 +1,15 @@
 import Link from 'next/link'
 import { computeEloStandings, listEloGames } from '@/lib/eloLedger'
 import { START_ELO } from '@/lib/elo'
-import { joinNames, showDelta, showElo } from '@/lib/utils'
+import { joinNames, showElo } from '@/lib/utils'
 
 /** How many games the profile summaries show — enough to read a run of form, short enough to scan. */
 const RECENT_LIMIT = 10
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { ChevronRight } from 'lucide-react'
+import ResultChip from '@/components/common/ResultChip'
+import DeltaText from '@/components/common/DeltaText'
 
 /**
  * The data behind `EloSummary`. Separate from the component so a page can start it in the same
@@ -90,18 +92,14 @@ export default function EloSummary({ userId, possessive, data }: {
                 return (
                   <div key={g.key} className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 min-w-0">
-                      <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${won ? 'bg-green-500' : 'bg-red-500'}`}>
-                        {won ? 'W' : 'L'}
-                      </span>
+                      <ResultChip won={won} className="shrink-0 text-[10px]" />
                       <span className="truncate text-muted-foreground">
                         vs {joinNames(others.map(p => p.name))}
                         {g.source === 'elo' && <span className="text-xs"> · ELO game</span>}
                       </span>
                     </span>
                     <span className="flex items-center gap-3 shrink-0">
-                      <span className={`font-medium tabular-nums ${mine.delta > 0 ? 'text-green-600' : 'text-red-500'}`}>
-                        {showDelta(mine.delta)}
-                      </span>
+                      <DeltaText value={mine.delta} />
                       <span className="w-12 text-right tabular-nums text-muted-foreground">{showElo(mine.ratingAfter)}</span>
                     </span>
                   </div>

@@ -29,6 +29,7 @@ import DeleteUserButton from '@/components/admin/DeleteUserButton'
 import ArchiveUserButton from '@/components/admin/ArchiveUserButton'
 import { isAdmin } from '@/lib/admin'
 import { Monitor, ExternalLink, Award, Swords } from 'lucide-react'
+import { UNPLAYED_STATUSES } from '@/lib/gameStatus'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,7 +95,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           .where(and(
             eq(matchdays.tournamentId, selected.id),
             lt(matchdays.weekEnd, today),
-            inArray(games.status, ['pending', 'postponed']),
+            inArray(games.status, [...UNPLAYED_STATUSES]),
           ))
           .groupBy(matchdays.id, matchdays.number)
           .orderBy(matchdays.number)

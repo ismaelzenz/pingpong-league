@@ -5,6 +5,7 @@ import { and, eq, inArray, lte, gte } from 'drizzle-orm'
 import { getLiveTournamentFresh } from '@/lib/tournament'
 import { sendPush } from '@/lib/push'
 import { todayISO } from '@/lib/dates'
+import { UNPLAYED_STATUSES } from '@/lib/gameStatus'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
     .where(and(
       eq(games.matchdayId, matchday.id),
       eq(games.isCatchUp, false),
-      inArray(games.status, ['pending', 'postponed']),
+      inArray(games.status, [...UNPLAYED_STATUSES]),
     ))
 
   const playerIds = [...new Set(unplayed.flatMap(g => [g.homePlayerId, g.awayPlayerId]))]

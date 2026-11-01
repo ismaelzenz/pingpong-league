@@ -40,3 +40,10 @@ export function deadlineLabel(weekStart: string | null, weekEnd: string | null):
   if (days === 1) return { text: '1 day left', urgent: true, overdue: false }
   return { text: `${days} days left`, urgent: days <= 2, overdue: false }
 }
+
+/** A short display date — "3 Jun", or "3 Jun 2025" when it isn't this year. */
+export function shortDate(iso: string): string {
+  const d = new Date(iso)
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) })
+}

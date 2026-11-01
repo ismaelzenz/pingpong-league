@@ -8,31 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PlayerLink from '@/components/player/PlayerLink'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import EmptyState from '@/components/common/EmptyState'
-import { joinNames, showDelta, showElo } from '@/lib/utils'
+import { joinNames, showElo } from '@/lib/utils'
 import EloTimeline from '@/components/elo/EloTimeline'
 import RecordEloGameForm from '@/components/elo/RecordEloGameForm'
 import EloGameActions from '@/components/elo/EloGameActions'
 import EloLedgerTable from '@/components/elo/EloLedgerTable'
 import { TrendingUp } from 'lucide-react'
+import { medal } from '@/lib/utils'
+import DeltaText from '@/components/common/DeltaText'
+import { shortDate } from '@/lib/dates'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'ELO ratings' }
 
 /** "3 Jun" for this year, "3 Jun 2024" for anything older. */
-function shortDate(iso: string): string {
-  const d = new Date(iso)
-  const sameYear = d.getFullYear() === new Date().getFullYear()
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) })
-}
-
-function Delta({ value }: { value: number }) {
-  return (
-    <span className={value > 0 ? 'text-green-600 font-medium tabular-nums' : value < 0 ? 'text-red-500 font-medium tabular-nums' : 'text-muted-foreground tabular-nums'}>
-      {showDelta(value)}
-    </span>
-  )
-}
-
 export default async function EloPage() {
   const session = await requireSession()
 
@@ -93,7 +82,7 @@ export default async function EloPage() {
                 <div className="text-right text-sm space-y-0.5 shrink-0">
                   <p className="text-muted-foreground">Rank <span className="font-semibold text-foreground">#{myRank + 1}</span> of {standings.length}</p>
                   <p className="text-muted-foreground">{me.wins}W – {me.losses}L</p>
-                  {me.lastDelta != null && <p className="text-muted-foreground">Last game <Delta value={me.lastDelta} /></p>}
+                  {me.lastDelta != null && <p className="text-muted-foreground">Last game <DeltaText value={me.lastDelta} /></p>}
                 </div>
               </CardContent>
             </Card>
@@ -125,7 +114,7 @@ export default async function EloPage() {
                       const isMe = e.userId === session.userId
                       return (
                         <tr key={e.userId} className={`border-b last:border-0 ${isMe ? 'bg-primary/5' : ''}`}>
-                          <td className="pl-4 pr-2 py-3 text-muted-foreground">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td>
+                          <td className="pl-4 pr-2 py-3 text-muted-foreground">{medal(i + 1) ?? i + 1}</td>
                           <td className="px-2 py-3">
                             <PlayerLink userId={e.userId} currentUserId={session.userId} className="flex items-center gap-2 w-fit">
                               <PlayerAvatar name={e.name} avatarColor={e.avatarColor} className="h-7 w-7" fallbackClassName="text-xs" />
@@ -138,7 +127,7 @@ export default async function EloPage() {
                           <td className="px-3 py-3 text-right text-green-600 tabular-nums">{e.wins}</td>
                           <td className="px-3 py-3 text-right text-red-500 tabular-nums">{e.losses}</td>
                           <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">{showElo(e.peak)}</td>
-                          <td className="px-3 py-3 text-right">{e.lastDelta != null ? <Delta value={e.lastDelta} /> : '—'}</td>
+                          <td className="px-3 py-3 text-right">{e.lastDelta != null ? <DeltaText value={e.lastDelta} /> : '—'}</td>
                           <td className="px-4 py-3 text-right font-bold text-lg tabular-nums">{showElo(e.rating)}</td>
                         </tr>
                       )

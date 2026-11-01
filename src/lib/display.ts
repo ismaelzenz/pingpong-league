@@ -3,13 +3,14 @@
 // scoreboard scoring so the board never drifts from the real table.
 
 import { db } from '@/lib/db'
-import { games, matchdays, participants, users } from '@/lib/db/schema'
-import { and, eq, inArray } from 'drizzle-orm'
+import { games, matchdays, participants, users, type GameStatus } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/scoreboard'
 import { perspective } from '@/lib/gameResult'
 import { todayISO } from '@/lib/dates'
 import { isCatchUpBacklog } from '@/lib/backlog'
 import { cached } from '@/lib/cache'
+import { isFinished, isUnplayed } from '@/lib/gameStatus'
 
 const MIN_GAMES_FOR_WIN_RATE = 4
 
@@ -46,7 +47,7 @@ export interface WeekGame {
   awayColor: string | null
   homeSets: number | null
   awaySets: number | null
-  status: string
+  status: GameStatus
 }
 
 export interface ByePlayer {
@@ -93,7 +94,7 @@ async function displayData(tournamentId: number, today: string): Promise<Display
   }))
   const playerById = new Map(players.map(p => [p.userId, p]))
 
-  const allFinished = allGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited')
+  const allFinished = allGames.filter(g => isFinished(g.status))
 
   // Current standings.
   const current = buildScoreboard(players, allFinished)
@@ -140,7 +141,7 @@ async function displayData(tournamentId: number, today: string): Promise<Display
   // the Catch-up games page reuses the same rule so the two never drift.
   const weekStartByMd = new Map(mds.map(m => [m.id, m.weekStart]))
   const catchUpGames: WeekGame[] = allGames
-    .filter(g => g.status === 'pending' || g.status === 'postponed')
+    .filter(g => isUnplayed(g.status))
     .filter(g => isCatchUpBacklog(g, weekStartByMd, currentMd?.id ?? null, today))
     .map(toWeekGame)
 

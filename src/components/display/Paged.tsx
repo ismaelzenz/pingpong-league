@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { LeaderRow, WeekGame, ByePlayer } from '@/lib/display'
 import { StandingsTable, ThisWeekPanel } from '@/components/display/parts'
+import { isFinished } from '@/lib/gameStatus'
 
 /**
  * Auto-paging for the standings and this-week panels, built as a real carousel: every page is
@@ -81,7 +82,7 @@ export function PagedStandings({ rows, maxPerPage = 18, intervalMs = 20000 }: { 
 
 export function PagedThisWeek({ weekGames, byePlayers, catchUpGames, maxPerPage = 10, intervalMs = 20000 }: { weekGames: WeekGame[]; byePlayers?: ByePlayer[]; catchUpGames?: WeekGame[]; maxPerPage?: number; intervalMs?: number }) {
   const total = weekGames.length
-  const played = weekGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
+  const played = weekGames.filter(g => isFinished(g.status)).length
   const { pageCount, pageSize } = paginate(total, maxPerPage)
   const page = usePingPong(pageCount, intervalMs)
   return (

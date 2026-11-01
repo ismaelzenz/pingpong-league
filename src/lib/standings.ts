@@ -4,6 +4,7 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/scoreboard'
 import { todayISO } from '@/lib/dates'
 import { cached } from '@/lib/cache'
+import { FINISHED_STATUSES } from '@/lib/gameStatus'
 
 export interface StandingRow extends ScoreboardEntry {
   rank: number
@@ -30,7 +31,7 @@ async function standingsWithMovement(tournamentId: number, today: string): Promi
       .leftJoin(users, eq(users.id, participants.userId))
       .where(eq(participants.tournamentId, tournamentId)),
     db.select().from(games)
-      .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, ['confirmed', 'forfeited']))),
+      .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, [...FINISHED_STATUSES]))),
     db.select().from(matchdays).where(eq(matchdays.tournamentId, tournamentId)),
   ])
   const players: ScoreboardPlayer[] = playerList.map(p => ({

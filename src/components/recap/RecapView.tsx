@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import PlayerLink from '@/components/player/PlayerLink'
 import { TrendingUp, Flame, Bomb, Target, Crown, Shield, Zap, HeartPulse } from 'lucide-react'
+import { medal } from '@/lib/utils'
 
 /** Renders a finished tournament's recap. Shared by /recap (latest) and /recap/[id] (a specific season). */
 export default function RecapView({ recap, currentUserId }: { recap: RecapData; currentUserId: number }) {
@@ -211,7 +212,7 @@ export default function RecapView({ recap, currentUserId }: { recap: RecapData; 
                     const isMe = s.userId === currentUserId
                     return (
                       <tr key={s.userId} className={`border-b last:border-0 ${isMe ? 'bg-primary/5' : ''}`}>
-                        <td className="pl-4 pr-1 py-2.5 text-muted-foreground">{s.rank <= 3 ? ['🥇', '🥈', '🥉'][s.rank - 1] : s.rank}</td>
+                        <td className="pl-4 pr-1 py-2.5 text-muted-foreground">{medal(s.rank) ?? s.rank}</td>
                         <td className="pl-1 pr-4 py-2.5">
                           {isMe ? (
                             <div className="flex items-center gap-2 min-w-0">

@@ -5,8 +5,8 @@ import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
 import { todayISO } from '@/lib/dates'
 import { afterLeagueChange } from '@/lib/cache'
+import { isFinished } from '@/lib/gameStatus'
 
-const HAS_RESULT = ['confirmed', 'forfeited', 'result_entered']
 
 /**
  * Reorder the games of a future matchday. Games are displayed in id order, so to reorder
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { order } = await req.json() as { order: number[] }
   const dayGames = await db.select().from(games).where(eq(games.matchdayId, matchdayId)).orderBy(games.id)
 
-  if (dayGames.some(g => HAS_RESULT.includes(g.status))) {
+  if (dayGames.some(g => isFinished(g.status))) {
     return NextResponse.json({ error: 'Cannot reorder a matchday that has results' }, { status: 400 })
   }
   const idSet = new Set(dayGames.map(g => g.id))

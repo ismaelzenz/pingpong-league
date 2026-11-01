@@ -3,9 +3,9 @@ import { matchdays, games, participants, tournaments } from '@/lib/db/schema'
 import { eq, inArray } from 'drizzle-orm'
 import { generateSchedule } from '@/lib/schedule'
 import { addDays, nextMonday, startOfWeek, parseISO, isValid, format } from 'date-fns'
+import { isFinished } from '@/lib/gameStatus'
 
 // A matchday that contains any of these is considered "played" and is never touched.
-const RESULT_STATUSES = ['confirmed', 'forfeited', 'result_entered']
 
 function parseBreakWeeks(raw: string | null | undefined): string[] {
   if (!raw) return []
@@ -61,7 +61,7 @@ export async function regenerateSchedule(tournamentId: number, startedAt: string
     : (startedAt ? nextMonday(new Date(startedAt)) : nextMonday(new Date()))
 
   // Lock any matchday that already has a played/in-progress result.
-  const isPlayed = (g: typeof allGames[number]) => RESULT_STATUSES.includes(g.status)
+  const isPlayed = (g: typeof allGames[number]) => isFinished(g.status)
   const lockedMatchdayIds = new Set(allGames.filter(isPlayed).map(g => g.matchdayId))
   const lockedMatchdays = allMatchdays.filter(m => lockedMatchdayIds.has(m.id))
 

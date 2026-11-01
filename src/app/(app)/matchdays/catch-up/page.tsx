@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { games, matchdays, participants, users } from '@/lib/db/schema'
@@ -8,7 +7,7 @@ import { todayISO } from '@/lib/dates'
 import { isCatchUpBacklog } from '@/lib/backlog'
 import GameCard from '@/components/game/GameCard'
 import EmptyState from '@/components/common/EmptyState'
-import { ChevronLeft } from 'lucide-react'
+import BackLink from '@/components/common/BackLink'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,10 +74,7 @@ export default async function CatchUpPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/matchdays" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2 -ml-2 px-2 py-1 rounded-md hover:bg-accent transition-colors">
-          <ChevronLeft className="w-4 h-4" />
-          All matchdays
-        </Link>
+        <BackLink href="/matchdays" className="mb-2">All matchdays</BackLink>
         <h1 className="text-2xl font-bold">Catch-up games</h1>
         <p className="text-muted-foreground text-sm mt-1">
           {session.isAdmin

@@ -32,6 +32,11 @@ export function showElo(rating: number): string {
   return String(Math.round(rating))
 }
 
+/** The podium medal for a 1-based rank, or null off the podium — callers pick their own fallback. */
+export function medal(rank: number): string | null {
+  return ['🥇', '🥈', '🥉'][rank - 1] ?? null
+}
+
 /** A rating change with its sign: "+6", "-9", "0". */
 export function showDelta(delta: number): string {
   const n = Math.round(delta)

@@ -9,14 +9,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import GameCard from '@/components/game/GameCard'
+import { isFinished } from '@/lib/gameStatus'
+import type { GameStatus } from '@/lib/db/schema'
 
 export const dynamic = 'force-dynamic'
 
-const FINISHED = ['confirmed', 'forfeited'] as const
-
 interface EnrichedGame {
   id: number
-  status: 'pending' | 'result_entered' | 'confirmed' | 'postponed' | 'forfeited'
+  status: GameStatus
   homePlayerId: number
   awayPlayerId: number
   homeSets: number | null
@@ -78,7 +78,6 @@ export default async function MyGamesPage() {
     matchday: r.mdNumber != null ? { number: r.mdNumber } : null,
   }))
 
-  const isFinished = (s: string) => (FINISHED as readonly string[]).includes(s)
   const byMatchday = (a: typeof enriched[number], b: typeof enriched[number]) =>
     (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0)
 

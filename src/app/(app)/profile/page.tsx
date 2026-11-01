@@ -17,6 +17,9 @@ import NotificationToggle from '@/components/profile/NotificationToggle'
 import NotificationPrefs from '@/components/profile/NotificationPrefs'
 import EloSummary, { loadEloSummary } from '@/components/elo/EloSummary'
 import { withDefaults } from '@/lib/notificationTypes'
+import { FINISHED_STATUSES } from '@/lib/gameStatus'
+import ResultChip from '@/components/common/ResultChip'
+import PlayerStatsCard from '@/components/player/PlayerStatsCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,7 +46,7 @@ export default async function ProfilePage() {
           .where(and(
             eq(games.tournamentId, tournament.id),
             or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
-            inArray(games.status, ['confirmed', 'forfeited'])
+            inArray(games.status, [...FINISHED_STATUSES])
           ))
           .orderBy(games.confirmedAt),
       ])
@@ -102,67 +105,7 @@ export default async function ProfilePage() {
       </Card>
 
       {myStats && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Tournament stats</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-3xl font-black text-primary">{myStats.points}</p>
-                <p className="text-xs text-muted-foreground">Points</p>
-              </div>
-              <div>
-                <p className="text-3xl font-black text-green-600">{myStats.victories}</p>
-                <p className="text-xs text-muted-foreground">Victories</p>
-              </div>
-              <div>
-                <p className="text-3xl font-black text-red-500">{myStats.losses}</p>
-                <p className="text-xs text-muted-foreground">Losses</p>
-              </div>
-            </div>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold">{myStats.setsWon}</p>
-                <p className="text-xs text-muted-foreground">Sets Won</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{myStats.setsLost}</p>
-                <p className="text-xs text-muted-foreground">Sets Lost</p>
-              </div>
-            </div>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-4 gap-3 text-center">
-              <div>
-                <p className="text-xl font-bold">{Math.round(myForm.winPct * 100)}%</p>
-                <p className="text-xs text-muted-foreground">Win rate</p>
-              </div>
-              <div>
-                <p className="text-xl font-bold">{Math.round(myForm.setWinPct * 100)}%</p>
-                <p className="text-xs text-muted-foreground">Set rate</p>
-              </div>
-              <div>
-                <p className="text-xl font-bold">{myStats.gamesPlayed ? (myStats.points / myStats.gamesPlayed).toFixed(1) : '0'}</p>
-                <p className="text-xs text-muted-foreground">Pts/game</p>
-              </div>
-              <div>
-                <p className="text-xl font-bold">{myForm.longestWinStreak}</p>
-                <p className="text-xs text-muted-foreground">Best streak</p>
-              </div>
-            </div>
-            {myForm.form.length > 0 && (
-              <div className="mt-4 flex items-center justify-center gap-2">
-                <span className="text-xs text-muted-foreground">Recent form</span>
-                <div className="flex gap-1">
-                  {myForm.form.map((r, i) => (
-                    <span key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${r === 'W' ? 'bg-green-500' : 'bg-red-500'}`}>{r}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <PlayerStatsCard stats={myStats} form={myForm} />
       )}
 
       <EloSummary userId={session.userId} possessive="your" data={eloData} />
@@ -178,9 +121,7 @@ export default async function ProfilePage() {
               return (
                 <div key={game.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${won ? 'bg-green-500' : 'bg-red-500'}`}>
-                      {won ? 'W' : 'L'}
-                    </span>
+                    <ResultChip won={won} className="text-xs" />
                     <span>vs {opponentName ?? '—'}</span>
                   </div>
                   <div className="flex items-center gap-3 text-muted-foreground">

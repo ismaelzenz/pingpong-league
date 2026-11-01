@@ -8,6 +8,8 @@ import { buttonVariants } from '@/components/ui/button'
 import PlayerLink from '@/components/player/PlayerLink'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import EmptyState from '@/components/common/EmptyState'
+import RankMovement from '@/components/common/RankMovement'
+import { medal } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,15 +62,9 @@ export default async function ScoreboardPage() {
                     <tr key={entry.userId} className={`border-b last:border-0 ${isMe ? 'bg-primary/5' : 'hover:bg-muted/30'} transition-colors`}>
                       <td className="pl-4 pr-1 py-3">
                         <div className="flex items-center gap-1.5">
-                          <span className="w-7 text-center shrink-0 text-muted-foreground">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</span>
+                          <span className="w-7 text-center shrink-0 text-muted-foreground">{medal(i + 1) ?? i + 1}</span>
                           <span className="w-7 shrink-0 text-xs tabular-nums text-center">
-                            {entry.movement == null
-                              ? null
-                              : entry.movement > 0
-                                ? <span className="text-green-500">▲{entry.movement}</span>
-                                : entry.movement < 0
-                                  ? <span className="text-red-500">▼{Math.abs(entry.movement)}</span>
-                                  : <span className="text-muted-foreground">–</span>}
+                            <RankMovement movement={entry.movement} />
                           </span>
                         </div>
                       </td>

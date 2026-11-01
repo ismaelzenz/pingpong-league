@@ -9,6 +9,7 @@ import { syncEloForGame } from '@/lib/eloLedger'
 import { afterLeagueChange } from '@/lib/cache'
 import { todayISO } from '@/lib/dates'
 import { eq } from 'drizzle-orm'
+import { isFinished, isUnplayed } from '@/lib/gameStatus'
 
 // A matchday an admin may still restructure: it hasn't started yet.
 async function getEditableMatchday(matchdayId: number) {
@@ -107,7 +108,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: true, eloChanged })
 
   } else if (action === 'postpone') {
-    if (!['pending', 'postponed'].includes(game.status)) return NextResponse.json({ error: 'Cannot postpone' }, { status: 400 })
+    if (!isUnplayed(game.status)) return NextResponse.json({ error: 'Cannot postpone' }, { status: 400 })
 
     const becomingPostponed = game.status !== 'postponed'
     await db.update(games).set({
@@ -129,7 +130,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   } else if (action === 'edit-players') {
     // Admin fixes the line-up of a not-yet-started matchday.
     if (!session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-    if (['confirmed', 'forfeited', 'result_entered'].includes(game.status)) {
+    if (isFinished(game.status)) {
       return NextResponse.json({ error: 'Cannot edit a game that already has a result' }, { status: 400 })
     }
     const { isFuture } = await getEditableMatchday(game.matchdayId)
@@ -175,7 +176,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   } else if (action === 'forfeit') {
     if (!session.isAdmin) return NextResponse.json({ error: 'Admin only' }, { status: 403 })
-    if (['confirmed', 'forfeited'].includes(game.status)) {
+    if (isFinished(game.status)) {
       return NextResponse.json({ error: 'Cannot forfeit a completed game' }, { status: 400 })
     }
     await db.update(games).set({
@@ -207,7 +208,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const game = await db.select().from(games).where(eq(games.id, gameId)).get()
   if (!game) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  if (['confirmed', 'forfeited', 'result_entered'].includes(game.status)) {
+  if (isFinished(game.status)) {
     return NextResponse.json({ error: 'Cannot remove a game that already has a result' }, { status: 400 })
   }
   const { isFuture } = await getEditableMatchday(game.matchdayId)

@@ -21,6 +21,9 @@ import { getLiveTournament } from '@/lib/tournament'
 import { getLatestFinishedTournament, computeRecap } from '@/lib/recap'
 import { todayISO, deadlineLabel } from '@/lib/dates'
 import { ChevronRight } from 'lucide-react'
+import { UNPLAYED_STATUSES, isFinished, isUnplayed } from '@/lib/gameStatus'
+import RankMovement from '@/components/common/RankMovement'
+import { medal } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
@@ -172,7 +175,7 @@ export default async function DashboardPage() {
       .where(and(
         eq(games.tournamentId, tournament.id),
         or(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, session.userId)),
-        inArray(games.status, ['pending', 'postponed'])
+        inArray(games.status, [...UNPLAYED_STATUSES])
       ))
       // Explicit, so "the game to play next" below doesn't depend on whichever index SQLite uses.
       .orderBy(games.id),
@@ -206,17 +209,17 @@ export default async function DashboardPage() {
     .slice(0, 4)
 
   const currentMatchday = weekGames[0] ? { id: weekGames[0].matchdayId, number: weekGames[0].number } : null
-  const weekPlayed = weekGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
+  const weekPlayed = weekGames.filter(g => isFinished(g.status)).length
   const weekPct = weekGames.length ? Math.round((weekPlayed / weekGames.length) * 100) : 0
 
   // The single most important thing for this player to do right now (catch up > play).
   const opponentName = (g: (typeof enrichedGames)[number]) =>
     g.homePlayerId === session.userId ? (g.awayPlayer?.name ?? '—') : (g.homePlayer?.name ?? '—')
   const overdue = enrichedGames.find(g =>
-    (g.status === 'pending' || g.status === 'postponed') &&
+    isUnplayed(g.status) &&
     (g.isCatchUp || (g.weekEnd != null && g.weekEnd < today)))
   const thisWeekPlay = enrichedGames.find(g =>
-    (g.status === 'pending' || g.status === 'postponed') &&
+    isUnplayed(g.status) &&
     g.weekStart && g.weekEnd && g.weekStart <= today && today <= g.weekEnd)
 
   let nextAction: { emoji: string; title: string; detail: string; gameId: number; tone: string } | null = null
@@ -331,15 +334,9 @@ export default async function DashboardPage() {
                       <tr key={entry.userId} className={`border-b last:border-0 ${isMe ? 'bg-primary/5' : ''}`}>
                         <td className="pl-4 pr-1 py-2.5">
                           <div className="flex items-center gap-1.5">
-                            <span className="w-6 text-center shrink-0 text-muted-foreground">{entry.rank <= 3 ? ['🥇', '🥈', '🥉'][entry.rank - 1] : entry.rank}</span>
+                            <span className="w-6 text-center shrink-0 text-muted-foreground">{medal(entry.rank) ?? entry.rank}</span>
                             <span className="w-7 shrink-0 text-xs tabular-nums text-center">
-                              {entry.movement == null
-                                ? null
-                                : entry.movement > 0
-                                  ? <span className="text-green-500">▲{entry.movement}</span>
-                                  : entry.movement < 0
-                                    ? <span className="text-red-500">▼{Math.abs(entry.movement)}</span>
-                                    : <span className="text-muted-foreground">–</span>}
+                              <RankMovement movement={entry.movement} />
                             </span>
                           </div>
                         </td>

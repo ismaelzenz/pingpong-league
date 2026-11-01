@@ -14,7 +14,11 @@ import { Separator } from '@/components/ui/separator'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import GameCard from '@/components/game/GameCard'
 import EloSummary, { loadEloSummary } from '@/components/elo/EloSummary'
-import { ChevronLeft } from 'lucide-react'
+import { FINISHED_STATUSES, UNPLAYED_STATUSES } from '@/lib/gameStatus'
+import BackLink from '@/components/common/BackLink'
+import { medal } from '@/lib/utils'
+import ResultChip from '@/components/common/ResultChip'
+import PlayerStatsCard from '@/components/player/PlayerStatsCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,7 +48,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           .from(games)
           .leftJoin(opponent, opponentOn)
           .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
-          .where(and(eq(games.tournamentId, tournament.id), mine, inArray(games.status, ['confirmed', 'forfeited'])))
+          .where(and(eq(games.tournamentId, tournament.id), mine, inArray(games.status, [...FINISHED_STATUSES])))
           .orderBy(games.confirmedAt),
         // Scheduled games between the two of you that haven't been played yet.
         db.select({ id: games.id, status: games.status, matchdayNumber: matchdays.number })
@@ -52,7 +56,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
           .where(and(
             eq(games.tournamentId, tournament.id),
-            inArray(games.status, ['pending', 'postponed']),
+            inArray(games.status, [...UNPLAYED_STATUSES]),
             or(
               and(eq(games.homePlayerId, playerId), eq(games.awayPlayerId, session.userId)),
               and(eq(games.homePlayerId, session.userId), eq(games.awayPlayerId, playerId)),
@@ -110,13 +114,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
-      <Link
-        href="/scoreboard"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground -ml-2 px-2 py-1 rounded-md hover:bg-accent transition-colors"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        Scoreboard
-      </Link>
+      <BackLink href="/scoreboard">Scoreboard</BackLink>
 
       <Card>
         <CardContent className="pt-6">
@@ -128,7 +126,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               {rank >= 0 && (
                 <p className="text-sm mt-1">
                   <span className="text-muted-foreground">Rank </span>
-                  <span className="font-semibold">{rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `#${rank + 1}`}</span>
+                  <span className="font-semibold">{medal(rank + 1) ?? `#${rank + 1}`}</span>
                   {tournament && <span className="text-muted-foreground"> · {tournament.name}</span>}
                 </p>
               )}
@@ -138,71 +136,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
       </Card>
 
       {stats ? (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Tournament stats</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-3xl font-black text-primary">{stats.points}</p>
-                <p className="text-xs text-muted-foreground">Points</p>
-              </div>
-              <div>
-                <p className="text-3xl font-black text-green-600">{stats.victories}</p>
-                <p className="text-xs text-muted-foreground">Victories</p>
-              </div>
-              <div>
-                <p className="text-3xl font-black text-red-500">{stats.losses}</p>
-                <p className="text-xs text-muted-foreground">Losses</p>
-              </div>
-            </div>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold">{stats.gamesPlayed}</p>
-                <p className="text-xs text-muted-foreground">Games</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.setsWon}</p>
-                <p className="text-xs text-muted-foreground">Sets Won</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.setsLost}</p>
-                <p className="text-xs text-muted-foreground">Sets Lost</p>
-              </div>
-            </div>
-            <Separator className="my-4" />
-            <div className="grid grid-cols-4 gap-3 text-center">
-              <div>
-                <p className="text-xl font-bold">{Math.round(playerForm.winPct * 100)}%</p>
-                <p className="text-xs text-muted-foreground">Win rate</p>
-              </div>
-              <div>
-                <p className="text-xl font-bold">{Math.round(playerForm.setWinPct * 100)}%</p>
-                <p className="text-xs text-muted-foreground">Set rate</p>
-              </div>
-              <div>
-                <p className="text-xl font-bold">{stats.gamesPlayed ? (stats.points / stats.gamesPlayed).toFixed(1) : '0'}</p>
-                <p className="text-xs text-muted-foreground">Pts/game</p>
-              </div>
-              <div>
-                <p className="text-xl font-bold">{playerForm.longestWinStreak}</p>
-                <p className="text-xs text-muted-foreground">Best streak</p>
-              </div>
-            </div>
-            {playerForm.form.length > 0 && (
-              <div className="mt-4 flex items-center justify-center gap-2">
-                <span className="text-xs text-muted-foreground">Recent form</span>
-                <div className="flex gap-1">
-                  {playerForm.form.map((r, i) => (
-                    <span key={i} className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${r === 'W' ? 'bg-green-500' : 'bg-red-500'}`}>{r}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <PlayerStatsCard stats={stats} form={playerForm} showGamesPlayed />
       ) : (
         <Card>
           <CardContent className="pt-6 text-center text-sm text-muted-foreground py-6">
@@ -253,9 +187,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                       return (
                         <Link key={r.gameId} href={`/games/${r.gameId}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
                           <div className="flex items-center gap-2">
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${youWon ? 'bg-green-500' : 'bg-red-500'}`}>
-                              {youWon ? 'W' : 'L'}
-                            </span>
+                            <ResultChip won={youWon} className="text-xs" />
                             <span className="text-muted-foreground">{r.forfeited ? 'Forfeit' : 'Result'}</span>
                           </div>
                           <div className="flex items-center gap-3 text-muted-foreground">
@@ -320,9 +252,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
             results.map(r => (
               <Link key={r.gameId} href={`/games/${r.gameId}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
                 <div className="flex items-center gap-2">
-                  <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white ${r.won ? 'bg-green-500' : 'bg-red-500'}`}>
-                    {r.won ? 'W' : 'L'}
-                  </span>
+                  <ResultChip won={r.won} className="text-xs" />
                   <span>
                     vs {r.opponentName}
                     {r.opponentId === session.userId && <span className="text-muted-foreground"> (you)</span>}

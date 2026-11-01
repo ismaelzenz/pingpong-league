@@ -1,19 +1,11 @@
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import PlayerLink from '@/components/player/PlayerLink'
 import { cn } from '@/lib/utils'
 import { deadlineLabel } from '@/lib/dates'
+import { isUnplayed } from '@/lib/gameStatus'
+import GameStatusBadge from '@/components/game/GameStatusBadge'
 import type { GameStatus } from '@/lib/db/schema'
-
-const statusConfig: Record<GameStatus, { label: string; className: string }> = {
-  pending: { label: 'Pending', className: 'border-gray-300 text-gray-600 dark:border-gray-600 dark:text-gray-300' },
-  // Legacy: results are auto-approved now, so nothing new lands here — only rows from before.
-  result_entered: { label: 'Recorded', className: 'border-green-400 text-green-700 dark:border-green-600 dark:text-green-400' },
-  confirmed: { label: 'Recorded', className: 'border-green-400 text-green-700 dark:border-green-600 dark:text-green-400' },
-  postponed: { label: 'Postponed', className: 'border-blue-400 text-blue-700 dark:border-blue-600 dark:text-blue-400' },
-  forfeited: { label: 'Forfeited', className: 'border-red-400 text-red-600 dark:border-red-600 dark:text-red-400' },
-}
 
 interface GameWithPlayers {
   id: number
@@ -38,11 +30,10 @@ interface Props {
 }
 
 export default function GameCard({ game, currentUserId, className }: Props) {
-  const config = statusConfig[game.status] ?? statusConfig.pending
   const hasResult = game.homeSets !== null && game.awaySets !== null
 
   const isParticipant = currentUserId === game.homePlayerId || currentUserId === game.awayPlayerId
-  const unplayed = game.status === 'pending' || game.status === 'postponed'
+  const unplayed = isUnplayed(game.status)
 
   // Playing ahead is allowed, so a not-yet-started matchday doesn't hide the prompt.
   const canEnter = unplayed && isParticipant
@@ -81,9 +72,7 @@ export default function GameCard({ game, currentUserId, className }: Props) {
                 {game.homeSets} – {game.awaySets}
               </span>
             )}
-            <Badge variant="outline" className={`text-xs ${config.className}`}>
-              {config.label}
-            </Badge>
+            <GameStatusBadge status={game.status} look="card" />
           </div>
         </div>
         {canEnter && (

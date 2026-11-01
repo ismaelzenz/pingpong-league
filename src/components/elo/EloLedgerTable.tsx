@@ -3,8 +3,10 @@
 import { useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { cn, showDelta, showElo } from '@/lib/utils'
+import { cn, showElo } from '@/lib/utils'
 import type { EloGameRow, EloGameSidePlayer } from '@/lib/eloLedger'
+import DeltaText from '@/components/common/DeltaText'
+import { shortDate } from '@/lib/dates'
 
 interface Props {
   games: EloGameRow[]
@@ -15,24 +17,13 @@ interface Props {
 
 type TypeFilter = 'all' | 'league' | 'elo'
 
-function shortDate(iso: string): string {
-  const d = new Date(iso)
-  const sameYear = d.getFullYear() === new Date().getFullYear()
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) })
-}
-
 /** A player and what the game did to them: "Bruno +12". */
 function PlayerDelta({ p, currentUserId }: { p: EloGameSidePlayer; currentUserId: number }) {
   const me = p.userId === currentUserId
   return (
     <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
       <span className={cn('text-sm', me && 'font-semibold text-primary')}>{p.name}</span>
-      <span
-        className={cn('text-xs font-medium tabular-nums', p.delta > 0 ? 'text-green-600' : 'text-red-500')}
-        title={`Rating after: ${showElo(p.ratingAfter)}`}
-      >
-        {showDelta(p.delta)}
-      </span>
+      <DeltaText value={p.delta} className="text-xs" title={`Rating after: ${showElo(p.ratingAfter)}`} />
     </span>
   )
 }

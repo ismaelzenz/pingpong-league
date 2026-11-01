@@ -8,6 +8,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/scoreboard'
 import { perspective } from '@/lib/gameResult'
 import { cached } from '@/lib/cache'
+import { FINISHED_STATUSES } from '@/lib/gameStatus'
 
 export interface RecapAward {
   userId: number
@@ -96,7 +97,7 @@ async function recap(tournamentId: number, tournamentName: string): Promise<Reca
       .leftJoin(users, eq(users.id, participants.userId))
       .where(eq(participants.tournamentId, tournamentId)),
     db.select().from(games)
-      .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, ['confirmed', 'forfeited']))),
+      .where(and(eq(games.tournamentId, tournamentId), inArray(games.status, [...FINISHED_STATUSES]))),
     db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays)
       .where(eq(matchdays.tournamentId, tournamentId)),
   ])

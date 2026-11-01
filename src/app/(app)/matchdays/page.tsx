@@ -11,6 +11,7 @@ import { getLiveTournament } from '@/lib/tournament'
 import { todayISO } from '@/lib/dates'
 import { isCatchUpBacklog } from '@/lib/backlog'
 import { AlertTriangle, Hourglass, ChevronRight } from 'lucide-react'
+import { isFinished } from '@/lib/gameStatus'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,7 +64,7 @@ export default async function MatchdaysPage() {
     return {
       m,
       total: dayGames.length,
-      confirmed: dayGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length,
+      confirmed: dayGames.filter(g => isFinished(g.status)).length,
       pending: dayGames.filter(g => g.status === 'pending').length,
       hasIssue: health.matchdayIdsWithIssue.has(m.id),
       mine,

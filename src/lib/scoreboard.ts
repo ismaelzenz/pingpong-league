@@ -3,6 +3,7 @@ import { games, participants, users } from '@/lib/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import { perspective, pointsFor } from '@/lib/gameResult'
 import { cached } from '@/lib/cache'
+import { FINISHED_STATUSES } from '@/lib/gameStatus'
 
 export interface ScoreboardEntry {
   userId: number
@@ -116,7 +117,7 @@ async function scoreboard(tournamentId: number): Promise<ScoreboardEntry[]> {
     db.select().from(games)
       .where(and(
         eq(games.tournamentId, tournamentId),
-        inArray(games.status, ['confirmed', 'forfeited'])
+        inArray(games.status, [...FINISHED_STATUSES])
       )),
   ])
 

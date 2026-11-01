@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { requireSession } from '@/lib/session'
 import { db } from '@/lib/db'
 import { matchdays, games, users, participants } from '@/lib/db/schema'
@@ -11,7 +10,9 @@ import GameCard from '@/components/game/GameCard'
 import MatchdayEditor from '@/components/admin/MatchdayEditor'
 import { analyzeSchedule } from '@/lib/scheduleHealth'
 import { todayISO, formatWeekRange } from '@/lib/dates'
-import { ChevronLeft, AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
+import { isFinished } from '@/lib/gameStatus'
+import BackLink from '@/components/common/BackLink'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,7 +58,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
   const myGames = enriched.filter(g => g.homePlayerId === session.userId || g.awayPlayerId === session.userId)
   const otherGames = enriched.filter(g => g.homePlayerId !== session.userId && g.awayPlayerId !== session.userId)
 
-  const confirmed = dayGames.filter(g => g.status === 'confirmed' || g.status === 'forfeited').length
+  const confirmed = dayGames.filter(g => isFinished(g.status)).length
 
   // Players enrolled in the tournament who have no game this matchday are on a bye
   // (this is how odd player counts are handled — one or more players sit out each round).
@@ -87,10 +88,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/matchdays" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2 -ml-2 px-2 py-1 rounded-md hover:bg-accent transition-colors">
-          <ChevronLeft className="w-4 h-4" />
-          All matchdays
-        </Link>
+        <BackLink href="/matchdays" className="mb-2">All matchdays</BackLink>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Matchday {matchday.number}</h1>
