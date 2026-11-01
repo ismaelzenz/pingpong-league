@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { notificationPrefs } from '@/lib/db/schema'
-import { requireUser } from '@/lib/apiAuth'
-import { NOTIFICATION_TYPES, withDefaults, type ConfigurableNotificationType } from '@/lib/notificationTypes'
+import { requireUser } from '@/lib/auth/api'
+import { NOTIFICATION_TYPES, withDefaults, type ConfigurableNotificationType } from '@/lib/domain/notificationTypes'
 import { eq } from 'drizzle-orm'
 // cache: private — writes only the member's notification preferences, which no cached read includes (see lib/cache.ts).
 

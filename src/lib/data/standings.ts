@@ -1,10 +1,10 @@
 import { db } from '@/lib/db'
 import { games, matchdays, participants, users } from '@/lib/db/schema'
 import { and, eq, inArray } from 'drizzle-orm'
-import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/scoreboard'
+import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/domain/scoreboard'
 import { todayISO } from '@/lib/dates'
 import { cached } from '@/lib/cache'
-import { FINISHED_STATUSES } from '@/lib/gameStatus'
+import { FINISHED_STATUSES } from '@/lib/domain/gameStatus'
 
 export interface StandingRow extends ScoreboardEntry {
   rank: number

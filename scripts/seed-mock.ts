@@ -21,8 +21,8 @@ import { drizzle } from 'drizzle-orm/libsql'
 import bcrypt from 'bcryptjs'
 import { startOfWeek, subWeeks, addWeeks, addDays, format } from 'date-fns'
 import * as schema from '../src/lib/db/schema'
-import { generateSchedule } from '../src/lib/schedule'
-import { buildLedger, type RatableGame } from '../src/lib/elo'
+import { generateSchedule } from '../src/lib/domain/schedule'
+import { buildLedger, type RatableGame } from '../src/lib/domain/elo'
 
 const { users, tournaments, participants, matchdays, games } = schema
 

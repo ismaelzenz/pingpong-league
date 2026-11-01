@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { requireUser } from '@/lib/apiAuth'
-import { WHATS_NEW } from '@/lib/whatsNew'
+import { requireUser } from '@/lib/auth/api'
+import { WHATS_NEW } from '@/lib/domain/whatsNew'
 import { eq } from 'drizzle-orm'
 // cache: private — writes only the member's own "what's new" dismissal, which no cached read includes (see lib/cache.ts).
 

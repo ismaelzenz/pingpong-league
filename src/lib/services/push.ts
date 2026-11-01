@@ -1,7 +1,7 @@
 import webpush from 'web-push'
 import { db } from '@/lib/db'
 import { pushSubscriptions, notificationPrefs } from '@/lib/db/schema'
-import { isConfigurable, type NotificationType } from '@/lib/notificationTypes'
+import { isConfigurable, type NotificationType } from '@/lib/domain/notificationTypes'
 import { eq, inArray } from 'drizzle-orm'
 
 let configured: boolean | null = null

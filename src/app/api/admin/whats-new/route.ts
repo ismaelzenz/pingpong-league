@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
-import { SETTINGS, setBoolSetting } from '@/lib/settings'
+import { requireAdmin } from '@/lib/auth/api'
+import { SETTINGS, setBoolSetting } from '@/lib/services/settings'
 import { isNotNull } from 'drizzle-orm'
 import { afterSettingsChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 /**
  * Admin control over the "what's new" note: switch it on or off for the league, and optionally
@@ -18,7 +19,9 @@ export async function PATCH(req: NextRequest) {
   const guard = await requireAdmin()
   if (guard instanceof NextResponse) return guard
 
-  const { enabled, resetDismissals } = await req.json() as
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { enabled, resetDismissals } = json as
     { enabled?: boolean; resetDismissals?: boolean }
 
   if (typeof enabled === 'boolean') {

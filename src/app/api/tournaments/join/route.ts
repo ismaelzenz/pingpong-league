@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { participants } from '@/lib/db/schema'
-import { requireUser } from '@/lib/apiAuth'
-import { getLiveTournamentFresh } from '@/lib/tournament'
+import { requireUser } from '@/lib/auth/api'
+import { getLiveTournamentFresh } from '@/lib/data/tournaments'
 import { and, eq } from 'drizzle-orm'
 import { afterLeagueChange } from '@/lib/cache'
 

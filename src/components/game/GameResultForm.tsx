@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useApiAction } from '@/hooks/useApiAction'
-import { OUTCOMES, type Outcome } from '@/lib/gameResult'
+import { OUTCOMES, type Outcome } from '@/lib/domain/gameResult'
 import OutcomeButton from '@/components/game/OutcomeButton'
 import ConfirmResultPanel from '@/components/game/ConfirmResultPanel'
 

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn, showElo } from '@/lib/utils'
-import type { EloGameRow, EloGameSidePlayer } from '@/lib/eloLedger'
+import type { EloGameRow, EloGameSidePlayer } from '@/lib/data/elo'
 import DeltaText from '@/components/common/DeltaText'
 import { shortDate } from '@/lib/dates'
 

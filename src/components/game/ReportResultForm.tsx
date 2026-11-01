@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useApiAction } from '@/hooks/useApiAction'
-import { OUTCOMES } from '@/lib/gameResult'
+import { OUTCOMES } from '@/lib/domain/gameResult'
 import OutcomeButton from '@/components/game/OutcomeButton'
 import { AlertTriangle } from 'lucide-react'
 

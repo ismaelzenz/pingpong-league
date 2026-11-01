@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/apiAuth'
+import { requireAdmin } from '@/lib/auth/api'
 import { clearAllCaches } from '@/lib/cache'
 
 /**

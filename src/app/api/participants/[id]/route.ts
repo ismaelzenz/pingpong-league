@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { participants, tournaments, games } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
+import { requireAdmin } from '@/lib/auth/api'
 import { eq, and, or } from 'drizzle-orm'
-import { regenerateSchedule } from '@/lib/regenerateSchedule'
+import { regenerateSchedule } from '@/lib/services/regenerateSchedule'
 import { afterLeagueChange } from '@/lib/cache'
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

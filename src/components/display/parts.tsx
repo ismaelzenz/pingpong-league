@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import AutoRefresh from '@/components/display/AutoRefresh'
 import DisplayClock from '@/components/display/DisplayClock'
-import type { LeaderRow, WeekGame, FunWallEntry, ByePlayer, RecordEntry, RecordKey } from '@/lib/display'
+import type { LeaderRow, WeekGame, FunWallEntry, ByePlayer, RecordEntry, RecordKey } from '@/lib/data/display'
 import { Flame, Bomb, Crown, Target, Medal, CalendarClock, Coffee, Shield, Zap, HeartPulse } from 'lucide-react'
 import CatchUpTicker from '@/components/display/CatchUpTicker'
-import { isFinished } from '@/lib/gameStatus'
+import { isFinished } from '@/lib/domain/gameStatus'
 
 /**
  * Shared building blocks for the office-TV board, composed differently by each layout variant
@@ -203,11 +203,6 @@ function RecordTileByKey({ recordKey, entry }: { recordKey: RecordKey; entry?: R
 }
 
 /** All record categories in order; `limit` caps how many show (for the small grid layouts). */
-export function RecordTiles({ records, limit }: { records: RecordEntry[]; limit?: number }) {
-  const byKey = new Map(records.map(r => [r.key, r]))
-  const keys = limit != null ? RECORD_KEYS.slice(0, limit) : RECORD_KEYS
-  return <>{keys.map(k => <RecordTileByKey key={k} recordKey={k} entry={byKey.get(k)} />)}</>
-}
 
 /** Continuous horizontal marquee of all record tiles for the bottom of the board. */
 export function RecordsTicker({ records, secondsPerItem = 10 }: { records: RecordEntry[]; secondsPerItem?: number }) {

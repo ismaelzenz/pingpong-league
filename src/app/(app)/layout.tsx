@@ -1,5 +1,5 @@
-import { requireSession, getCurrentUser } from '@/lib/session'
-import { getLiveTournament } from '@/lib/tournament'
+import { requireSession, getCurrentUser } from '@/lib/auth/session'
+import { getLiveTournament } from '@/lib/data/tournaments'
 import AppNav from '@/components/layout/AppNav'
 import IosInstallHint from '@/components/layout/IosInstallHint'
 

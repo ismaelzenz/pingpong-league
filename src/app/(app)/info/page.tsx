@@ -1,4 +1,4 @@
-import { getSession } from '@/lib/session'
+import { getSession } from '@/lib/auth/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   BookOpen, Trophy, CalendarDays, ClipboardCheck, Timer, Users, Shield, AlertTriangle, UserPlus, Swords, TrendingUp,

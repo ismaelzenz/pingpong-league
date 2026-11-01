@@ -117,7 +117,7 @@ async function main() {
   // not at the top: the app's db module reads TURSO_DATABASE_URL when it loads, which is only set
   // once `config()` above has picked the env file.
   if (deleted > 0) {
-    const { rebuildEloLedger } = await import('../src/lib/eloLedger')
+    const { rebuildEloLedger } = await import('../src/lib/services/eloLedger')
     const { games: rated } = await rebuildEloLedger()
     console.log(`ELO ledger rebuilt from ${rated} rated games.`)
   }

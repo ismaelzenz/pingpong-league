@@ -1,5 +1,5 @@
-import { getLiveTournament } from '@/lib/tournament'
-import { computeDisplayData } from '@/lib/display'
+import { getLiveTournament } from '@/lib/data/tournaments'
+import { computeDisplayData } from '@/lib/data/display'
 import AutoRefresh from '@/components/display/AutoRefresh'
 import DisplayBoard from '@/components/display/DisplayBoard'
 import { Trophy } from 'lucide-react'

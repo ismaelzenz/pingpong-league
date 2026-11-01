@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { matchdays, games, participants } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
+import { requireAdmin } from '@/lib/auth/api'
 import { eq } from 'drizzle-orm'
 import { todayISO } from '@/lib/dates'
 import { afterLeagueChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 // Admin adds a game to a not-yet-started matchday.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +22,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Can only edit future matchdays' }, { status: 400 })
   }
 
-  const body = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const body = json
   const homePlayerId = Number(body.homePlayerId)
   const awayPlayerId = Number(body.awayPlayerId)
   if (!homePlayerId || !awayPlayerId || homePlayerId === awayPlayerId) {

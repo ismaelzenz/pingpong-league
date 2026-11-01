@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { db } from '@/lib/db'
 import { tournaments, participants } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
+import { requireAdmin } from '@/lib/auth/api'
 import { eq } from 'drizzle-orm'
-import { regenerateSchedule } from '@/lib/regenerateSchedule'
-import { sendPush } from '@/lib/push'
+import { regenerateSchedule } from '@/lib/services/regenerateSchedule'
+import { sendPush } from '@/lib/services/push'
 import { afterLeagueChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
   if (guard instanceof NextResponse) return guard
 
-  const { tournamentId } = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { tournamentId } = json
 
   const pList = await db.select().from(participants).where(eq(participants.tournamentId, tournamentId))
   if (pList.length < 2) {

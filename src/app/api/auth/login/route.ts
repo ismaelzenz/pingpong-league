@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { getSession, establishSession } from '@/lib/session'
+import { getSession, establishSession } from '@/lib/auth/session'
 import { eq } from 'drizzle-orm'
+import { readJson } from '@/lib/http'
 
 export async function POST(req: NextRequest) {
-  const { email, password } = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { email, password } = json
 
   const user = await db.select().from(users).where(eq(users.email, email.toLowerCase())).get()
   if (!user) {

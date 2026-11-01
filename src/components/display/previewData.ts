@@ -1,4 +1,4 @@
-import type { DisplayData } from '@/lib/display'
+import type { DisplayData } from '@/lib/data/display'
 
 // Hardcoded board data for the /display/preview pages — no database, safe in production.
 // Models a 20-player league mid-season (10 games/matchday): mix of played, awaiting-confirmation,

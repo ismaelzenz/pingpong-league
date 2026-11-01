@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { WHATS_NEW } from '@/lib/whatsNew'
+import { WHATS_NEW } from '@/lib/domain/whatsNew'
 import { Sparkles, X } from 'lucide-react'
 
 /**

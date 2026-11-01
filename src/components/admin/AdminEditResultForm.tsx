@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { isValidResult } from '@/lib/gameResult'
+import { isValidResult } from '@/lib/domain/gameResult'
 import { useApiAction } from '@/hooks/useApiAction'
 
 interface Props {

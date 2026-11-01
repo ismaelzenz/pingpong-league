@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { tournaments } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
+import { requireAdmin } from '@/lib/auth/api'
 import { isValid } from 'date-fns'
-import { getLiveTournamentFresh } from '@/lib/tournament'
+import { getLiveTournamentFresh } from '@/lib/data/tournaments'
 import { afterLeagueChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
   if (guard instanceof NextResponse) return guard
 
-  const { name, startDate, countsForElo } = await req.json() as
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { name, startDate, countsForElo } = json as
     { name?: string; startDate?: string; countsForElo?: boolean }
   if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 })
 

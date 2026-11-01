@@ -1,9 +1,9 @@
 import { db } from '@/lib/db'
 import { matchdays, games, participants, tournaments } from '@/lib/db/schema'
 import { eq, inArray } from 'drizzle-orm'
-import { generateSchedule } from '@/lib/schedule'
+import { generateSchedule } from '@/lib/domain/schedule'
 import { addDays, nextMonday, startOfWeek, parseISO, isValid, format } from 'date-fns'
-import { isFinished } from '@/lib/gameStatus'
+import { isFinished } from '@/lib/domain/gameStatus'
 
 // A matchday that contains any of these is considered "played" and is never touched.
 

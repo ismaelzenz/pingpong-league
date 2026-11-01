@@ -2,15 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { requireUser } from '@/lib/apiAuth'
+import { requireUser } from '@/lib/auth/api'
 import { eq } from 'drizzle-orm'
+import { readJson } from '@/lib/http'
 // cache: private — writes only the member's password hash, which no cached read includes (see lib/cache.ts).
 
 export async function POST(req: NextRequest) {
   const session = await requireUser()
   if (session instanceof NextResponse) return session
 
-  const { currentPassword, newPassword } = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { currentPassword, newPassword } = json
   if (!currentPassword || !newPassword) {
     return NextResponse.json({ error: 'Both fields are required' }, { status: 400 })
   }

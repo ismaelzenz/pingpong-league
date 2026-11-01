@@ -5,12 +5,12 @@
 import { db } from '@/lib/db'
 import { games, matchdays, participants, users, type GameStatus } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/scoreboard'
-import { perspective } from '@/lib/gameResult'
+import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/domain/scoreboard'
+import { perspective } from '@/lib/domain/gameResult'
 import { todayISO } from '@/lib/dates'
-import { isCatchUpBacklog } from '@/lib/backlog'
+import { isCatchUpBacklog } from '@/lib/domain/backlog'
 import { cached } from '@/lib/cache'
-import { isFinished, isUnplayed } from '@/lib/gameStatus'
+import { isFinished, isUnplayed } from '@/lib/domain/gameStatus'
 
 const MIN_GAMES_FOR_WIN_RATE = 4
 

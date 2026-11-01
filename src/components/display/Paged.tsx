@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import type { LeaderRow, WeekGame, ByePlayer } from '@/lib/display'
+import type { LeaderRow, WeekGame, ByePlayer } from '@/lib/data/display'
 import { StandingsTable, ThisWeekPanel } from '@/components/display/parts'
-import { isFinished } from '@/lib/gameStatus'
+import { isFinished } from '@/lib/domain/gameStatus'
 
 /**
  * Auto-paging for the standings and this-week panels, built as a real carousel: every page is

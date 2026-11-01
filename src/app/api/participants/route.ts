@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { participants, tournaments, games, users } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
+import { requireAdmin } from '@/lib/auth/api'
 import { and, eq, or } from 'drizzle-orm'
-import { regenerateSchedule } from '@/lib/regenerateSchedule'
+import { regenerateSchedule } from '@/lib/services/regenerateSchedule'
 import { afterLeagueChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
   if (guard instanceof NextResponse) return guard
 
-  const { tournamentId, userId } = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { tournamentId, userId } = json
   if (!tournamentId || !userId) {
     return NextResponse.json({ error: 'tournamentId and userId are required' }, { status: 400 })
   }

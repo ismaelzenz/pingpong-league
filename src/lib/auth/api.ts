@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { getSession } from '@/lib/session'
+import { getSession } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import type { SessionData } from '@/lib/session'
+import type { SessionData } from '@/lib/auth/session'
 import type { IronSession } from 'iron-session'
 
 /**

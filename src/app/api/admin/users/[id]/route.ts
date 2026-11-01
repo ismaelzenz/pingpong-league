@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { users, participants, games, pushSubscriptions, notificationPrefs, passwordResetTokens } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
-import { isAdmin } from '@/lib/admin'
+import { requireAdmin } from '@/lib/auth/api'
+import { isAdmin } from '@/lib/auth/admins'
 import { eq, or } from 'drizzle-orm'
 import { afterLeagueChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 // Permanently delete a member's account (login + all their data). Admin only. Refuses accounts
 // that still have games in a tournament — those must be eliminated from the tournament first, so
@@ -54,7 +55,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const userId = parseInt(id)
   if (isNaN(userId)) return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
 
-  const { archived } = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { archived } = json
   const user = await db.select().from(users).where(eq(users.id, userId)).then(r => r[0])
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
   if (isAdmin(user.email)) return NextResponse.json({ error: 'Admin accounts cannot be archived.' }, { status: 400 })

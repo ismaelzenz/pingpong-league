@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { matchdays, games } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
+import { requireAdmin } from '@/lib/auth/api'
 import { eq } from 'drizzle-orm'
 import { todayISO } from '@/lib/dates'
 import { afterLeagueChange } from '@/lib/cache'
-import { isFinished } from '@/lib/gameStatus'
+import { isFinished } from '@/lib/domain/gameStatus'
+import { readJson } from '@/lib/http'
 
 
 /**
@@ -27,7 +28,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Can only edit future matchdays' }, { status: 400 })
   }
 
-  const { order } = await req.json() as { order: number[] }
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { order } = json as { order: number[] }
   const dayGames = await db.select().from(games).where(eq(games.matchdayId, matchdayId)).orderBy(games.id)
 
   if (dayGames.some(g => isFinished(g.status))) {

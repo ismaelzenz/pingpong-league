@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { requireUser } from '@/lib/apiAuth'
+import { requireUser } from '@/lib/auth/api'
 import { eq } from 'drizzle-orm'
 import { afterLeagueChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 export async function PATCH(req: NextRequest) {
   const session = await requireUser()
   if (session instanceof NextResponse) return session
 
-  const { name, avatarColor } = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { name, avatarColor } = json
 
   const update: Record<string, string> = {}
   if (name?.trim()) {

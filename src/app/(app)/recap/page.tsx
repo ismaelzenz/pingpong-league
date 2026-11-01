@@ -1,5 +1,5 @@
-import { requireSession } from '@/lib/session'
-import { getFinishedTournaments, computeRecap } from '@/lib/recap'
+import { requireSession } from '@/lib/auth/session'
+import { getFinishedTournaments, computeRecap } from '@/lib/data/recap'
 import RecapView from '@/components/recap/RecapView'
 import PastSeasons from '@/components/recap/PastSeasons'
 import EmptyState from '@/components/common/EmptyState'

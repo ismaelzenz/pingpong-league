@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import { History } from 'lucide-react'
-import type { WeekGame } from '@/lib/display'
+import type { WeekGame } from '@/lib/data/display'
 
 /**
  * Catch-up backlog strip for the office board. Each game is a pill (avatar · name · v · name ·

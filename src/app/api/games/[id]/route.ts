@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { db } from '@/lib/db'
 import { games, matchdays, participants } from '@/lib/db/schema'
-import { requireUser, requireAdmin } from '@/lib/apiAuth'
-import { sendPush } from '@/lib/push'
-import { isValidResult } from '@/lib/gameResult'
-import { winnersOf } from '@/lib/elo'
-import { syncEloForGame } from '@/lib/eloLedger'
+import { requireUser, requireAdmin } from '@/lib/auth/api'
+import { sendPush } from '@/lib/services/push'
+import { isValidResult } from '@/lib/domain/gameResult'
+import { winnersOf } from '@/lib/domain/elo'
+import { syncEloForGame } from '@/lib/services/eloLedger'
 import { afterLeagueChange } from '@/lib/cache'
 import { todayISO } from '@/lib/dates'
 import { eq } from 'drizzle-orm'
-import { isFinished, isUnplayed } from '@/lib/gameStatus'
+import { isFinished, isUnplayed } from '@/lib/domain/gameStatus'
+import { readJson } from '@/lib/http'
 
 // A matchday an admin may still restructure: it hasn't started yet.
 async function getEditableMatchday(matchdayId: number) {
@@ -25,7 +26,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params
   const gameId = parseInt(id)
-  const body = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const body = json
 
   const game = await db.select().from(games).where(eq(games.id, gameId)).get()
   if (!game) return NextResponse.json({ error: 'Not found' }, { status: 404 })

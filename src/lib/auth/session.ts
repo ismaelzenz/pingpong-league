@@ -2,28 +2,13 @@ import { cache } from 'react'
 import { getIronSession, type IronSession } from 'iron-session'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { isAdmin } from '@/lib/admin'
+import { isAdmin } from '@/lib/auth/admins'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { sessionOptions, type SessionData } from '@/lib/auth/sessionConfig'
 
-export interface SessionData {
-  userId: number
-  email: string
-  name: string
-  isAdmin: boolean
-}
-
-const sessionOptions = {
-  password: process.env.SESSION_SECRET!,
-  cookieName: 'pp-league-session',
-  cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'lax' as const,
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-  },
-}
+export type { SessionData }
 
 export async function getSession(): Promise<IronSession<SessionData>> {
   const cookieStore = await cookies()
@@ -60,7 +45,7 @@ export async function getCurrentUser(userId: number) {
 /**
  * Where to send someone whose cookie names a user that's gone.
  *
- * NOT straight to /login: the cookie is still validly signed, so the middleware would count them
+ * NOT straight to /login: the cookie is still validly signed, so the proxy would count them
  * as logged in, bounce them back to /dashboard, and the guard would reject them again — an
  * infinite redirect. This route clears the cookie first, which is something only a route handler
  * can do (a Server Component reads cookies but can't write them).

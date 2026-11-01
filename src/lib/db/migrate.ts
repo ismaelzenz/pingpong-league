@@ -1,6 +1,6 @@
 import { config } from 'dotenv'
 import { createClient, type Client } from '@libsql/client'
-import { buildLedger, type RatableGame } from '../elo'
+import { buildLedger, type RatableGame } from '../domain/elo'
 
 // Which env file to load. Defaults to local dev; pass a file as the first arg to target another
 // environment — the `db:init:prod` script passes `.env.production.local` (see package.json).

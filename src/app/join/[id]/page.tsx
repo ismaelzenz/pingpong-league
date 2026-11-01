@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getSession } from '@/lib/session'
+import { getSession } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { tournaments, participants } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'

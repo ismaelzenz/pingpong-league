@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useApiAction } from '@/hooks/useApiAction'
 import { cn, joinNames } from '@/lib/utils'
 import { X } from 'lucide-react'
-import { OUTCOMES, type Outcome } from '@/lib/gameResult'
+import { OUTCOMES, type Outcome } from '@/lib/domain/gameResult'
 import OutcomeButton from '@/components/game/OutcomeButton'
 import ConfirmResultPanel from '@/components/game/ConfirmResultPanel'
 

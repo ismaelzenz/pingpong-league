@@ -1,6 +1,6 @@
 // Extra per-player stats derived from their finished games, beyond the raw scoreboard totals.
 
-import { perspective } from '@/lib/gameResult'
+import { perspective } from '@/lib/domain/gameResult'
 
 interface GameLite {
   homePlayerId: number

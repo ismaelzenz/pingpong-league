@@ -1,4 +1,4 @@
-import type { DisplayData } from '@/lib/display'
+import type { DisplayData } from '@/lib/data/display'
 import { BoardShell, RecordsTicker } from '@/components/display/parts'
 import { PagedStandings, PagedThisWeek } from '@/components/display/Paged'
 

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { db } from '@/lib/db'
 import { eloGamePlayers, eloGames, eloHistory } from '@/lib/db/schema'
-import { requireUser } from '@/lib/apiAuth'
-import { sendPush } from '@/lib/push'
-import { isValidResult } from '@/lib/gameResult'
-import { winnersOf } from '@/lib/elo'
-import { rebuildEloLedger, syncEloForGame } from '@/lib/eloLedger'
+import { requireUser } from '@/lib/auth/api'
+import { sendPush } from '@/lib/services/push'
+import { isValidResult } from '@/lib/domain/gameResult'
+import { winnersOf } from '@/lib/domain/elo'
+import { rebuildEloLedger, syncEloForGame } from '@/lib/services/eloLedger'
 import { and, eq } from 'drizzle-orm'
 import { afterEloGameChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 /** Load a casual game plus its two sides, or null. */
 async function loadGame(gameId: number) {
@@ -40,7 +41,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const played = everyone.includes(session.userId)
   if (!played && !session.isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { homeSets, awaySets } = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { homeSets, awaySets } = json
   if (!isValidResult(Number(homeSets), Number(awaySets))) {
     return NextResponse.json({ error: 'Invalid result — best of 3, so 2–0 or 2–1' }, { status: 400 })
   }

@@ -1,4 +1,4 @@
-import type { RecapData } from '@/lib/recap'
+import type { RecapData } from '@/lib/data/recap'
 import { Card, CardContent } from '@/components/ui/card'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import PlayerLink from '@/components/player/PlayerLink'

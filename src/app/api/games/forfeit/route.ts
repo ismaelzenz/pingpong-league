@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { games, matchdays } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
+import { requireAdmin } from '@/lib/auth/api'
 import { eq, and, inArray, lt } from 'drizzle-orm'
 import { todayISO } from '@/lib/dates'
 import { afterLeagueChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
   if (guard instanceof NextResponse) return guard
 
-  const { tournamentId } = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { tournamentId } = json
   const today = todayISO()
 
   const pastMatchdays = await db.select({ id: matchdays.id })

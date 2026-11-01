@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import PlayerLink from '@/components/player/PlayerLink'
 import { cn } from '@/lib/utils'
 import { deadlineLabel } from '@/lib/dates'
-import { isUnplayed } from '@/lib/gameStatus'
+import { isUnplayed } from '@/lib/domain/gameStatus'
 import GameStatusBadge from '@/components/game/GameStatusBadge'
 import type { GameStatus } from '@/lib/db/schema'
 

@@ -1,7 +1,7 @@
 import { Separator } from '@/components/ui/separator'
 import ResultChip from '@/components/common/ResultChip'
-import type { ScoreboardEntry } from '@/lib/scoreboard'
-import type { computePlayerForm } from '@/lib/playerStats'
+import type { ScoreboardEntry } from '@/lib/domain/scoreboard'
+import type { computePlayerForm } from '@/lib/domain/playerStats'
 import SectionCard from '@/components/common/SectionCard'
 
 /**

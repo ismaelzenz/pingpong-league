@@ -1,4 +1,4 @@
-import { requireSession } from '@/lib/session'
+import { requireSession } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { isNull } from 'drizzle-orm'

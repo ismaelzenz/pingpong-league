@@ -2,6 +2,8 @@
 // (league / knockout), a mode (singles / doubles) and a list of competitors. Results are a map
 // keyed by match id. Everything else (bracket, standings) is derived from these.
 
+/** A league member offered as a pick in setup (string id, so guests and members share one shape). */
+export type AppUser = { id: string; name: string; color: string }
 export type Person = { id: string; name: string; color: string }
 export type Competitor = { id: string; members: Person[] } // 1 member = singles, 2 = doubles
 export type Format = 'league' | 'knockout'
@@ -146,13 +148,6 @@ export function buildBracket(competitors: Competitor[], results: Results): Brack
 }
 
 /** Human label for a knockout round given its index and the total number of rounds. */
-export function roundName(index: number, total: number): string {
-  const fromEnd = total - 1 - index
-  if (fromEnd === 0) return 'Final'
-  if (fromEnd === 1) return 'Semifinals'
-  if (fromEnd === 2) return 'Quarterfinals'
-  return `Round ${index + 1}`
-}
 
 // ── League (round-robin) ──────────────────────────────────────────────────────────────────────
 

@@ -1,16 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getIronSession } from 'iron-session'
-import type { SessionData } from '@/lib/session'
-
-const sessionOptions = {
-  password: process.env.SESSION_SECRET!,
-  cookieName: 'pp-league-session',
-  cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'lax' as const,
-  },
-}
+import { sessionOptions, type SessionData } from '@/lib/auth/sessionConfig'
 
 const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password']
 
@@ -18,7 +8,7 @@ const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-passwor
 // wall display, which runs on a TV that can't log in.
 const OPEN_PATHS = ['/display']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const response = NextResponse.next()
 

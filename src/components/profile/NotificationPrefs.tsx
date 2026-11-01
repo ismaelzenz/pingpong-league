@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Switch } from '@/components/ui/switch'
-import { NOTIFICATION_TYPES, type NotificationPrefs as Prefs, type NotificationType } from '@/lib/notificationTypes'
+import { NOTIFICATION_TYPES, type NotificationPrefs as Prefs, type NotificationType } from '@/lib/domain/notificationTypes'
 
 // Per-type opt-out toggles. Each switch saves on its own (optimistic; reverts on failure).
 // These are account-wide preferences, independent of which device is subscribed.

@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { tournaments } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
+import { requireAdmin } from '@/lib/auth/api'
 import { eq } from 'drizzle-orm'
 import { isValid } from 'date-fns'
 import { mondayOf } from '@/lib/dates'
 import { afterLeagueChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 // Set the holiday break weeks (weeks left matchday-free) while registration is open.
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
   if (guard instanceof NextResponse) return guard
 
-  const { tournamentId, weeks } = await req.json() as { tournamentId: number; weeks: string[] }
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { tournamentId, weeks } = json as { tournamentId: number; weeks: string[] }
 
   const tournament = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).then(r => r[0])
   if (!tournament) return NextResponse.json({ error: 'Tournament not found' }, { status: 404 })

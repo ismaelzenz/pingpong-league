@@ -235,10 +235,10 @@ each type on/off individually**. Notifications fire when:
 It's web push (no email) — works on desktop/Android browsers, and on iPhone **once the app is
 installed to the Home Screen via Safari** (iOS 16.4+). Per-type preferences are stored in the
 `notification_prefs` table (opt-out; a missing row means all types on); the always-on types are
-defined in `src/lib/notificationTypes.ts`. Requires `VAPID_PUBLIC_KEY`,
+defined in `src/lib/domain/notificationTypes.ts`. Requires `VAPID_PUBLIC_KEY`,
 `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` env vars (generate keys
 with web-push; subscriptions live in the `push_subscriptions` table). Sending logic:
-`src/lib/push.ts`; service-worker handlers in `public/sw.js`.
+`src/lib/services/push.ts`; service-worker handlers in `public/sw.js`.
 
 ## Install on phones (PWA)
 
@@ -256,16 +256,20 @@ A full-screen, auto-refreshing board for an office TV: the full standings with w
 movement**, **this week's fixtures** (played + still to play), and a **"fun wall"** of record
 tiles (🔥 on fire, 🧨 the destroyer, 👑 best win rate, 🎯 clutch). It's **fully public** (no login,
 so a TV can show it) and refreshes itself **every 60s** — just open `/display` on the screen.
-Compute lives in `src/lib/display.ts`; the page is `src/app/display/page.tsx` and is allow-listed
-in `src/middleware.ts`.
+Compute lives in `src/lib/data/display.ts`; the page is `src/app/display/page.tsx` and is allow-listed
+in `src/proxy.ts` (Next 16's name for middleware).
 
 ## Tech notes
 
 - **Next.js** (App Router) + **React**, **Tailwind** + Base UI components, **Drizzle ORM** on
   **libsql/Turso**, **iron-session** auth.
-- Schedule generation: `src/lib/schedule.ts`. Mid-season rebuild: `src/lib/regenerateSchedule.ts`.
-  Standings: `src/lib/scoreboard.ts` (plus `src/lib/standings.ts` for weekly ▲/▼ rank movement).
-  Schedule validation: `src/lib/scheduleHealth.ts`. Wall-board data: `src/lib/display.ts`.
+- Schedule generation: `src/lib/domain/schedule.ts`. Mid-season rebuild: `src/lib/services/regenerateSchedule.ts`.
+  Standings: `src/lib/domain/scoreboard.ts` (the ranking rules) and `src/lib/data/standings.ts`
+  (weekly ▲/▼ rank movement). Schedule validation: `src/lib/domain/scheduleHealth.ts`.
+  Wall-board data: `src/lib/data/display.ts`.
+- **Caching**: standings, ELO, recaps and the wall board are cached across requests and expired
+  by every write — see `src/lib/cache.ts`. Any new API route that writes must call one of its
+  `after…Change()` helpers; `npm run check:cache` fails if one doesn't.
 - **Dates use the league timezone (`Europe/Amsterdam`), not UTC**, so matchday-week boundaries
   line up with real local days — `todayISO()` in `src/lib/dates.ts`.
 - **Database** is libSQL — a **local file in dev, Turso (cloud) in production**:
@@ -279,20 +283,28 @@ in `src/middleware.ts`.
 
 ### Code layout & shared building blocks
 
-- **`src/components/`** is grouped by feature: `admin/` (tournament & matchday controls),
-  `game/`, `profile/`, `player/`, `layout/` (nav, theme, service worker), `display/` (the wall
-  board), `common/` (reusable bits — `EmptyState`, `MatchdayListItem`, `JoinTournamentButton`, …),
-  and `ui/` (Base UI primitives). Import via the `@/` alias, e.g. `@/components/admin/AddPlayerForm`.
-- **Shared helpers** keep behaviour in one place — reuse these instead of re-implementing:
-  - `src/lib/apiAuth.ts` — `requireUser()` / `requireAdmin()` guards for API routes.
-  - `src/lib/session.ts` — `requireSession()` / `requireAdminSession()` guards for pages,
-    plus `establishSession()` for login/register.
-  - `src/lib/gameResult.ts` — `perspective()`, `pointsFor()`, `isValidResult()` (the scoring rules).
-  - `src/lib/dates.ts` — `todayISO()` (Amsterdam), `mondayOf()`, `formatWeekRange()`, `deadlineLabel()`.
-  - `src/lib/scoreboard.ts` / `src/lib/standings.ts` — `buildScoreboard()` and
-    `computeStandingsWithMovement()` (standings, shared by the scoreboard, dashboard and wall board).
-  - `src/lib/notificationTypes.ts` — the notification-type catalogue + per-type preference helpers.
-  - `src/lib/utils.ts` — `getInitials()`; `src/components/player/PlayerAvatar.tsx` renders a player's avatar.
+- **`src/lib/`** is split by what the code does, so it's clear where new code goes:
+  - `domain/` — pure rules, no database: scoring (`gameResult`, `scoreboard`), game statuses
+    (`gameStatus` — `isFinished()` / `isUnplayed()`), ELO maths (`elo`), schedules, notification
+    types, the "what's new" note.
+  - `data/` — reads for pages, cached: `tournaments`, `standings`, `scoreboard`, `recap`,
+    `display`, `elo` (the ELO tables and charts).
+  - `services/` — writes and side effects: `eloLedger` (keeping ELO in step with results),
+    `regenerateSchedule`, `push`, `settings`.
+  - `auth/` — `session` (`requireSession()` / `requireAdminSession()` for pages,
+    `establishSession()` for login), `api` (`requireUser()` / `requireAdmin()` for API routes),
+    `admins`, and `sessionConfig` (the cookie settings, shared with `src/proxy.ts`).
+  - Top level: `db/` (schema, client, migrations), `cache.ts`, `http.ts` (`readJson()` — parse a
+    request body or return a 400), `dates.ts` (`todayISO()` in Amsterdam time, `shortDate()`, …),
+    `utils.ts` (`cn()`, `getInitials()`, `medal()`, `showElo()` / `showDelta()`).
+- **`src/components/`** is grouped by feature: `admin/`, `game/`, `elo/`, `player/`, `profile/`,
+  `recap/`, `display/` (the wall board), `dailytournament/`, `layout/` (nav, `AuthShell`, theme,
+  service worker), `common/` and `ui/` (Base UI primitives). Import via the `@/` alias.
+- **Reuse these instead of re-implementing:**
+  - `common/SectionCard` (a titled card section), `common/BackLink`, `common/EmptyState`,
+    `common/ResultChip` (W/L), `common/DeltaText` (+12 / −8), `common/RankMovement` (▲ / ▼).
+  - `game/GameStatusBadge`, `game/OutcomeButton` + `game/ConfirmResultPanel` (entering a score),
+    `player/PlayerStatsCard`, `player/PlayerAvatar`, `layout/AuthShell` (signed-out pages).
   - `src/hooks/useApiAction.ts` — the client-side "POST → toast → refresh" flow for buttons/forms.
 
 ---

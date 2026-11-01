@@ -1,6 +1,6 @@
 import Link from 'next/link'
-import { computeEloStandings, listEloGames } from '@/lib/eloLedger'
-import { START_ELO } from '@/lib/elo'
+import { computeEloStandings, listEloGames } from '@/lib/data/elo'
+import { START_ELO } from '@/lib/domain/elo'
 import { joinNames, showElo } from '@/lib/utils'
 
 /** How many games the profile summaries show — enough to read a run of form, short enough to scan. */

@@ -5,10 +5,10 @@ import { cache } from 'react'
 import { db } from '@/lib/db'
 import { games, matchdays, participants, tournaments, users } from '@/lib/db/schema'
 import { and, desc, eq, inArray } from 'drizzle-orm'
-import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/scoreboard'
-import { perspective } from '@/lib/gameResult'
+import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/domain/scoreboard'
+import { perspective } from '@/lib/domain/gameResult'
 import { cached } from '@/lib/cache'
-import { FINISHED_STATUSES } from '@/lib/gameStatus'
+import { FINISHED_STATUSES } from '@/lib/domain/gameStatus'
 
 export interface RecapAward {
   userId: number
@@ -68,7 +68,7 @@ export interface RecapData {
 
 const MIN_GAMES_FOR_WIN_RATE = 3
 
-export { getLatestFinishedTournament } from '@/lib/tournament'
+export { getLatestFinishedTournament } from '@/lib/data/tournaments'
 
 /** All finished tournaments, most recently finished first (for the "Past seasons" list). */
 export const getFinishedTournaments = cached('finishedTournaments', ['league'], async () =>

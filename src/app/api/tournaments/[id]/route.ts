@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { tournaments, participants, matchdays, games } from '@/lib/db/schema'
-import { requireAdmin } from '@/lib/apiAuth'
+import { requireAdmin } from '@/lib/auth/api'
 import { eq } from 'drizzle-orm'
 import { isValid } from 'date-fns'
-import { rebuildEloLedger } from '@/lib/eloLedger'
+import { rebuildEloLedger } from '@/lib/services/eloLedger'
 import { afterLeagueChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 // Edit tournament settings while registration is open — plus the ELO switch, which can be changed
 // at any point in a season's life.
@@ -18,7 +19,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const tournament = await db.select().from(tournaments).where(eq(tournaments.id, tournamentId)).then(r => r[0])
   if (!tournament) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const body = await req.json() as {
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const body = json as {
     startDate?: string | null
     countsForElo?: boolean
     /** Only when switching ELO on: 'all' rates the games already played, 'future' starts from now. */

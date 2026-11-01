@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/apiAuth'
-import { rebuildEloLedger } from '@/lib/eloLedger'
+import { requireAdmin } from '@/lib/auth/api'
+import { rebuildEloLedger } from '@/lib/services/eloLedger'
 import { afterEloGameChange } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'

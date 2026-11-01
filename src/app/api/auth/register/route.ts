@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
-import { getSession, establishSession } from '@/lib/session'
-import { WHATS_NEW } from '@/lib/whatsNew'
+import { getSession, establishSession } from '@/lib/auth/session'
+import { WHATS_NEW } from '@/lib/domain/whatsNew'
 import { eq } from 'drizzle-orm'
+import { readJson } from '@/lib/http'
 // cache: private — writes only a new account, which no cached read includes until it joins a season (see lib/cache.ts).
 
 export async function POST(req: NextRequest) {
-  const { name, email, password } = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const { name, email, password } = json
 
   if (!name || !email || !password || password.length < 6) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 })

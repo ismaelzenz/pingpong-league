@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { db } from '@/lib/db'
 import { eloGamePlayers, eloGames, users } from '@/lib/db/schema'
-import { requireUser } from '@/lib/apiAuth'
-import { sendPush } from '@/lib/push'
-import { isValidResult } from '@/lib/gameResult'
-import { winnersOf } from '@/lib/elo'
-import { syncEloForGame } from '@/lib/eloLedger'
+import { requireUser } from '@/lib/auth/api'
+import { sendPush } from '@/lib/services/push'
+import { isValidResult } from '@/lib/domain/gameResult'
+import { winnersOf } from '@/lib/domain/elo'
+import { syncEloForGame } from '@/lib/services/eloLedger'
 import { inArray, isNull, and } from 'drizzle-orm'
 import { afterEloGameChange } from '@/lib/cache'
+import { readJson } from '@/lib/http'
 
 /** Nobody plays a 20-a-side lunchtime game; the cap is here to stop a malformed request. */
 const MAX_PER_SIDE = 10
@@ -29,7 +30,9 @@ export async function POST(req: NextRequest) {
   const session = await requireUser()
   if (session instanceof NextResponse) return session
 
-  const body = await req.json()
+  const json = await readJson(req)
+  if (json instanceof NextResponse) return json
+  const body = json
   const homePlayerIds = parseSide(body.homePlayerIds)
   const awayPlayerIds = parseSide(body.awayPlayerIds)
   const homeSets = Number(body.homeSets)
