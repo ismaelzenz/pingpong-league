@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 /** The viewer's part in one matchday: their game (opponent, and result once played) or a rest. */
 export interface MyMatchday {
   resting: boolean
+  /** The viewer themself, for the "You vs …" pairing. */
+  me?: { name: string; avatarColor: string | null }
   opponent?: { name: string; avatarColor: string | null }
   /** Set once the game has a result. */
   result?: { won: boolean; mySets: number; oppSets: number; forfeited: boolean }
@@ -47,9 +49,14 @@ export default function MatchdayRow({ row }: { row: MatchdayRowData }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm font-medium min-w-0">
           {mine?.opponent ? (
+            // Both players, like every other game in the app: your avatar, then theirs, and
+            // "You vs Hugo" — a lone avatar before "vs" read as if it were the other player.
             <>
-              <PlayerAvatar name={mine.opponent.name} avatarColor={mine.opponent.avatarColor} className="h-5 w-5 shrink-0" fallbackClassName="text-[9px]" />
-              <span className="truncate"><span className="text-muted-foreground font-normal">vs </span>{mine.opponent.name}</span>
+              <div className="flex -space-x-1.5 shrink-0">
+                {mine.me && <PlayerAvatar name={mine.me.name} avatarColor={mine.me.avatarColor} className="h-6 w-6 ring-2 ring-card" fallbackClassName="text-[10px]" />}
+                <PlayerAvatar name={mine.opponent.name} avatarColor={mine.opponent.avatarColor} className="h-6 w-6 ring-2 ring-card" fallbackClassName="text-[10px]" />
+              </div>
+              <span className="truncate">You<span className="text-muted-foreground font-normal"> vs </span>{mine.opponent.name}</span>
             </>
           ) : mine?.resting ? (
             <span className="flex items-center gap-1.5 text-muted-foreground font-normal"><Coffee className="w-4 h-4" /> You rest</span>

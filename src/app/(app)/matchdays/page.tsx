@@ -70,6 +70,7 @@ export default async function MatchdaysPage() {
         const p = isFinished(myGame.status) ? perspective(myGame, session.userId) : null
         mine = {
           resting: false,
+          me: { name: me.name, avatarColor: me.avatarColor },
           opponent: { name: opp?.name ?? '—', avatarColor: opp?.avatarColor ?? null },
           result: p ? { won: p.won, mySets: p.mySets, oppSets: p.oppSets, forfeited: p.forfeited } : undefined,
           owed: past && !p,

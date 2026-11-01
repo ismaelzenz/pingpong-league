@@ -4,13 +4,16 @@ import { db } from '@/lib/db'
 import { matchdays, games, users, participants } from '@/lib/db/schema'
 import { and, eq } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
-import { Badge } from '@/components/ui/badge'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import GameCard from '@/components/game/GameCard'
+import GameRow from '@/components/game/GameRow'
+import PlayerAvatar from '@/components/player/PlayerAvatar'
 import MatchdayEditor from '@/components/admin/MatchdayEditor'
 import { analyzeSchedule } from '@/lib/domain/scheduleHealth'
-import { todayISO, formatWeekRange } from '@/lib/dates'
-import { AlertTriangle } from 'lucide-react'
+import { deadlineLabel, shortRange, todayISO } from '@/lib/dates'
+import { cn } from '@/lib/utils'
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Coffee } from 'lucide-react'
 import { isFinished } from '@/lib/domain/gameStatus'
 import BackLink from '@/components/common/BackLink'
 
@@ -39,26 +42,38 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
       .leftJoin(awayUser, eq(awayUser.id, games.awayPlayerId))
       .where(and(eq(games.matchdayId, matchday.id), eq(games.isCatchUp, false)))
       .orderBy(games.id),
-    db.select({ id: users.id, name: users.name })
+    db.select({ id: users.id, name: users.name, avatarColor: users.avatarColor })
       .from(participants)
       .leftJoin(users, eq(users.id, participants.userId))
       .where(eq(participants.tournamentId, matchday.tournamentId)),
     session.isAdmin ? db.select().from(games).where(eq(games.tournamentId, matchday.tournamentId)) : null,
-    session.isAdmin
-      ? db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays).where(eq(matchdays.tournamentId, matchday.tournamentId))
-      : null,
+    // Every matchday's id and number: the previous/next arrows, and the admin schedule check.
+    db.select({ id: matchdays.id, number: matchdays.number }).from(matchdays)
+      .where(eq(matchdays.tournamentId, matchday.tournamentId)).orderBy(matchdays.number),
   ])
   const dayGames = dayRows.map(r => r.game)
   const enriched = dayRows.map(r => ({
-    ...r.game, homePlayer: r.homePlayer, awayPlayer: r.awayPlayer,
+    ...r.game,
+    homePlayer: { id: r.game.homePlayerId, name: r.homePlayer?.name ?? '—', avatarColor: r.homePlayer?.avatarColor ?? null },
+    awayPlayer: { id: r.game.awayPlayerId, name: r.awayPlayer?.name ?? '—', avatarColor: r.awayPlayer?.avatarColor ?? null },
     matchday: { number: matchday.number }, weekStart: matchday.weekStart, weekEnd: matchday.weekEnd,
   }))
 
-  // Show the viewer's own game first (highlighted) so they don't have to scan the whole list.
-  const myGames = enriched.filter(g => g.homePlayerId === session.userId || g.awayPlayerId === session.userId)
-  const otherGames = enriched.filter(g => g.homePlayerId !== session.userId && g.awayPlayerId !== session.userId)
+  // The viewer's own game is pinned as a full card; everyone else's are compact rows, split into
+  // what's been played and what's still to play.
+  const involvesMe = (g: { homePlayerId: number; awayPlayerId: number }) => g.homePlayerId === session.userId || g.awayPlayerId === session.userId
+  const myGames = enriched.filter(involvesMe)
+  const otherGames = enriched.filter(g => !involvesMe(g))
+  const results = otherGames.filter(g => isFinished(g.status))
+  const toPlay = otherGames.filter(g => !isFinished(g.status))
 
   const confirmed = dayGames.filter(g => isFinished(g.status)).length
+  const pct = dayGames.length ? Math.round((confirmed / dayGames.length) * 100) : 0
+  const deadline = deadlineLabel(matchday.weekStart, matchday.weekEnd)
+  const complete = dayGames.length > 0 && confirmed === dayGames.length
+  const index = tournamentMatchdays.findIndex(m => m.id === matchday.id)
+  const prevMd = index > 0 ? tournamentMatchdays[index - 1] : null
+  const nextMd = index >= 0 && index < tournamentMatchdays.length - 1 ? tournamentMatchdays[index + 1] : null
 
   // Players enrolled in the tournament who have no game this matchday are on a bye
   // (this is how odd player counts are handled — one or more players sit out each round).
@@ -74,7 +89,7 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
   // Schedule-health check across the whole tournament, narrowed to over-scheduled pairs
   // that appear in this matchday — so an editing admin sees what's wrong here.
   let localOverIssues: { aName: string; bName: string; count: number; matchdayNumbers: number[] }[] = []
-  if (tournamentGames && tournamentMatchdays) {
+  if (tournamentGames) {
     const health = analyzeSchedule(tournamentGames, new Map(tournamentMatchdays.map(m => [m.id, m.number])), rosterPlayers)
 
     const nameById = new Map(rosterPlayers.map(p => [p.id, p.name]))
@@ -89,47 +104,80 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
     <div className="space-y-6">
       <div>
         <BackLink href="/matchdays" className="mb-2">All matchdays</BackLink>
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-3">
+          {/* Step through the season without going back to the list. */}
+          <MatchdayStep md={prevMd} dir="prev" />
+          <div className="min-w-0 text-center">
             <h1 className="text-2xl font-bold">Matchday {matchday.number}</h1>
             {matchday.weekStart && matchday.weekEnd && (
-              <p className="text-muted-foreground text-sm">
-                {formatWeekRange(matchday.weekStart, matchday.weekEnd)}
-              </p>
+              <p className="text-muted-foreground text-sm">{shortRange(matchday.weekStart, matchday.weekEnd)}</p>
             )}
           </div>
-          <Badge variant="outline">{confirmed}/{dayGames.length} played</Badge>
+          <MatchdayStep md={nextMd} dir="next" />
+        </div>
+        <div className="mt-4">
+          <div className="mb-1.5 flex items-center justify-between text-sm">
+            <span className="tabular-nums">{confirmed}/{dayGames.length} played</span>
+            {/* A finished matchday isn't "overdue", however long ago its week ended. */}
+            {complete ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+                <Check className="w-3.5 h-3.5" /> All played
+              </span>
+            ) : deadline && (
+              <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium',
+                deadline.overdue ? 'bg-orange-500/15 text-orange-700 dark:text-orange-400'
+                  : deadline.urgent ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-muted text-muted-foreground')}>
+                {deadline.text}
+              </span>
+            )}
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+          </div>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {myGames.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your game</p>
-            {myGames.map(game => (
-              <GameCard key={game.id} game={game} currentUserId={session.userId} className="ring-1 ring-primary" />
-            ))}
-          </div>
-        )}
-        {otherGames.length > 0 && (
-          <div className="space-y-2">
-            {myGames.length > 0 && (
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-1">Other games</p>
-            )}
-            <div className="space-y-3">
-              {otherGames.map(game => (
-                <GameCard key={game.id} game={game} currentUserId={session.userId} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {myGames.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Your game</h2>
+          {myGames.map(game => (
+            <GameCard key={game.id} game={game} currentUserId={session.userId} className="ring-1 ring-primary/50" />
+          ))}
+        </section>
+      )}
+
+      {toPlay.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Still to play · {toPlay.length}</h2>
+          <Card className="py-0 gap-0 divide-y">
+            {toPlay.map(g => <GameRow key={g.id} game={g} />)}
+          </Card>
+        </section>
+      )}
+
+      {results.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Results · {results.length}</h2>
+          <Card className="py-0 gap-0 divide-y">
+            {results.map(g => <GameRow key={g.id} game={g} />)}
+          </Card>
+        </section>
+      )}
 
       {byePlayers.length > 0 && (
-        <p className="text-sm text-muted-foreground">
-          <span className="font-medium">Resting this matchday:</span>{' '}
-          {byePlayers.map(p => p.name).join(', ')}
-        </p>
+        <section className="space-y-2">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <Coffee className="w-3.5 h-3.5" /> Resting this matchday
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {byePlayers.map(p => (
+              <span key={p.id} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm">
+                <PlayerAvatar name={p.name} avatarColor={p.avatarColor} className="h-5 w-5" fallbackClassName="text-[9px]" />
+                {p.name}
+              </span>
+            ))}
+          </div>
+        </section>
       )}
 
       {session.isAdmin && localOverIssues.length > 0 && (
@@ -169,5 +217,21 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
         </Card>
       )}
     </div>
+  )
+}
+
+/** The ‹ / › arrow beside the title: the neighbouring matchday, or an invisible spacer at either end. */
+function MatchdayStep({ md, dir }: { md: { id: number; number: number } | null; dir: 'prev' | 'next' }) {
+  const Icon = dir === 'prev' ? ChevronLeft : ChevronRight
+  if (!md) return <span className="w-9 shrink-0" />
+  return (
+    <Link
+      href={`/matchdays/${md.id}`}
+      aria-label={`Matchday ${md.number}`}
+      title={`Matchday ${md.number}`}
+      className="w-9 h-9 shrink-0 rounded-full border flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+    >
+      <Icon className="w-4 h-4" />
+    </Link>
   )
 }
