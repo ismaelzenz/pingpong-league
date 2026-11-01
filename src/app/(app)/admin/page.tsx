@@ -30,6 +30,7 @@ import ArchiveUserButton from '@/components/admin/ArchiveUserButton'
 import { isAdmin } from '@/lib/admin'
 import { Monitor, ExternalLink, Award, Swords } from 'lucide-react'
 import { UNPLAYED_STATUSES } from '@/lib/gameStatus'
+import SectionCard from '@/components/common/SectionCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -125,83 +126,74 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       </div>
 
       {/* Office display — the public TV wall board. Opens in a new tab for the office screen. */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Office display</CardTitle>
-          <CardDescription>
-            The public wall board — live standings, this week&apos;s games and the fun wall. Open it
-            full-screen on the office TV.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <a
-            href="/display"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
-          >
-            <Monitor className="h-4 w-4" />
-            Open office display
-            <ExternalLink className="h-3.5 w-3.5 opacity-60" />
-          </a>
-        </CardContent>
-      </Card>
+      <SectionCard
+        title="Office display" compact
+        description={<>
+          The public wall board — live standings, this week&apos;s games and the fun wall. Open it
+          full-screen on the office TV.
+        </>}
+      >
+        <a
+          href="/display"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
+        >
+          <Monitor className="h-4 w-4" />
+          Open office display
+          <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+        </a>
+      </SectionCard>
 
       {/* Daily tournament — self-serve quick league/knockout, separate from the official season. */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Daily tournament</CardTitle>
-          <CardDescription>
-            Spin up a quick one-off league or knockout (singles or doubles) with league members or
-            guests — great for a lunch or after-work session. Runs in the browser, separate from the
-            official season.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <a
-            href="/dailytournament"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
-          >
-            <Swords className="h-4 w-4" />
-            Open daily tournament
-            <ExternalLink className="h-3.5 w-3.5 opacity-60" />
-          </a>
-        </CardContent>
-      </Card>
+      <SectionCard
+        title="Daily tournament" compact
+        description={<>
+          Spin up a quick one-off league or knockout (singles or doubles) with league members or
+          guests — great for a lunch or after-work session. Runs in the browser, separate from the
+          official season.
+        </>}
+      >
+        <a
+          href="/dailytournament"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
+        >
+          <Swords className="h-4 w-4" />
+          Open daily tournament
+          <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+        </a>
+      </SectionCard>
 
       {/* Tournament switcher — swap between concurrent tournaments (e.g. the live one and a
           test copy). Only the tournament marked "Live" is visible to players. */}
       {manageable.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Tournaments</CardTitle>
-            <CardDescription>
-              Only the <strong>Live</strong> tournament is visible to players. Create extra ones to test or
-              fix bugs without touching the live season.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {manageable.map(tour => (
-                <Link
-                  key={tour.id}
-                  href={`/admin?t=${tour.id}`}
-                  className={cn(
-                    buttonVariants({ variant: selected?.id === tour.id ? 'default' : 'outline', size: 'sm' }),
-                    'gap-2',
-                  )}
-                >
-                  {tour.name}
-                  {tour.isLive && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">LIVE</Badge>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <SectionCard
+          title="Tournaments" compact
+          description={<>
+            Only the <strong>Live</strong> tournament is visible to players. Create extra ones to test or
+            fix bugs without touching the live season.
+          </>}
+        >
+          <div className="flex flex-wrap gap-2">
+            {manageable.map(tour => (
+              <Link
+                key={tour.id}
+                href={`/admin?t=${tour.id}`}
+                className={cn(
+                  buttonVariants({ variant: selected?.id === tour.id ? 'default' : 'outline', size: 'sm' }),
+                  'gap-2',
+                )}
+              >
+                {tour.name}
+                {tour.isLive && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">LIVE</Badge>
+                )}
+              </Link>
+            ))}
+          </div>
+        </SectionCard>
       )}
 
       {overdueMatchdays.length > 0 && (
@@ -252,68 +244,56 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           </Card>
 
           {selected.status === 'registration' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Start date</CardTitle>
-                <CardDescription>
-                  When play begins. Matchday 1 lands on the week of this date; leave it blank to start
-                  the week after you generate the schedule.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StartDateForm tournamentId={selected.id} initialDate={selected.startDate} />
-              </CardContent>
-            </Card>
+            <SectionCard
+              title="Start date"
+              description={<>
+                When play begins. Matchday 1 lands on the week of this date; leave it blank to start
+                the week after you generate the schedule.
+              </>}
+            >
+              <StartDateForm tournamentId={selected.id} initialDate={selected.startDate} />
+            </SectionCard>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">What&apos;s new banner</CardTitle>
-              <CardDescription>
-                The release note members see at the top of every page. It stays up until you turn it
-                off; each person only sees it until they dismiss it.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <WhatsNewControl
-                enabled={whatsNewEnabled}
-                dismissedCount={whatsNewDismissed}
-                totalMembers={activeAccounts.length}
-              />
-            </CardContent>
-          </Card>
+          <SectionCard
+            title={<>What&apos;s new banner</>}
+            description={<>
+              The release note members see at the top of every page. It stays up until you turn it
+              off; each person only sees it until they dismiss it.
+            </>}
+          >
+            <WhatsNewControl
+              enabled={whatsNewEnabled}
+              dismissedCount={whatsNewDismissed}
+              totalMembers={activeAccounts.length}
+            />
+          </SectionCard>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">ELO</CardTitle>
-              <CardDescription>
-                Whether this season&apos;s results move players&apos; lifetime ELO ratings. Changeable at any
-                time — switching it on midway asks what to do with the games already played.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <EloTournamentToggle
-                tournamentId={selected.id}
-                countsForElo={selected.countsForElo}
-                eloCountsFrom={selected.eloCountsFrom}
-                playedGames={selectedRecordedGames}
-              />
-            </CardContent>
-          </Card>
+          <SectionCard
+            title="ELO"
+            description={<>
+              Whether this season&apos;s results move players&apos; lifetime ELO ratings. Changeable at any
+              time — switching it on midway asks what to do with the games already played.
+            </>}
+          >
+            <EloTournamentToggle
+              tournamentId={selected.id}
+              countsForElo={selected.countsForElo}
+              eloCountsFrom={selected.eloCountsFrom}
+              playedGames={selectedRecordedGames}
+            />
+          </SectionCard>
 
           {selected.status === 'registration' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Schedule breaks</CardTitle>
-                <CardDescription>
-                  Weeks to leave matchday-free (holidays, summer break…). Set these before starting —
-                  the generated schedule skips them.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <BreakWeeksForm tournamentId={selected.id} initialWeeks={parseBreakWeeks(selected.breakWeeks)} />
-              </CardContent>
-            </Card>
+            <SectionCard
+              title="Schedule breaks"
+              description={<>
+                Weeks to leave matchday-free (holidays, summer break…). Set these before starting —
+                the generated schedule skips them.
+              </>}
+            >
+              <BreakWeeksForm tournamentId={selected.id} initialWeeks={parseBreakWeeks(selected.breakWeeks)} />
+            </SectionCard>
           )}
 
           {selected.status !== 'finished' && (
@@ -338,141 +318,119 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             </Card>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Invite players</CardTitle>
-              <CardDescription>
-                Share this link so colleagues can create an account — then add them above.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <InviteLink tournamentId={selected.id} />
-            </CardContent>
-          </Card>
+          <SectionCard
+            title="Invite players"
+            description={<>
+              Share this link so colleagues can create an account — then add them above.
+            </>}
+          >
+            <InviteLink tournamentId={selected.id} />
+          </SectionCard>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Participants ({participantsWithProfiles.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {participantsWithProfiles.length === 0 && (
-                <p className="text-sm text-muted-foreground">No participants yet.</p>
-              )}
-              {participantsWithProfiles.map(({ participant, user }, i) => (
-                <div key={participant.id}>
-                  {i > 0 && <Separator className="mb-2" />}
-                  <div className="flex items-center justify-between text-sm">
-                    <div>
-                      <p className="font-medium">{user?.name}</p>
-                      <p className="text-muted-foreground text-xs">{user?.email}</p>
-                      {user?.email && <AdminResetPasswordButton email={user.email} name={user.name ?? ''} />}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {selected.status === 'registration' && (
-                        <UnenrollButton participantId={participant.id} playerName={user?.name ?? 'this player'} />
-                      )}
-                      {selected.status === 'active' && (
-                        <EliminatePlayerButton participantId={participant.id} playerName={user?.name ?? 'this player'} />
-                      )}
-                      <Badge variant="outline" className="text-xs">#{i + 1}</Badge>
-                    </div>
+          <SectionCard title={<>Participants ({participantsWithProfiles.length})</>} contentClassName="space-y-2">
+            {participantsWithProfiles.length === 0 && (
+              <p className="text-sm text-muted-foreground">No participants yet.</p>
+            )}
+            {participantsWithProfiles.map(({ participant, user }, i) => (
+              <div key={participant.id}>
+                {i > 0 && <Separator className="mb-2" />}
+                <div className="flex items-center justify-between text-sm">
+                  <div>
+                    <p className="font-medium">{user?.name}</p>
+                    <p className="text-muted-foreground text-xs">{user?.email}</p>
+                    {user?.email && <AdminResetPasswordButton email={user.email} name={user.name ?? ''} />}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selected.status === 'registration' && (
+                      <UnenrollButton participantId={participant.id} playerName={user?.name ?? 'this player'} />
+                    )}
+                    {selected.status === 'active' && (
+                      <EliminatePlayerButton participantId={participant.id} playerName={user?.name ?? 'this player'} />
+                    )}
+                    <Badge variant="outline" className="text-xs">#{i + 1}</Badge>
                   </div>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+              </div>
+            ))}
+          </SectionCard>
         </>
       )}
 
       {/* Always available: spin up another tournament (e.g. a bug-repro copy) any time. */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Create a tournament</CardTitle>
-          <CardDescription>
-            {manageable.length === 0
-              ? 'Start a new season. The first one becomes the live tournament players see.'
-              : 'Add another tournament. It stays hidden from players until you set it live.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CreateTournamentForm />
-        </CardContent>
-      </Card>
+      <SectionCard
+        title="Create a tournament"
+        description={<>
+          {manageable.length === 0
+            ? 'Start a new season. The first one becomes the live tournament players see.'
+            : 'Add another tournament. It stays hidden from players until you set it live.'}
+        </>}
+      >
+        <CreateTournamentForm />
+      </SectionCard>
 
       {finished.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Past tournaments</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {finished.map(tour => (
-              <div key={tour.id} className="flex items-center justify-between text-sm">
-                <span>{tour.name}</span>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/recap/${tour.id}`}
-                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 text-muted-foreground')}
-                  >
-                    <Award className="h-3.5 w-3.5" />
-                    Recap
-                  </Link>
-                  <Badge variant="secondary">Finished</Badge>
-                  <DeleteTournamentButton tournamentId={tour.id} name={tour.name} />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Account management — delete a member's account entirely (login + data). */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Accounts ({allAccounts.length})</CardTitle>
-          <CardDescription>
-            <strong>Mark as left</strong> hides an ex-member from player pickers but keeps all their
-            history and recaps. <strong>Delete</strong> permanently removes an account — only possible
-            for accounts with no games (e.g. guests/test accounts); real players should be archived.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {allAccounts.map((u, i) => (
-            <div key={u.id}>
-              {i > 0 && <Separator className="mb-2" />}
-              <div className="flex items-center justify-between text-sm gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium flex items-center gap-1.5">
-                    <span className={`truncate ${u.archivedAt ? 'text-muted-foreground' : ''}`}>{u.name}</span>
-                    {isAdmin(u.email) && <Badge variant="secondary" className="text-[10px] shrink-0">Admin</Badge>}
-                    {u.archivedAt && <Badge variant="outline" className="text-[10px] shrink-0 border-amber-500/50 text-amber-600">Left</Badge>}
-                  </p>
-                  <p className="text-muted-foreground text-xs truncate">{u.email}</p>
-                </div>
-                {!isAdmin(u.email) && (
-                  <div className="flex items-center gap-1 shrink-0">
-                    <ArchiveUserButton userId={u.id} name={u.name} archived={!!u.archivedAt} />
-                    {!usersInGames.has(u.id) && <DeleteUserButton userId={u.id} name={u.name} email={u.email} />}
-                  </div>
-                )}
+        <SectionCard title="Past tournaments" contentClassName="space-y-2">
+          {finished.map(tour => (
+            <div key={tour.id} className="flex items-center justify-between text-sm">
+              <span>{tour.name}</span>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/recap/${tour.id}`}
+                  className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-1.5 text-muted-foreground')}
+                >
+                  <Award className="h-3.5 w-3.5" />
+                  Recap
+                </Link>
+                <Badge variant="secondary">Finished</Badge>
+                <DeleteTournamentButton tournamentId={tour.id} name={tour.name} />
               </div>
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </SectionCard>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Cache</CardTitle>
-          <CardDescription>
-            Standings, ELO, recaps and the TV board are cached and refresh themselves whenever
-            anything changes in the app. Only needed after editing data outside it — e.g. in the
-            Turso dashboard — which otherwise shows up within 5 minutes.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ClearCacheButton />
-        </CardContent>
-      </Card>
+      {/* Account management — delete a member's account entirely (login + data). */}
+      <SectionCard
+        title={<>Accounts ({allAccounts.length})</>} contentClassName="space-y-2"
+        description={<>
+          <strong>Mark as left</strong> hides an ex-member from player pickers but keeps all their
+          history and recaps. <strong>Delete</strong> permanently removes an account — only possible
+          for accounts with no games (e.g. guests/test accounts); real players should be archived.
+        </>}
+      >
+        {allAccounts.map((u, i) => (
+          <div key={u.id}>
+            {i > 0 && <Separator className="mb-2" />}
+            <div className="flex items-center justify-between text-sm gap-3">
+              <div className="min-w-0">
+                <p className="font-medium flex items-center gap-1.5">
+                  <span className={`truncate ${u.archivedAt ? 'text-muted-foreground' : ''}`}>{u.name}</span>
+                  {isAdmin(u.email) && <Badge variant="secondary" className="text-[10px] shrink-0">Admin</Badge>}
+                  {u.archivedAt && <Badge variant="outline" className="text-[10px] shrink-0 border-amber-500/50 text-amber-600">Left</Badge>}
+                </p>
+                <p className="text-muted-foreground text-xs truncate">{u.email}</p>
+              </div>
+              {!isAdmin(u.email) && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <ArchiveUserButton userId={u.id} name={u.name} archived={!!u.archivedAt} />
+                  {!usersInGames.has(u.id) && <DeleteUserButton userId={u.id} name={u.name} email={u.email} />}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </SectionCard>
+
+      <SectionCard
+        title="Cache"
+        description={<>
+          Standings, ELO, recaps and the TV board are cached and refresh themselves whenever
+          anything changes in the app. Only needed after editing data outside it — e.g. in the
+          Turso dashboard — which otherwise shows up within 5 minutes.
+        </>}
+      >
+        <ClearCacheButton />
+      </SectionCard>
     </div>
   )
 }

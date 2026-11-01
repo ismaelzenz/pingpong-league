@@ -17,6 +17,7 @@ import { TrendingUp } from 'lucide-react'
 import { medal } from '@/lib/utils'
 import DeltaText from '@/components/common/DeltaText'
 import { shortDate } from '@/lib/dates'
+import SectionCard from '@/components/common/SectionCard'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'ELO ratings' }
@@ -90,53 +91,48 @@ export default async function EloPage() {
 
           <EloTimeline series={chartSeries} initial={initialSelection} />
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">ELO scoreboard</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/30">
-                      <th className="text-left pl-4 pr-2 py-3 font-medium text-muted-foreground">#</th>
-                      <th className="text-left px-2 py-3 font-medium text-muted-foreground w-full">Player</th>
-                      <th className="text-right px-3 py-3 font-medium text-muted-foreground">GP</th>
-                      <th className="text-right px-3 py-3 font-medium text-muted-foreground">W</th>
-                      <th className="text-right px-3 py-3 font-medium text-muted-foreground">L</th>
-                      <th className="text-right px-3 py-3 font-medium text-muted-foreground">Peak</th>
-                      <th className="text-right px-3 py-3 font-medium text-muted-foreground">Last</th>
-                      <th className="text-right px-4 py-3 font-bold text-muted-foreground">ELO</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {standings.map((e, i) => {
-                      const isMe = e.userId === session.userId
-                      return (
-                        <tr key={e.userId} className={`border-b last:border-0 ${isMe ? 'bg-primary/5' : ''}`}>
-                          <td className="pl-4 pr-2 py-3 text-muted-foreground">{medal(i + 1) ?? i + 1}</td>
-                          <td className="px-2 py-3">
-                            <PlayerLink userId={e.userId} currentUserId={session.userId} className="flex items-center gap-2 w-fit">
-                              <PlayerAvatar name={e.name} avatarColor={e.avatarColor} className="h-7 w-7" fallbackClassName="text-xs" />
-                              <span className={`font-medium ${isMe ? 'text-primary' : 'hover:underline'}`}>
-                                {e.name}{isMe && ' (you)'}
-                              </span>
-                            </PlayerLink>
-                          </td>
-                          <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">{e.gamesPlayed}</td>
-                          <td className="px-3 py-3 text-right text-green-600 tabular-nums">{e.wins}</td>
-                          <td className="px-3 py-3 text-right text-red-500 tabular-nums">{e.losses}</td>
-                          <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">{showElo(e.peak)}</td>
-                          <td className="px-3 py-3 text-right">{e.lastDelta != null ? <DeltaText value={e.lastDelta} /> : '—'}</td>
-                          <td className="px-4 py-3 text-right font-bold text-lg tabular-nums">{showElo(e.rating)}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+          <SectionCard title="ELO scoreboard" compact contentClassName="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left pl-4 pr-2 py-3 font-medium text-muted-foreground">#</th>
+                    <th className="text-left px-2 py-3 font-medium text-muted-foreground w-full">Player</th>
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">GP</th>
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">W</th>
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">L</th>
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">Peak</th>
+                    <th className="text-right px-3 py-3 font-medium text-muted-foreground">Last</th>
+                    <th className="text-right px-4 py-3 font-bold text-muted-foreground">ELO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {standings.map((e, i) => {
+                    const isMe = e.userId === session.userId
+                    return (
+                      <tr key={e.userId} className={`border-b last:border-0 ${isMe ? 'bg-primary/5' : ''}`}>
+                        <td className="pl-4 pr-2 py-3 text-muted-foreground">{medal(i + 1) ?? i + 1}</td>
+                        <td className="px-2 py-3">
+                          <PlayerLink userId={e.userId} currentUserId={session.userId} className="flex items-center gap-2 w-fit">
+                            <PlayerAvatar name={e.name} avatarColor={e.avatarColor} className="h-7 w-7" fallbackClassName="text-xs" />
+                            <span className={`font-medium ${isMe ? 'text-primary' : 'hover:underline'}`}>
+                              {e.name}{isMe && ' (you)'}
+                            </span>
+                          </PlayerLink>
+                        </td>
+                        <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">{e.gamesPlayed}</td>
+                        <td className="px-3 py-3 text-right text-green-600 tabular-nums">{e.wins}</td>
+                        <td className="px-3 py-3 text-right text-red-500 tabular-nums">{e.losses}</td>
+                        <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">{showElo(e.peak)}</td>
+                        <td className="px-3 py-3 text-right">{e.lastDelta != null ? <DeltaText value={e.lastDelta} /> : '—'}</td>
+                        <td className="px-4 py-3 text-right font-bold text-lg tabular-nums">{showElo(e.rating)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
         </>
       )}
 

@@ -12,10 +12,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import PlayerLink from '@/components/player/PlayerLink'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import GameResultForm from '@/components/game/GameResultForm'
+import PostponeButton from '@/components/game/PostponeButton'
 import ReportResultForm from '@/components/game/ReportResultForm'
 import AdminGameActions from '@/components/admin/AdminGameActions'
 import AdminEditResultForm from '@/components/admin/AdminEditResultForm'
 import BackLink from '@/components/common/BackLink'
+import SectionCard from '@/components/common/SectionCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -156,14 +158,9 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
           )}
 
           {canEnter && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Enter result</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <GameResultForm gameId={game.id} mode="enter" homeName={homePlayer?.name} awayName={awayPlayer?.name} />
-              </CardContent>
-            </Card>
+            <SectionCard title="Enter result" compact>
+              <GameResultForm gameId={game.id} homeName={homePlayer?.name} awayName={awayPlayer?.name} />
+            </SectionCard>
           )}
 
           {canReport && (
@@ -192,7 +189,7 @@ export default async function GameDetailPage({ params }: { params: Promise<{ id:
             <Card>
               <CardContent className="pt-4 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Game actions</p>
-                <GameResultForm gameId={game.id} mode="postpone" isPostponed={game.status === 'postponed'} />
+                <PostponeButton gameId={game.id} isPostponed={game.status === 'postponed'} />
               </CardContent>
             </Card>
           )}

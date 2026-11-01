@@ -1,12 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { useApiAction } from '@/hooks/useApiAction'
 import { cn, joinNames } from '@/lib/utils'
 import { X } from 'lucide-react'
+import { OUTCOMES, type Outcome } from '@/lib/gameResult'
+import OutcomeButton from '@/components/game/OutcomeButton'
+import ConfirmResultPanel from '@/components/game/ConfirmResultPanel'
 
 interface Member { id: number; name: string; email: string }
 
@@ -17,12 +19,6 @@ interface Props {
 }
 
 type Side = 'home' | 'away'
-type Outcome = { detail: string; homeSets: number; awaySets: number }
-
-const OUTCOMES: Outcome[] = [
-  { detail: '2–0', homeSets: 2, awaySets: 0 },
-  { detail: '2–1', homeSets: 2, awaySets: 1 },
-]
 
 /**
  * One team's slot: tap it to arm that side, then names picked below land here. Declared at module
@@ -141,25 +137,18 @@ export default function RecordEloGameForm({ members, me }: Props) {
   if (pending) {
     const homeWon = pending.homeSets > pending.awaySets
     return (
-      <div className="space-y-3">
-        <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Record this?</p>
-          <p className="mt-1 font-semibold">
-            <span className={homeWon ? '' : 'text-muted-foreground'}>{joinNames(home.map(nameOf))}</span>
-            <span className="font-mono"> {pending.homeSets} – {pending.awaySets} </span>
-            <span className={homeWon ? 'text-muted-foreground' : ''}>{joinNames(away.map(nameOf))}</span>
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Counts immediately and moves every listed player&apos;s rating. Anyone who played can correct it afterwards.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={commit} disabled={loading} className="flex-1">
-            {loading ? 'Recording…' : 'Confirm'}
-          </Button>
-          <Button variant="outline" onClick={() => setPending(null)} disabled={loading}>Back</Button>
-        </div>
-      </div>
+      <ConfirmResultPanel
+        score={<>
+          <span className={homeWon ? '' : 'text-muted-foreground'}>{joinNames(home.map(nameOf))}</span>
+          <span className="font-mono"> {pending.homeSets} – {pending.awaySets} </span>
+          <span className={homeWon ? 'text-muted-foreground' : ''}>{joinNames(away.map(nameOf))}</span>
+        </>}
+        note={<>Counts immediately and moves every listed player&apos;s rating. Anyone who played can correct it afterwards.</>}
+        confirmLabel="Confirm"
+        loading={loading}
+        onConfirm={commit}
+        onBack={() => setPending(null)}
+      />
     )
   }
 
@@ -201,24 +190,18 @@ export default function RecordEloGameForm({ members, me }: Props) {
         <div className="grid grid-cols-2 gap-2">
           {(['home', 'away'] as const).map(side => (
             <div key={side} className="space-y-2">
-              {OUTCOMES.map(o => {
-                const outcome = side === 'home' ? o : { detail: o.detail, homeSets: o.awaySets, awaySets: o.homeSets }
-                return (
-                  <Button
-                    key={`${side}-${o.detail}`}
-                    variant="outline"
-                    disabled={loading || !ready}
-                    onClick={() => {
-                      if (!ready) { toast.error('Both sides need at least one player'); return }
-                      setPending(outcome)
-                    }}
-                    className="w-full h-auto flex-col items-center gap-0.5 py-2.5"
-                  >
-                    <span className="font-semibold truncate max-w-full">{side === 'home' ? 'Side A' : 'Side B'} won</span>
-                    <span className="text-xs text-muted-foreground font-mono">{o.detail}</span>
-                  </Button>
-                )
-              })}
+              {OUTCOMES.filter(o => o.winner === side).map(o => (
+                <OutcomeButton
+                  key={o.detail}
+                  label={`${side === 'home' ? 'Side A' : 'Side B'} won`}
+                  detail={o.detail}
+                  disabled={loading || !ready}
+                  onClick={() => {
+                    if (!ready) { toast.error('Both sides need at least one player'); return }
+                    setPending(o)
+                  }}
+                />
+              ))}
             </div>
           ))}
         </div>

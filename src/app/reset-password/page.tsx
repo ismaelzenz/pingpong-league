@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
+import AuthShell from '@/components/layout/AuthShell'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -107,16 +108,10 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🏓</div>
-          <h1 className="text-2xl font-bold">Ping Pong League</h1>
-        </div>
-        <Suspense fallback={<Card><CardContent className="pt-6 text-center text-muted-foreground">Loading…</CardContent></Card>}>
-          <ResetPasswordForm />
-        </Suspense>
-      </div>
-    </div>
+    <AuthShell>
+      <Suspense fallback={<Card><CardContent className="pt-6 text-center text-muted-foreground">Loading…</CardContent></Card>}>
+        <ResetPasswordForm />
+      </Suspense>
+    </AuthShell>
   )
 }

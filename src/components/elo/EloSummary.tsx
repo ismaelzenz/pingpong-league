@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { ChevronRight } from 'lucide-react'
 import ResultChip from '@/components/common/ResultChip'
 import DeltaText from '@/components/common/DeltaText'
+import SectionCard from '@/components/common/SectionCard'
 
 /**
  * The data behind `EloSummary`. Separate from the component so a page can start it in the same
@@ -41,14 +42,9 @@ export default function EloSummary({ userId, possessive, data }: {
 
   if (!entry) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">ELO rating</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          No rated games yet — {possessive} rating starts at {START_ELO}.
-        </CardContent>
-      </Card>
+      <SectionCard title="ELO rating" compact contentClassName="text-sm text-muted-foreground">
+        No rated games yet — {possessive} rating starts at {START_ELO}.
+      </SectionCard>
     )
   }
 

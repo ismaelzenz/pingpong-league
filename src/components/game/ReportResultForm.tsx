@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { useApiAction } from '@/hooks/useApiAction'
+import { OUTCOMES } from '@/lib/gameResult'
+import OutcomeButton from '@/components/game/OutcomeButton'
 import { AlertTriangle } from 'lucide-react'
 
 interface Props {
@@ -23,12 +24,8 @@ export default function ReportResultForm({ gameId, homeName, awayName, homeSets,
   const { run, loading } = useApiAction()
   const [open, setOpen] = useState(false)
 
-  const outcomes = [
-    { label: `${homeName} won`, detail: '2–0', homeSets: 2, awaySets: 0 },
-    { label: `${homeName} won`, detail: '2–1', homeSets: 2, awaySets: 1 },
-    { label: `${awayName} won`, detail: '2–0', homeSets: 0, awaySets: 2 },
-    { label: `${awayName} won`, detail: '2–1', homeSets: 1, awaySets: 2 },
-  ].filter(o => !(o.homeSets === homeSets && o.awaySets === awaySets))
+  // Every result except the one already recorded.
+  const outcomes = OUTCOMES.filter(o => !(o.homeSets === homeSets && o.awaySets === awaySets))
 
   if (!open) {
     return (
@@ -50,9 +47,10 @@ export default function ReportResultForm({ gameId, homeName, awayName, homeSets,
       </p>
       <div className="grid grid-cols-2 gap-2">
         {outcomes.map(o => (
-          <Button
+          <OutcomeButton
             key={`${o.homeSets}-${o.awaySets}`}
-            variant="outline"
+            label={`${o.winner === 'home' ? homeName : awayName} won`}
+            detail={o.detail}
             disabled={loading}
             onClick={() => run(`/api/games/${gameId}`, {
               method: 'PATCH',
@@ -61,11 +59,7 @@ export default function ReportResultForm({ gameId, homeName, awayName, homeSets,
               success: (d: { eloChanged?: boolean }) =>
                 d.eloChanged ? 'Result corrected — ELO recalculated.' : 'Result corrected.',
             })}
-            className="w-full h-auto flex-col items-center gap-0.5 py-2.5"
-          >
-            <span className="font-semibold truncate max-w-full">{o.label}</span>
-            <span className="text-xs text-muted-foreground font-mono">{o.detail}</span>
-          </Button>
+          />
         ))}
       </div>
       <button

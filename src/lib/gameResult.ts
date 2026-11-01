@@ -41,3 +41,13 @@ export function isValidResult(homeSets: number, awaySets: number): boolean {
   return (homeSets === 2 && (awaySets === 0 || awaySets === 1)) ||
          (awaySets === 2 && (homeSets === 0 || homeSets === 1))
 }
+
+/** The four results `isValidResult` accepts, as the outcome buttons offer them: each side's 2–0 and 2–1. */
+export const OUTCOMES = [
+  { winner: 'home', detail: '2–0', homeSets: 2, awaySets: 0 },
+  { winner: 'home', detail: '2–1', homeSets: 2, awaySets: 1 },
+  { winner: 'away', detail: '2–0', homeSets: 0, awaySets: 2 },
+  { winner: 'away', detail: '2–1', homeSets: 1, awaySets: 2 },
+] as const
+
+export type Outcome = (typeof OUTCOMES)[number]

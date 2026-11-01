@@ -5,7 +5,7 @@ import { participants, games, users, matchdays } from '@/lib/db/schema'
 import { eq, or, inArray, and, lte, gte } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
 import { buttonVariants } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import PlayerLink from '@/components/player/PlayerLink'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
@@ -24,6 +24,7 @@ import { ChevronRight } from 'lucide-react'
 import { UNPLAYED_STATUSES, isFinished, isUnplayed } from '@/lib/gameStatus'
 import RankMovement from '@/components/common/RankMovement'
 import { medal } from '@/lib/utils'
+import SectionCard from '@/components/common/SectionCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -126,30 +127,25 @@ export default async function DashboardPage() {
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Players signed up</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {enrolledPlayers.length === 0 && (
-                <p className="text-sm text-muted-foreground">No players yet.</p>
-              )}
-              {enrolledPlayers.map((player, i) => {
-                const isMe = player.id === session.userId
-                return (
-                  <div key={player.id} className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground w-4">{i + 1}</span>
-                    <PlayerLink userId={player.id!} currentUserId={session.userId} className="flex items-center gap-3 w-fit">
-                      <PlayerAvatar name={player.name} avatarColor={player.avatarColor} className="h-7 w-7" fallbackClassName="text-xs" />
-                      <span className={`text-sm font-medium ${isMe ? 'text-primary' : 'hover:underline'}`}>
-                        {player.name}{isMe && ' (you)'}
-                      </span>
-                    </PlayerLink>
-                  </div>
-                )
-              })}
-            </CardContent>
-          </Card>
+          <SectionCard title="Players signed up" compact contentClassName="space-y-3">
+            {enrolledPlayers.length === 0 && (
+              <p className="text-sm text-muted-foreground">No players yet.</p>
+            )}
+            {enrolledPlayers.map((player, i) => {
+              const isMe = player.id === session.userId
+              return (
+                <div key={player.id} className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-4">{i + 1}</span>
+                  <PlayerLink userId={player.id!} currentUserId={session.userId} className="flex items-center gap-3 w-fit">
+                    <PlayerAvatar name={player.name} avatarColor={player.avatarColor} className="h-7 w-7" fallbackClassName="text-xs" />
+                    <span className={`text-sm font-medium ${isMe ? 'text-primary' : 'hover:underline'}`}>
+                      {player.name}{isMe && ' (you)'}
+                    </span>
+                  </PlayerLink>
+                </div>
+              )
+            })}
+          </SectionCard>
 
           <HowItWorks />
         </div>

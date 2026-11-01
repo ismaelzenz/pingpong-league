@@ -19,6 +19,7 @@ import BackLink from '@/components/common/BackLink'
 import { medal } from '@/lib/utils'
 import ResultChip from '@/components/common/ResultChip'
 import PlayerStatsCard from '@/components/player/PlayerStatsCard'
+import SectionCard from '@/components/common/SectionCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -147,83 +148,78 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
       <EloSummary userId={playerId} possessive="their" data={eloData} />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Head-to-head vs you</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {h2h.length === 0 && upcomingH2H.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-2">
-              You haven&apos;t played each other yet, and no games are scheduled.
-            </p>
-          ) : (
-            <>
-              {h2h.length > 0 && (
-                <>
-                  <div className="flex items-center justify-center gap-6 mb-4">
-                    <div className="text-center">
-                      <p className="text-3xl font-black text-green-600">{myWins}</p>
-                      <p className="text-xs text-muted-foreground">You</p>
-                    </div>
-                    <span className="text-muted-foreground text-lg">–</span>
-                    <div className="text-center">
-                      <p className="text-3xl font-black text-red-500">{playerWins}</p>
-                      <p className="text-xs text-muted-foreground">{player.name.split(' ')[0]}</p>
-                    </div>
+      <SectionCard title="Head-to-head vs you" compact>
+        {h2h.length === 0 && upcomingH2H.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-2">
+            You haven&apos;t played each other yet, and no games are scheduled.
+          </p>
+        ) : (
+          <>
+            {h2h.length > 0 && (
+              <>
+                <div className="flex items-center justify-center gap-6 mb-4">
+                  <div className="text-center">
+                    <p className="text-3xl font-black text-green-600">{myWins}</p>
+                    <p className="text-xs text-muted-foreground">You</p>
                   </div>
-                  {h2h.length > 1 && (
-                    <div className="flex items-center justify-center gap-1 mb-4" title="Your results in this rivalry, oldest to newest">
-                      {[...h2h].reverse().map(r => {
-                        const youWon = !r.forfeited && r.oppSets > r.theirSets
-                        return <span key={r.gameId} className={`w-4 h-4 rounded-full ${youWon ? 'bg-green-500' : 'bg-red-500'}`} title={`${r.oppSets}–${r.theirSets}`} />
-                      })}
-                    </div>
-                  )}
-                  <Separator className="mb-3" />
-                  <div className="space-y-2">
-                    {h2h.map(r => {
-                      // `won` is from the viewed player's perspective; flip it for you.
+                  <span className="text-muted-foreground text-lg">–</span>
+                  <div className="text-center">
+                    <p className="text-3xl font-black text-red-500">{playerWins}</p>
+                    <p className="text-xs text-muted-foreground">{player.name.split(' ')[0]}</p>
+                  </div>
+                </div>
+                {h2h.length > 1 && (
+                  <div className="flex items-center justify-center gap-1 mb-4" title="Your results in this rivalry, oldest to newest">
+                    {[...h2h].reverse().map(r => {
                       const youWon = !r.forfeited && r.oppSets > r.theirSets
-                      return (
-                        <Link key={r.gameId} href={`/games/${r.gameId}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
-                          <div className="flex items-center gap-2">
-                            <ResultChip won={youWon} className="text-xs" />
-                            <span className="text-muted-foreground">{r.forfeited ? 'Forfeit' : 'Result'}</span>
-                          </div>
-                          <div className="flex items-center gap-3 text-muted-foreground">
-                            <span className="font-mono font-bold text-foreground">{r.oppSets} – {r.theirSets}</span>
-                            <span className="text-xs w-12 text-right shrink-0">MD {r.matchdayNumber}</span>
-                          </div>
-                        </Link>
-                      )
+                      return <span key={r.gameId} className={`w-4 h-4 rounded-full ${youWon ? 'bg-green-500' : 'bg-red-500'}`} title={`${r.oppSets}–${r.theirSets}`} />
                     })}
                   </div>
-                </>
-              )}
-
-              {upcomingH2H.length > 0 && (
-                <>
-                  {h2h.length > 0 && <Separator className="my-3" />}
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Upcoming</p>
-                  <div className="space-y-2">
-                    {upcomingH2H.map(g => (
-                      <Link key={g.id} href={`/games/${g.id}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
+                )}
+                <Separator className="mb-3" />
+                <div className="space-y-2">
+                  {h2h.map(r => {
+                    // `won` is from the viewed player's perspective; flip it for you.
+                    const youWon = !r.forfeited && r.oppSets > r.theirSets
+                    return (
+                      <Link key={r.gameId} href={`/games/${r.gameId}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
                         <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs bg-muted text-muted-foreground">📅</span>
-                          <span className="text-muted-foreground">
-                            {g.status === 'postponed' ? 'Postponed' : 'Scheduled'}
-                          </span>
+                          <ResultChip won={youWon} className="text-xs" />
+                          <span className="text-muted-foreground">{r.forfeited ? 'Forfeit' : 'Result'}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground">MD {g.matchdayNumber ?? '?'}</span>
+                        <div className="flex items-center gap-3 text-muted-foreground">
+                          <span className="font-mono font-bold text-foreground">{r.oppSets} – {r.theirSets}</span>
+                          <span className="text-xs w-12 text-right shrink-0">MD {r.matchdayNumber}</span>
+                        </div>
                       </Link>
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
+            {upcomingH2H.length > 0 && (
+              <>
+                {h2h.length > 0 && <Separator className="my-3" />}
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Upcoming</p>
+                <div className="space-y-2">
+                  {upcomingH2H.map(g => (
+                    <Link key={g.id} href={`/games/${g.id}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs bg-muted text-muted-foreground">📅</span>
+                        <span className="text-muted-foreground">
+                          {g.status === 'postponed' ? 'Postponed' : 'Scheduled'}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">MD {g.matchdayNumber ?? '?'}</span>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </SectionCard>
 
       {catchUpGames.length > 0 && (
         <Card>
@@ -241,32 +237,27 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         </Card>
       )}
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Past results</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {results.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-2">No games played yet.</p>
-          ) : (
-            results.map(r => (
-              <Link key={r.gameId} href={`/games/${r.gameId}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
-                <div className="flex items-center gap-2">
-                  <ResultChip won={r.won} className="text-xs" />
-                  <span>
-                    vs {r.opponentName}
-                    {r.opponentId === session.userId && <span className="text-muted-foreground"> (you)</span>}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-muted-foreground">
-                  <span className="font-mono font-bold text-foreground">{r.theirSets} – {r.oppSets}</span>
-                  <span className="text-xs w-12 text-right shrink-0">MD {r.matchdayNumber}</span>
-                </div>
-              </Link>
-            ))
-          )}
-        </CardContent>
-      </Card>
+      <SectionCard title="Past results" compact contentClassName="space-y-2">
+        {results.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-2">No games played yet.</p>
+        ) : (
+          results.map(r => (
+            <Link key={r.gameId} href={`/games/${r.gameId}`} className="flex items-center justify-between text-sm hover:bg-muted/40 -mx-2 px-2 py-1 rounded-md transition-colors">
+              <div className="flex items-center gap-2">
+                <ResultChip won={r.won} className="text-xs" />
+                <span>
+                  vs {r.opponentName}
+                  {r.opponentId === session.userId && <span className="text-muted-foreground"> (you)</span>}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <span className="font-mono font-bold text-foreground">{r.theirSets} – {r.oppSets}</span>
+                <span className="text-xs w-12 text-right shrink-0">MD {r.matchdayNumber}</span>
+              </div>
+            </Link>
+          ))
+        )}
+      </SectionCard>
     </div>
   )
 }

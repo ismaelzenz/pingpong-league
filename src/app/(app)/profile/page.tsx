@@ -7,7 +7,7 @@ import { computeScoreboard } from '@/lib/scoreboard'
 import { getDisplayTournament } from '@/lib/tournament'
 import { computePlayerForm } from '@/lib/playerStats'
 import { perspective } from '@/lib/gameResult'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import PlayerAvatar from '@/components/player/PlayerAvatar'
 import ProfileEditForm from '@/components/profile/ProfileEditForm'
@@ -20,6 +20,7 @@ import { withDefaults } from '@/lib/notificationTypes'
 import { FINISHED_STATUSES } from '@/lib/gameStatus'
 import ResultChip from '@/components/common/ResultChip'
 import PlayerStatsCard from '@/components/player/PlayerStatsCard'
+import SectionCard from '@/components/common/SectionCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,25 +85,15 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Notifications</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <NotificationToggle />
-          <Separator />
-          <NotificationPrefs initial={notifPrefs} />
-        </CardContent>
-      </Card>
+      <SectionCard title="Notifications" compact contentClassName="space-y-4">
+        <NotificationToggle />
+        <Separator />
+        <NotificationPrefs initial={notifPrefs} />
+      </SectionCard>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Change password</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ChangePasswordForm />
-        </CardContent>
-      </Card>
+      <SectionCard title="Change password" compact>
+        <ChangePasswordForm />
+      </SectionCard>
 
       {myStats && (
         <PlayerStatsCard stats={myStats} form={myForm} />
@@ -111,28 +102,23 @@ export default async function ProfilePage() {
       <EloSummary userId={session.userId} possessive="your" data={eloData} />
 
       {recentGames.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Recent results</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {recentGames.map(({ game, opponentName, matchdayNumber }) => {
-              const { mySets, oppSets, won } = perspective(game, session.userId)
-              return (
-                <div key={game.id} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <ResultChip won={won} className="text-xs" />
-                    <span>vs {opponentName ?? '—'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <span className="font-mono font-bold text-foreground">{mySets} – {oppSets}</span>
-                    <span className="text-xs w-12 text-right shrink-0">MD {matchdayNumber ?? '?'}</span>
-                  </div>
+        <SectionCard title="Recent results" compact contentClassName="space-y-2">
+          {recentGames.map(({ game, opponentName, matchdayNumber }) => {
+            const { mySets, oppSets, won } = perspective(game, session.userId)
+            return (
+              <div key={game.id} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <ResultChip won={won} className="text-xs" />
+                  <span>vs {opponentName ?? '—'}</span>
                 </div>
-              )
-            })}
-          </CardContent>
-        </Card>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <span className="font-mono font-bold text-foreground">{mySets} – {oppSets}</span>
+                  <span className="text-xs w-12 text-right shrink-0">MD {matchdayNumber ?? '?'}</span>
+                </div>
+              </div>
+            )
+          })}
+        </SectionCard>
       )}
     </div>
   )
