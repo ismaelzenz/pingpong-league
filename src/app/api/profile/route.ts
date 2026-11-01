@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { requireUser } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
+import { afterLeagueChange } from '@/lib/cache'
 
 export async function PATCH(req: NextRequest) {
   const session = await requireUser()
@@ -22,5 +23,6 @@ export async function PATCH(req: NextRequest) {
   await db.update(users).set(update).where(eq(users.id, session.userId))
   await session.save()
 
+  afterLeagueChange()
   return NextResponse.json({ ok: true })
 }

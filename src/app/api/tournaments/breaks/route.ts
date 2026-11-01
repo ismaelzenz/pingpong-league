@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
 import { isValid } from 'date-fns'
 import { mondayOf } from '@/lib/dates'
+import { afterLeagueChange } from '@/lib/cache'
 
 // Set the holiday break weeks (weeks left matchday-free) while registration is open.
 export async function POST(req: NextRequest) {
@@ -28,5 +29,6 @@ export async function POST(req: NextRequest) {
 
   await db.update(tournaments).set({ breakWeeks: JSON.stringify(mondays) }).where(eq(tournaments.id, tournamentId))
 
+  afterLeagueChange()
   return NextResponse.json({ ok: true, weeks: mondays })
 }

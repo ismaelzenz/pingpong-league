@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { appSettings } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+import { cached } from '@/lib/cache'
 
 /**
  * League-wide switches an admin flips at runtime, stored as key/value rows.
@@ -17,11 +18,15 @@ export const SETTINGS = {
 export async function getBoolSetting(
   setting: { key: string; default: boolean },
 ): Promise<boolean> {
-  const row = await db.select({ value: appSettings.value })
-    .from(appSettings).where(eq(appSettings.key, setting.key)).then(r => r[0])
-  if (!row) return setting.default
-  return row.value === '1'
+  const value = await storedValue(setting.key)
+  if (value === null) return setting.default
+  return value === '1'
 }
+
+// Cached across requests: read on every dashboard load, changed a handful of times a season.
+const storedValue = cached('setting', ['settings'], async (key: string): Promise<string | null> =>
+  db.select({ value: appSettings.value })
+    .from(appSettings).where(eq(appSettings.key, key)).then(r => r[0]?.value ?? null))
 
 export async function setBoolSetting(
   setting: { key: string; default: boolean },

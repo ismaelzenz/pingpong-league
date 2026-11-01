@@ -3,7 +3,8 @@ import { db } from '@/lib/db'
 import { tournaments } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
 import { isValid } from 'date-fns'
-import { getLiveTournament } from '@/lib/tournament'
+import { getLiveTournamentFresh } from '@/lib/tournament'
+import { afterLeagueChange } from '@/lib/cache'
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
   // The very first non-finished tournament becomes the live one players see; any created
   // while a live tournament already exists start hidden (a test/next-season copy) until an
   // admin promotes them.
-  const hasLive = !!(await getLiveTournament())
+  const hasLive = !!(await getLiveTournamentFresh())
 
   // Counts toward ELO unless the admin says otherwise — a real season is the common case, and
   // a test copy that silently moved everyone's rating would be much worse than one that doesn't.
@@ -31,5 +32,6 @@ export async function POST(req: NextRequest) {
       countsForElo: countsForElo !== false,
     })
     .returning()
+  afterLeagueChange()
   return NextResponse.json({ tournament })
 }

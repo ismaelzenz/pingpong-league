@@ -4,6 +4,7 @@ import { notificationPrefs } from '@/lib/db/schema'
 import { requireUser } from '@/lib/apiAuth'
 import { NOTIFICATION_TYPES, withDefaults, type ConfigurableNotificationType } from '@/lib/notificationTypes'
 import { eq } from 'drizzle-orm'
+// cache: private — writes only the member's notification preferences, which no cached read includes (see lib/cache.ts).
 
 export const dynamic = 'force-dynamic'
 

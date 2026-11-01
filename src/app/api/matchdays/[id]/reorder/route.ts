@@ -4,6 +4,7 @@ import { matchdays, games } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
 import { todayISO } from '@/lib/dates'
+import { afterLeagueChange } from '@/lib/cache'
 
 const HAS_RESULT = ['confirmed', 'forfeited', 'result_entered']
 
@@ -54,5 +55,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  afterLeagueChange()
   return NextResponse.json({ ok: true })
 }

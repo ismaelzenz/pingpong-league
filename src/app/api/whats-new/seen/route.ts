@@ -4,6 +4,7 @@ import { users } from '@/lib/db/schema'
 import { requireUser } from '@/lib/apiAuth'
 import { WHATS_NEW } from '@/lib/whatsNew'
 import { eq } from 'drizzle-orm'
+// cache: private — writes only the member's own "what's new" dismissal, which no cached read includes (see lib/cache.ts).
 
 /**
  * Mark the current release note as read for the signed-in member.

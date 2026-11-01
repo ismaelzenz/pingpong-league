@@ -7,6 +7,7 @@ import { isValidResult } from '@/lib/gameResult'
 import { winnersOf } from '@/lib/elo'
 import { rebuildEloLedger, syncEloForGame } from '@/lib/eloLedger'
 import { and, eq } from 'drizzle-orm'
+import { afterEloGameChange } from '@/lib/cache'
 
 /** Load a casual game plus its two sides, or null. */
 async function loadGame(gameId: number) {
@@ -69,6 +70,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }, 'resultCorrected'))))
   }
 
+  afterEloGameChange()
   return NextResponse.json({ ok: true, eloChanged })
 }
 
@@ -93,5 +95,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   // Removing a game from the middle of the chain shifts every rating after it, so replay.
   await rebuildEloLedger()
 
+  afterEloGameChange()
   return NextResponse.json({ ok: true })
 }

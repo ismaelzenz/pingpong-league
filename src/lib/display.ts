@@ -9,6 +9,7 @@ import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/
 import { perspective } from '@/lib/gameResult'
 import { todayISO } from '@/lib/dates'
 import { isCatchUpBacklog } from '@/lib/backlog'
+import { cached } from '@/lib/cache'
 
 const MIN_GAMES_FOR_WIN_RATE = 4
 
@@ -67,7 +68,15 @@ export interface DisplayData {
   catchUpGames: WeekGame[]
 }
 
-export async function computeDisplayData(tournamentId: number): Promise<DisplayData> {
+export function computeDisplayData(tournamentId: number): Promise<DisplayData> {
+  // Today is part of the cache key: the current matchday, its fixtures and the backlog all move
+  // with the date, not just with the data. The TV polls every minute, so this is the hottest read.
+  return displayCached(tournamentId, todayISO())
+}
+
+const displayCached = cached('displayData', ['league'], displayData)
+
+async function displayData(tournamentId: number, today: string): Promise<DisplayData> {
   // Three parallel reads. The season's games are read once and split below (finished, this week's,
   // the backlog) rather than queried three times.
   const [playerList, allGames, mds] = await Promise.all([
@@ -90,7 +99,6 @@ export async function computeDisplayData(tournamentId: number): Promise<DisplayD
   const current = buildScoreboard(players, allFinished)
 
   // "Current" matchday: the one in progress today, else the latest that has any finished game.
-  const today = todayISO()
   let currentMd = mds.find(m => m.weekStart && m.weekEnd && m.weekStart <= today && today <= m.weekEnd) ?? null
   if (!currentMd) {
     const withGames = mds.filter(m => allFinished.some(g => g.matchdayId === m.id))

@@ -21,6 +21,7 @@ import StartDateForm from '@/components/admin/StartDateForm'
 import SetLiveButton from '@/components/admin/SetLiveButton'
 import EloTournamentToggle from '@/components/admin/EloTournamentToggle'
 import WhatsNewControl from '@/components/admin/WhatsNewControl'
+import ClearCacheButton from '@/components/admin/ClearCacheButton'
 import { SETTINGS, getBoolSetting } from '@/lib/settings'
 import { WHATS_NEW } from '@/lib/whatsNew'
 import InviteLink from '@/components/admin/InviteLink'
@@ -455,6 +456,20 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               </div>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Cache</CardTitle>
+          <CardDescription>
+            Standings, ELO, recaps and the TV board are cached and refresh themselves whenever
+            anything changes in the app. Only needed after editing data outside it — e.g. in the
+            Turso dashboard — which otherwise shows up within 5 minutes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ClearCacheButton />
         </CardContent>
       </Card>
     </div>

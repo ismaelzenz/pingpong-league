@@ -7,6 +7,7 @@ import { isValidResult } from '@/lib/gameResult'
 import { winnersOf } from '@/lib/elo'
 import { syncEloForGame } from '@/lib/eloLedger'
 import { inArray, isNull, and } from 'drizzle-orm'
+import { afterEloGameChange } from '@/lib/cache'
 
 /** Nobody plays a 20-a-side lunchtime game; the cap is here to stop a malformed request. */
 const MAX_PER_SIDE = 10
@@ -94,5 +95,6 @@ export async function POST(req: NextRequest) {
     url: '/elo',
   }, 'resultRecorded'))))
 
+  afterEloGameChange()
   return NextResponse.json({ ok: true, id })
 }

@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { participants } from '@/lib/db/schema'
 import { requireUser } from '@/lib/apiAuth'
-import { getLiveTournament } from '@/lib/tournament'
+import { getLiveTournamentFresh } from '@/lib/tournament'
 import { and, eq } from 'drizzle-orm'
+import { afterLeagueChange } from '@/lib/cache'
 
 // Self-serve join: the logged-in user enrolls themselves in the current tournament while
 // registration is open. Once the tournament is active, joining is admin-only (adding a player
@@ -12,7 +13,7 @@ export async function POST() {
   const session = await requireUser()
   if (session instanceof NextResponse) return session
 
-  const tournament = await getLiveTournament()
+  const tournament = await getLiveTournamentFresh()
   if (!tournament) {
     return NextResponse.json({ error: 'There is no tournament open for registration right now.' }, { status: 404 })
   }
@@ -27,5 +28,6 @@ export async function POST() {
   if (existing) return NextResponse.json({ ok: true, alreadyJoined: true })
 
   await db.insert(participants).values({ tournamentId: tournament.id, userId: session.userId })
+  afterLeagueChange()
   return NextResponse.json({ ok: true })
 }

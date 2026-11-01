@@ -4,6 +4,7 @@ import { participants, tournaments, games, users } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
 import { and, eq, or } from 'drizzle-orm'
 import { regenerateSchedule } from '@/lib/regenerateSchedule'
+import { afterLeagueChange } from '@/lib/cache'
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
 
   // During registration the schedule doesn't exist yet — a plain enrollment is enough.
   if (tournament.status === 'registration') {
+    afterLeagueChange()
     return NextResponse.json({ ok: true, name: user.name, totalGames: 0, catchUpGames: 0, upcomingGames: 0 })
   }
 
@@ -50,6 +52,7 @@ export async function POST(req: NextRequest) {
   const total = newGames.length
   const catchUp = newGames.filter(g => g.isCatchUp).length
 
+  afterLeagueChange()
   return NextResponse.json({
     ok: true,
     name: user.name,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/apiAuth'
 import { rebuildEloLedger } from '@/lib/eloLedger'
+import { afterEloGameChange } from '@/lib/cache'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -15,5 +16,6 @@ export async function POST() {
   if (guard instanceof NextResponse) return guard
 
   const { games, entries } = await rebuildEloLedger()
+  afterEloGameChange()
   return NextResponse.json({ ok: true, games, entries })
 }

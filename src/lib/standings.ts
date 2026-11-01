@@ -3,6 +3,7 @@ import { games, matchdays, participants, users } from '@/lib/db/schema'
 import { and, eq, inArray } from 'drizzle-orm'
 import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/scoreboard'
 import { todayISO } from '@/lib/dates'
+import { cached } from '@/lib/cache'
 
 export interface StandingRow extends ScoreboardEntry {
   rank: number
@@ -14,7 +15,15 @@ export interface StandingRow extends ScoreboardEntry {
  * Standings plus each player's weekly rank movement — their rank now vs their rank before the
  * current matchday's games were played. Shared by the scoreboard page and the display board.
  */
-export async function computeStandingsWithMovement(tournamentId: number): Promise<StandingRow[]> {
+export function computeStandingsWithMovement(tournamentId: number): Promise<StandingRow[]> {
+  // Today is part of the cache key: which matchday is "current" (and so the movement baseline)
+  // changes with the date, not just with the data.
+  return standingsCached(tournamentId, todayISO())
+}
+
+const standingsCached = cached('standingsWithMovement', ['league'], standingsWithMovement)
+
+async function standingsWithMovement(tournamentId: number, today: string): Promise<StandingRow[]> {
   const [playerList, finished, mds] = await Promise.all([
     db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
       .from(participants)
@@ -31,7 +40,6 @@ export async function computeStandingsWithMovement(tournamentId: number): Promis
   const current = buildScoreboard(players, finished)
 
   // Current matchday: the one whose week contains today, else the latest with any finished game.
-  const today = todayISO()
   let currentMd = mds.find(m => m.weekStart && m.weekEnd && m.weekStart <= today && today <= m.weekEnd) ?? null
   if (!currentMd) {
     const withGames = mds.filter(m => finished.some(g => g.matchdayId === m.id))

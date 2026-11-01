@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { games, participants, users } from '@/lib/db/schema'
 import { eq, and, inArray } from 'drizzle-orm'
 import { perspective, pointsFor } from '@/lib/gameResult'
+import { cached } from '@/lib/cache'
 
 export interface ScoreboardEntry {
   userId: number
@@ -104,7 +105,9 @@ export function buildScoreboard(players: ScoreboardPlayer[], finishedGames: Fini
   )
 }
 
-export async function computeScoreboard(tournamentId: number): Promise<ScoreboardEntry[]> {
+export const computeScoreboard = cached('scoreboard', ['league'], scoreboard)
+
+async function scoreboard(tournamentId: number): Promise<ScoreboardEntry[]> {
   const [playerList, finishedGames] = await Promise.all([
     db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
       .from(participants)

@@ -4,6 +4,7 @@ import { users, participants, games, pushSubscriptions, notificationPrefs, passw
 import { requireAdmin } from '@/lib/apiAuth'
 import { isAdmin } from '@/lib/admin'
 import { eq, or } from 'drizzle-orm'
+import { afterLeagueChange } from '@/lib/cache'
 
 // Permanently delete a member's account (login + all their data). Admin only. Refuses accounts
 // that still have games in a tournament — those must be eliminated from the tournament first, so
@@ -39,6 +40,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   await db.delete(participants).where(eq(participants.userId, userId))
   await db.delete(users).where(eq(users.id, userId))
 
+  afterLeagueChange()
   return NextResponse.json({ ok: true })
 }
 
@@ -58,5 +60,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (isAdmin(user.email)) return NextResponse.json({ error: 'Admin accounts cannot be archived.' }, { status: 400 })
 
   await db.update(users).set({ archivedAt: archived ? new Date().toISOString() : null }).where(eq(users.id, userId))
+  afterLeagueChange()
   return NextResponse.json({ ok: true, archived: !!archived })
 }

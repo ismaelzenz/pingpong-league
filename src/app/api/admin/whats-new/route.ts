@@ -4,6 +4,7 @@ import { users } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
 import { SETTINGS, setBoolSetting } from '@/lib/settings'
 import { isNotNull } from 'drizzle-orm'
+import { afterSettingsChange } from '@/lib/cache'
 
 /**
  * Admin control over the "what's new" note: switch it on or off for the league, and optionally
@@ -35,5 +36,6 @@ export async function PATCH(req: NextRequest) {
     reset = rows.length
   }
 
+  afterSettingsChange()
   return NextResponse.json({ ok: true, enabled, reset })
 }

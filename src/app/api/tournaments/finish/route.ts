@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { tournaments } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
+import { afterLeagueChange } from '@/lib/cache'
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
@@ -15,5 +16,6 @@ export async function POST(req: NextRequest) {
     .set({ status: 'finished', finishedAt: new Date().toISOString(), isLive: false })
     .where(eq(tournaments.id, tournamentId))
 
+  afterLeagueChange()
   return NextResponse.json({ ok: true })
 }

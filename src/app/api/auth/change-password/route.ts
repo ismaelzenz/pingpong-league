@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { users } from '@/lib/db/schema'
 import { requireUser } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
+// cache: private — writes only the member's password hash, which no cached read includes (see lib/cache.ts).
 
 export async function POST(req: NextRequest) {
   const session = await requireUser()

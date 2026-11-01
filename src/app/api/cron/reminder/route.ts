@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { games, matchdays } from '@/lib/db/schema'
 import { and, eq, inArray, lte, gte } from 'drizzle-orm'
-import { getLiveTournament } from '@/lib/tournament'
+import { getLiveTournamentFresh } from '@/lib/tournament'
 import { sendPush } from '@/lib/push'
 import { todayISO } from '@/lib/dates'
 
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const tournament = await getLiveTournament()
+  const tournament = await getLiveTournamentFresh()
   if (!tournament || tournament.status !== 'active') {
     return NextResponse.json({ ok: true, reason: 'no active tournament', notified: 0 })
   }

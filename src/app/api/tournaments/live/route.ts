@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { tournaments } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
 import { eq, ne } from 'drizzle-orm'
+import { afterLeagueChange } from '@/lib/cache'
 
 // Promote a tournament to "live" — the one players see. Exactly one tournament is live at a
 // time, so this clears the flag on every other tournament.
@@ -21,5 +22,6 @@ export async function POST(req: NextRequest) {
   await db.update(tournaments).set({ isLive: false }).where(ne(tournaments.id, tournamentId))
   await db.update(tournaments).set({ isLive: true }).where(eq(tournaments.id, tournamentId))
 
+  afterLeagueChange()
   return NextResponse.json({ ok: true })
 }

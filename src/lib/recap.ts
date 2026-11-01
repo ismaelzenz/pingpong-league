@@ -7,6 +7,7 @@ import { games, matchdays, participants, tournaments, users } from '@/lib/db/sch
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { buildScoreboard, type ScoreboardEntry, type ScoreboardPlayer } from '@/lib/scoreboard'
 import { perspective } from '@/lib/gameResult'
+import { cached } from '@/lib/cache'
 
 export interface RecapAward {
   userId: number
@@ -66,32 +67,29 @@ export interface RecapData {
 
 const MIN_GAMES_FOR_WIN_RATE = 3
 
-/** The most recently finished tournament, or null if none has finished yet. */
-export async function getLatestFinishedTournament() {
-  return db.select().from(tournaments)
-    .where(eq(tournaments.status, 'finished'))
-    .orderBy(desc(tournaments.finishedAt), desc(tournaments.createdAt))
-    .limit(1)
-    .then(r => r[0] ?? null)
-}
+export { getLatestFinishedTournament } from '@/lib/tournament'
 
 /** All finished tournaments, most recently finished first (for the "Past seasons" list). */
-export async function getFinishedTournaments() {
-  return db.select().from(tournaments)
+export const getFinishedTournaments = cached('finishedTournaments', ['league'], async () =>
+  db.select().from(tournaments)
     .where(eq(tournaments.status, 'finished'))
-    .orderBy(desc(tournaments.finishedAt), desc(tournaments.createdAt))
-}
+    .orderBy(desc(tournaments.finishedAt), desc(tournaments.createdAt)))
 
 /** A specific tournament, but only if it has finished; null otherwise (so recaps stay finished-only). */
-// Request-cached: the recap page's `generateMetadata` and the page itself both look it up.
-export const getFinishedTournamentById = cache(async (id: number) => {
-  return db.select().from(tournaments)
+// Also request-cached: the recap page's `generateMetadata` and the page itself both look it up.
+export const getFinishedTournamentById = cache(cached('finishedTournamentById', ['league'], async (id: number) =>
+  db.select().from(tournaments)
     .where(and(eq(tournaments.id, id), eq(tournaments.status, 'finished')))
     .limit(1)
-    .then(r => r[0] ?? null)
-})
+    .then(r => r[0] ?? null)))
 
-export async function computeRecap(tournamentId: number, tournamentName: string): Promise<RecapData> {
+/**
+ * The season recap. Cached: a finished season's recap only changes if an admin edits its results
+ * afterwards, and the dashboard shows the last champion between seasons.
+ */
+export const computeRecap = cached('recap', ['league'], recap)
+
+async function recap(tournamentId: number, tournamentName: string): Promise<RecapData> {
   const [playerList, finished, mds] = await Promise.all([
     db.select({ userId: participants.userId, name: users.name, email: users.email, avatarColor: users.avatarColor })
       .from(participants)

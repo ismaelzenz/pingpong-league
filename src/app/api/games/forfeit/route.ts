@@ -4,6 +4,7 @@ import { games, matchdays } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
 import { eq, and, inArray, lt } from 'drizzle-orm'
 import { todayISO } from '@/lib/dates'
+import { afterLeagueChange } from '@/lib/cache'
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
@@ -27,5 +28,6 @@ export async function POST(req: NextRequest) {
     .where(and(inArray(games.matchdayId, ids), eq(games.status, 'pending')))
     .returning()
 
+  afterLeagueChange()
   return NextResponse.json({ ok: true, forfeited: result.length })
 }

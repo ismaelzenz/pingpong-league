@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { eloGamePlayers, eloGames, eloHistory, games, tournaments, users } from '@/lib/db/schema'
 import { and, desc, eq, exists, gt, inArray, notExists, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
+import { cached } from '@/lib/cache'
 import { buildLedger, compareRatable, START_ELO, type RatableGame, type EloSource } from '@/lib/elo'
 
 /** The app's database, or a transaction on it — so the rebuild can read inside its own transaction. */
@@ -281,7 +282,9 @@ export interface EloStanding {
  * The ELO scoreboard: every member who has ever played a rated game, ranked by current rating.
  * Players with no rated games are left out — they'd all be a meaningless tie on the 1000 start.
  */
-export async function computeEloStandings(): Promise<EloStanding[]> {
+export const computeEloStandings = cached('eloStandings', ['elo'], eloStandings)
+
+async function eloStandings(): Promise<EloStanding[]> {
   const rows = await db.select({
     userId: eloHistory.userId,
     won: eloHistory.won,
@@ -347,7 +350,9 @@ export interface EloTimeline {
  * "start" point at 1000 (seq −1) so a line begins at the baseline rather than at its first result,
  * which makes a newcomer's first jump readable instead of a floating dot.
  */
-export async function computeEloTimelines(): Promise<EloTimeline[]> {
+export const computeEloTimelines = cached('eloTimelines', ['elo'], eloTimelines)
+
+async function eloTimelines(): Promise<EloTimeline[]> {
   const rows = await db.select({
     userId: eloHistory.userId,
     ratingAfter: eloHistory.ratingAfter,
@@ -412,7 +417,9 @@ export interface EloGameRow {
  * event. Grouping by game puts the winners, the losers and what it cost each of them on a single
  * line, and makes a team game (where "the opponent" is three people) representable at all.
  */
-export async function listEloGames(opts: { limit?: number; userId?: number } = {}): Promise<EloGameRow[]> {
+export const listEloGames = cached('eloGames', ['elo'], eloGameRows)
+
+async function eloGameRows(opts: { limit?: number; userId?: number } = {}): Promise<EloGameRow[]> {
   const { limit = 400, userId } = opts
   // Filtering by player has to keep the *whole* game — you want to see who you beat, not just your
   // own line — so the filter is "games this player appears in", done in SQL so a profile page

@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { pushSubscriptions } from '@/lib/db/schema'
 import { requireUser } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
+// cache: private — writes only the member's push subscriptions, which no cached read includes (see lib/cache.ts).
 
 // Store (or refresh) a browser push subscription for the current user.
 export async function POST(req: NextRequest) {

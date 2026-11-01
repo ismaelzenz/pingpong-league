@@ -4,6 +4,7 @@ import { matchdays, games, participants } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
 import { todayISO } from '@/lib/dates'
+import { afterLeagueChange } from '@/lib/cache'
 
 // Admin adds a game to a not-yet-started matchday.
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -42,5 +43,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     status: 'pending',
   })
 
+  afterLeagueChange()
   return NextResponse.json({ ok: true })
 }

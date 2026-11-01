@@ -6,6 +6,7 @@ import { sendPush } from '@/lib/push'
 import { isValidResult } from '@/lib/gameResult'
 import { winnersOf } from '@/lib/elo'
 import { syncEloForGame } from '@/lib/eloLedger'
+import { afterLeagueChange } from '@/lib/cache'
 import { todayISO } from '@/lib/dates'
 import { eq } from 'drizzle-orm'
 
@@ -94,6 +95,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Ratings only ever depended on who won, so a 2–0 → 2–1 fix reshuffles the league table and
     // leaves every rating alone; a flipped winner replays the ledger from that game onward.
     const eloChanged = await syncEloForGame('league', gameId, winnersOf({ homePlayerIds: [game.homePlayerId], awayPlayerIds: [game.awayPlayerId], homeSets, awaySets }))
+    afterLeagueChange()
 
     const otherId = game.homePlayerId === session.userId ? game.awayPlayerId : game.homePlayerId
     after(() => sendPush(otherId, {
@@ -191,6 +193,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   }
 
+  // Every branch that reaches here wrote to the game.
+  afterLeagueChange()
   return NextResponse.json({ ok: true })
 }
 
@@ -210,5 +214,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!isFuture) return NextResponse.json({ error: 'Can only edit future matchdays' }, { status: 400 })
 
   await db.delete(games).where(eq(games.id, gameId))
+  afterLeagueChange()
   return NextResponse.json({ ok: true })
 }

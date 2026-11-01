@@ -4,6 +4,7 @@ import { participants, tournaments, games } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
 import { eq, and, or } from 'drizzle-orm'
 import { regenerateSchedule } from '@/lib/regenerateSchedule'
+import { afterLeagueChange } from '@/lib/cache'
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const guard = await requireAdmin()
@@ -22,6 +23,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   // During registration: simple unenroll (no games exist yet).
   if (tournament.status === 'registration') {
     await db.delete(participants).where(eq(participants.id, participantId))
+    afterLeagueChange()
     return NextResponse.json({ ok: true })
   }
 
@@ -49,6 +51,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const result = await regenerateSchedule(tournamentId, tournament.startedAt)
 
+  afterLeagueChange()
   return NextResponse.json({
     ok: true,
     deletedGames: deletedGames.length,

@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
 import { isValid } from 'date-fns'
 import { rebuildEloLedger } from '@/lib/eloLedger'
+import { afterLeagueChange } from '@/lib/cache'
 
 // Edit tournament settings while registration is open — plus the ELO switch, which can be changed
 // at any point in a season's life.
@@ -44,6 +45,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // Ratings are chained, and this changes which games are in the chain at all, so replay.
     const { games: rated } = await rebuildEloLedger()
+    afterLeagueChange()
     return NextResponse.json({ ok: true, countsForElo: body.countsForElo, eloCountsFrom, ratedGames: rated })
   }
 
@@ -54,6 +56,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const startDate = body.startDate && isValid(new Date(body.startDate)) ? body.startDate : null
   await db.update(tournaments).set({ startDate }).where(eq(tournaments.id, tournamentId))
 
+  afterLeagueChange()
   return NextResponse.json({ ok: true, startDate })
 }
 
@@ -79,5 +82,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   await db.delete(participants).where(eq(participants.tournamentId, tournamentId))
   await db.delete(tournaments).where(eq(tournaments.id, tournamentId))
 
+  afterLeagueChange()
   return NextResponse.json({ ok: true })
 }

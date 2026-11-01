@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
 import { users, passwordResetTokens } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
+// cache: private — writes only a reset token and a password hash, which no cached read includes (see lib/cache.ts).
 
 export async function POST(request: Request) {
   const { token, password } = await request.json()

@@ -4,6 +4,7 @@ import { tournaments } from '@/lib/db/schema'
 import { requireAdmin } from '@/lib/apiAuth'
 import { eq } from 'drizzle-orm'
 import { regenerateSchedule } from '@/lib/regenerateSchedule'
+import { afterLeagueChange } from '@/lib/cache'
 
 export async function POST(req: NextRequest) {
   const guard = await requireAdmin()
@@ -17,5 +18,6 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await regenerateSchedule(tournamentId, tournament.startedAt)
+  afterLeagueChange()
   return NextResponse.json({ ok: true, ...result })
 }

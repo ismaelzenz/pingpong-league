@@ -5,6 +5,7 @@ import { users } from '@/lib/db/schema'
 import { getSession, establishSession } from '@/lib/session'
 import { WHATS_NEW } from '@/lib/whatsNew'
 import { eq } from 'drizzle-orm'
+// cache: private — writes only a new account, which no cached read includes until it joins a season (see lib/cache.ts).
 
 export async function POST(req: NextRequest) {
   const { name, email, password } = await req.json()
