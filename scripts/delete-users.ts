@@ -9,14 +9,21 @@
  * A user referenced by real games (as a player) is SKIPPED unless --force, because removing them
  * would corrupt a tournament's schedule/standings. Prefer eliminating such players via the Admin
  * panel. Guests/test accounts with no games are safe to delete.
+ *
+ * The same goes for casual ELO games they played in: --force deletes those games outright (for
+ * every player in them), and the ELO ledger is then replayed so nobody keeps points from a game
+ * that no longer exists.
  */
 import { config } from 'dotenv'
 import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
-import { eq, or } from 'drizzle-orm'
+import { and, eq, inArray, ne, or } from 'drizzle-orm'
 import * as schema from '../src/lib/db/schema'
 
-const { users, participants, games, pushSubscriptions, notificationPrefs, passwordResetTokens } = schema
+const {
+  users, participants, games, pushSubscriptions, notificationPrefs, passwordResetTokens,
+  eloGames, eloGamePlayers, eloHistory,
+} = schema
 
 async function main() {
   const args = process.argv.slice(2)
@@ -57,12 +64,14 @@ async function main() {
     const subRows = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, user.id))
     const prefRows = await db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, user.id))
     const tokenRows = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id))
+    const eloGameIds = (await db.select({ id: eloGamePlayers.eloGameId }).from(eloGamePlayers)
+      .where(eq(eloGamePlayers.userId, user.id))).map(r => r.id)
 
     console.log(`• ${user.name} <${user.email}> (id ${user.id})`)
-    console.log(`    participants: ${parts.length} · games: ${gameRows.length} · pushSubs: ${subRows.length} · prefs: ${prefRows.length} · resetTokens: ${tokenRows.length}`)
+    console.log(`    participants: ${parts.length} · games: ${gameRows.length} · eloGames: ${eloGameIds.length} · pushSubs: ${subRows.length} · prefs: ${prefRows.length} · resetTokens: ${tokenRows.length}`)
 
-    if (gameRows.length > 0 && !force) {
-      console.log(`    ⚠️  SKIPPED — has ${gameRows.length} game(s); deleting would corrupt a tournament.`)
+    if ((gameRows.length > 0 || eloGameIds.length > 0) && !force) {
+      console.log(`    ⚠️  SKIPPED — has ${gameRows.length} league game(s) and ${eloGameIds.length} ELO game(s); deleting would corrupt a tournament and everyone's ratings.`)
       console.log('        Eliminate them via Admin instead, or re-run with --force to also delete their games.')
       skipped++
       continue
@@ -77,8 +86,24 @@ async function main() {
     if (gameRows.length > 0 && force) {
       await db.delete(games).where(or(eq(games.homePlayerId, user.id), eq(games.awayPlayerId, user.id)))
     }
+    if (eloGameIds.length > 0) {
+      await db.delete(eloHistory).where(and(eq(eloHistory.source, 'elo'), inArray(eloHistory.refId, eloGameIds)))
+      await db.delete(eloGamePlayers).where(inArray(eloGamePlayers.eloGameId, eloGameIds))
+      await db.delete(eloGames).where(inArray(eloGames.id, eloGameIds))
+    }
     await db.update(games).set({ submittedBy: null }).where(eq(games.submittedBy, user.id))
     await db.update(games).set({ confirmedBy: null }).where(eq(games.confirmedBy, user.id))
+    await db.update(games).set({ correctedBy: null }).where(eq(games.correctedBy, user.id))
+    await db.update(eloGames).set({ correctedBy: null }).where(eq(eloGames.correctedBy, user.id))
+    // `submitted_by` is NOT NULL on ELO games, and an admin can log a game they didn't play in. Hand
+    // the authorship to one of the players so the game (and everyone's points from it) survives.
+    for (const g of await db.select({ id: eloGames.id }).from(eloGames).where(eq(eloGames.submittedBy, user.id))) {
+      const player = await db.select({ userId: eloGamePlayers.userId }).from(eloGamePlayers)
+        .where(and(eq(eloGamePlayers.eloGameId, g.id), ne(eloGamePlayers.userId, user.id))).then(r => r[0])
+      if (player) await db.update(eloGames).set({ submittedBy: player.userId }).where(eq(eloGames.id, g.id))
+    }
+    // Their ledger rows are derived; the rebuild below recreates the ledger without them.
+    await db.delete(eloHistory).where(or(eq(eloHistory.userId, user.id), eq(eloHistory.opponentId, user.id)))
     await db.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, user.id))
     await db.delete(notificationPrefs).where(eq(notificationPrefs.userId, user.id))
     await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, user.id))
@@ -86,6 +111,15 @@ async function main() {
     await db.delete(users).where(eq(users.id, user.id))
     console.log('    ✓ deleted')
     deleted++
+  }
+
+  // Ratings are chained, so removing anyone's games shifts every rating after them. Imported here,
+  // not at the top: the app's db module reads TURSO_DATABASE_URL when it loads, which is only set
+  // once `config()` above has picked the env file.
+  if (deleted > 0) {
+    const { rebuildEloLedger } = await import('../src/lib/eloLedger')
+    const { games: rated } = await rebuildEloLedger()
+    console.log(`ELO ledger rebuilt from ${rated} rated games.`)
   }
 
   console.log('')
