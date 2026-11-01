@@ -23,8 +23,8 @@ interface EnrichedGame {
   awaySets: number | null
   submittedBy: number | null
   isCatchUp: boolean
-  homePlayer: { id: number; name: string }
-  awayPlayer: { id: number; name: string }
+  homePlayer: { id: number; name: string; avatarColor: string | null }
+  awayPlayer: { id: number; name: string; avatarColor: string | null }
   matchday: { number: number } | null
 }
 
@@ -61,7 +61,10 @@ export default async function MyGamesPage() {
   const homeUser = alias(users, 'home_user')
   const awayUser = alias(users, 'away_user')
   const rows = await db
-    .select({ game: games, mdNumber: matchdays.number, homeName: homeUser.name, awayName: awayUser.name })
+    .select({
+      game: games, mdNumber: matchdays.number,
+      homeName: homeUser.name, homeColor: homeUser.avatarColor, awayName: awayUser.name, awayColor: awayUser.avatarColor,
+    })
     .from(games)
     .leftJoin(matchdays, eq(matchdays.id, games.matchdayId))
     .leftJoin(homeUser, eq(homeUser.id, games.homePlayerId))
@@ -73,8 +76,8 @@ export default async function MyGamesPage() {
 
   const enriched = rows.map(r => ({
     ...r.game,
-    homePlayer: { id: r.game.homePlayerId, name: r.homeName ?? '—' },
-    awayPlayer: { id: r.game.awayPlayerId, name: r.awayName ?? '—' },
+    homePlayer: { id: r.game.homePlayerId, name: r.homeName ?? '—', avatarColor: r.homeColor },
+    awayPlayer: { id: r.game.awayPlayerId, name: r.awayName ?? '—', avatarColor: r.awayColor },
     matchday: r.mdNumber != null ? { number: r.mdNumber } : null,
   }))
 

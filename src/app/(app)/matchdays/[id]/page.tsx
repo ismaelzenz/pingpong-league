@@ -31,8 +31,8 @@ export default async function MatchdayDetailPage({ params }: { params: Promise<{
     // Catch-up games are only FK-pinned to a matchday; they aren't part of its line-up.
     db.select({
       game: games,
-      homePlayer: { id: homeUser.id, name: homeUser.name, email: homeUser.email },
-      awayPlayer: { id: awayUser.id, name: awayUser.name, email: awayUser.email },
+      homePlayer: { id: homeUser.id, name: homeUser.name, email: homeUser.email, avatarColor: homeUser.avatarColor },
+      awayPlayer: { id: awayUser.id, name: awayUser.name, email: awayUser.email, avatarColor: awayUser.avatarColor },
     })
       .from(games)
       .leftJoin(homeUser, eq(homeUser.id, games.homePlayerId))

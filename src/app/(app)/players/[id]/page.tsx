@@ -67,7 +67,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         // This player's catch-up games (owed games that live outside the regular matchday grid,
         // so they never appear in any matchday). Surfacing them here lets an admin open one and
         // forfeit/postpone it — otherwise there's no way to reach a catch-up game.
-        db.select({ game: games, opponentName: opponent.name })
+        db.select({ game: games, opponentName: opponent.name, opponentColor: opponent.avatarColor })
           .from(games)
           .leftJoin(opponent, opponentOn)
           .where(and(eq(games.tournamentId, tournament.id), eq(games.isCatchUp, true), mine))
@@ -105,10 +105,10 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   const playerWins = h2h.filter(r => r.won).length
   const myWins = h2h.length - playerWins
 
-  const catchUpGames = catchUpRows.map(({ game: g, opponentName }) => ({
+  const catchUpGames = catchUpRows.map(({ game: g, opponentName, opponentColor }) => ({
     ...g,
-    homePlayer: { id: g.homePlayerId, name: g.homePlayerId === playerId ? player.name : (opponentName ?? '—') },
-    awayPlayer: { id: g.awayPlayerId, name: g.awayPlayerId === playerId ? player.name : (opponentName ?? '—') },
+    homePlayer: g.homePlayerId === playerId ? player : { id: g.homePlayerId, name: opponentName ?? '—', avatarColor: opponentColor },
+    awayPlayer: g.awayPlayerId === playerId ? player : { id: g.awayPlayerId, name: opponentName ?? '—', avatarColor: opponentColor },
   }))
 
   const playerForm = computePlayerForm(playerGames, playerId)

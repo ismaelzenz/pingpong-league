@@ -25,6 +25,7 @@ import { UNPLAYED_STATUSES, isFinished, isUnplayed } from '@/lib/domain/gameStat
 import RankMovement from '@/components/common/RankMovement'
 import { medal } from '@/lib/utils'
 import SectionCard from '@/components/common/SectionCard'
+import ShowMoreList from '@/components/common/ShowMoreList'
 
 export const dynamic = 'force-dynamic'
 
@@ -160,8 +161,8 @@ export default async function DashboardPage() {
   const [myPendingGames, scores, weekGames] = await Promise.all([
     db.select({
       game: games,
-      homePlayer: { id: homeUser.id, name: homeUser.name, email: homeUser.email },
-      awayPlayer: { id: awayUser.id, name: awayUser.name, email: awayUser.email },
+      homePlayer: { id: homeUser.id, name: homeUser.name, email: homeUser.email, avatarColor: homeUser.avatarColor },
+      awayPlayer: { id: awayUser.id, name: awayUser.name, email: awayUser.email, avatarColor: awayUser.avatarColor },
       matchday: { number: matchdays.number, weekStart: matchdays.weekStart, weekEnd: matchdays.weekEnd },
     })
       .from(games)
@@ -220,11 +221,14 @@ export default async function DashboardPage() {
 
   let nextAction: { emoji: string; title: string; detail: string; gameId: number; tone: string } | null = null
   if (overdue) {
-    nextAction = { emoji: '⏳', title: 'You have a game to catch up on', detail: `Play ${opponentName(overdue)} as soon as you can.`, gameId: overdue.id, tone: 'border-orange-300 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/40' }
+    nextAction = { emoji: '⏳', title: 'You have a game to catch up on', detail: `Play ${opponentName(overdue)} as soon as you can.`, gameId: overdue.id, tone: 'border-orange-300 bg-orange-50 dark:border-orange-500/60 dark:bg-orange-500/15' }
   } else if (thisWeekPlay) {
     const dl = deadlineLabel(thisWeekPlay.weekStart, thisWeekPlay.weekEnd)
-    nextAction = { emoji: '🏓', title: 'Play your game this week', detail: `You're up against ${opponentName(thisWeekPlay)}${dl ? ` — ${dl.text}` : ''}.`, gameId: thisWeekPlay.id, tone: 'border-primary/40 bg-primary/5' }
+    nextAction = { emoji: '🏓', title: 'Play your game this week', detail: `You're up against ${opponentName(thisWeekPlay)}${dl ? ` — ${dl.text}` : ''}.`, gameId: thisWeekPlay.id, tone: 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/60 dark:bg-emerald-500/15' }
   }
+
+  // The game in the banner above isn't repeated in the list below it.
+  const listedCatchUp = catchUpGames.filter(g => g.id !== nextAction?.gameId)
 
   return (
     <div className="space-y-6">
@@ -268,20 +272,23 @@ export default async function DashboardPage() {
         </Link>
       )}
 
-      {catchUpGames.length > 0 && (
+      {listedCatchUp.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-yellow-700 dark:text-yellow-400">⏳ Catch-up games</h2>
-            <Badge variant="outline" className="border-yellow-400 text-yellow-700 dark:text-yellow-400">{catchUpGames.length}</Badge>
+            <h2 className="font-semibold text-orange-700 dark:text-orange-400">
+              ⏳ {nextAction ? 'More to catch up' : 'Catch-up games'}
+            </h2>
+            <Badge variant="outline" className="border-orange-400 text-orange-700 dark:border-orange-500/60 dark:text-orange-400">{listedCatchUp.length}</Badge>
           </div>
           <p className="text-sm text-muted-foreground -mt-1">
             These are from matchdays that have already started. Play them to catch up.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {catchUpGames.map(game => (
+          {/* Oldest first; the rest fold away so a long backlog doesn't push the standings off-screen. */}
+          <ShowMoreList initial={2} label="catch-up games" className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {listedCatchUp.map(game => (
               <GameCard key={game.id} game={game} currentUserId={session.userId} />
             ))}
-          </div>
+          </ShowMoreList>
         </div>
       )}
 

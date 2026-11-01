@@ -27,7 +27,7 @@ export default async function CatchUpPage() {
   const [allGames, mds, rosterRaw] = await Promise.all([
     db.select().from(games).where(eq(games.tournamentId, tournament.id)).orderBy(games.id),
     db.select().from(matchdays).where(eq(matchdays.tournamentId, tournament.id)),
-    db.select({ id: users.id, name: users.name })
+    db.select({ id: users.id, name: users.name, avatarColor: users.avatarColor })
       .from(participants)
       .leftJoin(users, eq(users.id, participants.userId))
       .where(eq(participants.tournamentId, tournament.id)),
@@ -40,6 +40,7 @@ export default async function CatchUpPage() {
     ?? [...mds].reverse().find(m => m.weekStart != null && m.weekStart <= today)
     ?? null
   const nameById = new Map(rosterRaw.filter(p => p.id != null).map(p => [p.id!, p.name ?? '—']))
+  const colorById = new Map(rosterRaw.filter(p => p.id != null).map(p => [p.id!, p.avatarColor]))
 
   const backlog = allGames
     .filter(g => isCatchUpBacklog(g, weekStartByMd, currentMd?.id ?? null, today))
@@ -49,8 +50,8 @@ export default async function CatchUpPage() {
       const md = mdById.get(g.matchdayId)
       return {
         ...g,
-        homePlayer: { id: g.homePlayerId, name: nameById.get(g.homePlayerId) ?? '—' },
-        awayPlayer: { id: g.awayPlayerId, name: nameById.get(g.awayPlayerId) ?? '—' },
+        homePlayer: { id: g.homePlayerId, name: nameById.get(g.homePlayerId) ?? '—', avatarColor: colorById.get(g.homePlayerId) ?? null },
+        awayPlayer: { id: g.awayPlayerId, name: nameById.get(g.awayPlayerId) ?? '—', avatarColor: colorById.get(g.awayPlayerId) ?? null },
         matchday: md ? { number: md.number } : null,
         weekStart: md?.weekStart ?? null,
         weekEnd: md?.weekEnd ?? null,
