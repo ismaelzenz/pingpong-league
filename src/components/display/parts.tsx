@@ -71,20 +71,12 @@ export function StandingsPanel({ rows }: { rows: StandingRow[] }) {
 }
 
 /**
- * This week's fixtures. Fills its parent's height; rows stretch. Handles postponed games.
- * `summary` overrides the header count (used when only a page of games is passed in for paging).
+ * One page of this week's fixtures. Fills its parent's height; rows stretch. Handles postponed
+ * games, and makes a just-played one glow (`freshIds`, see ResultCelebration).
  */
-export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames, freshIds }: { weekGames: WeekGame[]; summary?: { played: number; total: number }; byePlayers?: ByePlayer[]; catchUpGames?: WeekGame[]; freshIds?: ReadonlySet<number> }) {
-  const played = summary ? summary.played : weekGames.filter(g => isFinished(g.status)).length
-  const total = summary ? summary.total : weekGames.length
+export function WeekGameRows({ weekGames, freshIds }: { weekGames: WeekGame[]; freshIds?: ReadonlySet<number> }) {
   return (
-    <div className="h-full flex flex-col rounded-2xl bg-slate-900/80 ring-1 ring-white/5 p-[1.6vh]">
-      <div className="flex items-baseline justify-between mb-[1.2vh] shrink-0">
-        <h2 className="text-[2.5vh] font-bold">This week</h2>
-        <span className="rounded-full bg-slate-800 px-[1.4vh] py-[0.4vh] text-slate-300 text-[1.8vh] font-semibold tabular-nums">
-          {played}/{total} played
-        </span>
-      </div>
+    <div className="h-full flex flex-col px-[1.6vh] pt-[1.2vh]">
       {weekGames.length === 0 ? (
         <p className="text-slate-500 flex-1 flex items-center justify-center text-[2.2vh]">No games scheduled this week.</p>
       ) : (
@@ -128,6 +120,15 @@ export function ThisWeekPanel({ weekGames, summary, byePlayers, catchUpGames, fr
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+/** Under the week's games and fixed while they page: the catch-up strip and who's resting. */
+export function ThisWeekFooter({ byePlayers, catchUpGames }: { byePlayers?: ByePlayer[]; catchUpGames?: WeekGame[] }) {
+  if (!catchUpGames?.length && !byePlayers?.length) return null
+  return (
+    <div className="shrink-0 px-[1.6vh] pb-[1.6vh]">
       {catchUpGames && catchUpGames.length > 0 && <CatchUpTicker games={catchUpGames} />}
       {byePlayers && byePlayers.length > 0 && (
         <div className="shrink-0 mt-[0.8vh] flex items-center gap-[1.2vh] rounded-xl bg-slate-800/40 ring-1 ring-white/5 px-[1.6vh] py-[0.8vh]">
