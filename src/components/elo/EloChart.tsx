@@ -64,8 +64,6 @@ export default function EloChart({ series, selected, legend = true }: Props) {
   // name each line, so they go and the plot takes their margin.
   const narrow = W < 500
   const H = narrow ? 220 : 300
-  const padRight = narrow ? 12 : PAD.right
-  const pad = useMemo(() => ({ ...PAD, right: padRight }), [padRight])
 
   const drawn = useMemo(
     () => selected
@@ -74,6 +72,11 @@ export default function EloChart({ series, selected, legend = true }: Props) {
       .slice(0, SLOTS),
     [series, selected],
   )
+
+  // Room on the right for the longest full name at a line's end (~6.6px a character at 11px).
+  const longestName = Math.max(0, ...drawn.map(s => s.name.length))
+  const padRight = narrow ? 12 : Math.max(PAD.right, Math.round(longestName * 6.6) + 20)
+  const pad = useMemo(() => ({ ...PAD, right: padRight }), [padRight])
 
   const scale = useMemo(() => {
     const all = drawn.flatMap(s => s.points)
@@ -119,6 +122,24 @@ export default function EloChart({ series, selected, legend = true }: Props) {
     const at = [...s.points].reverse().find(p => new Date(p.playedAt).getTime() <= hoverTime)
     return { series: s, slot: i, point: at ?? null }
   })
+
+  // Line-end labels, nudged apart: lines often finish close together, and their names would print
+  // on top of each other. Top to bottom, each label keeps a line's height below any earlier one
+  // it would overlap horizontally.
+  const LABEL_GAP = 13
+  const labelY = new Map<number, number>()
+  const placed: { x: number; y: number; w: number }[] = []
+  for (const s of [...drawn].sort((a, b) => y(a.points.at(-1)!.rating) - y(b.points.at(-1)!.rating))) {
+    const last = s.points.at(-1)!
+    const lx = x(new Date(last.playedAt).getTime()) + 9
+    const w = s.name.length * 6.6
+    let ly = y(last.rating) + 4
+    for (const p of placed) {
+      if (lx < p.x + p.w && p.x < lx + w && ly - p.y < LABEL_GAP) ly = p.y + LABEL_GAP
+    }
+    placed.push({ x: lx, y: ly, w })
+    labelY.set(s.userId, ly)
+  }
 
   function onMove(e: React.PointerEvent<SVGSVGElement>) {
     const svg = svgRef.current
@@ -176,14 +197,14 @@ export default function EloChart({ series, selected, legend = true }: Props) {
                     halo (paint-order: stroke first) to stay readable over whatever crosses it. */}
                 {!narrow && <text
                   x={x(new Date(last.playedAt).getTime()) + 9}
-                  y={y(last.rating) + 4}
+                  y={labelY.get(s.userId) ?? y(last.rating) + 4}
                   className="fill-foreground text-[11px] font-medium"
                   stroke="var(--card)"
                   strokeWidth={3}
                   strokeLinejoin="round"
                   paintOrder="stroke"
                 >
-                  {s.name.split(' ')[0]}
+                  {s.name}
                 </text>}
               </g>
             )
