@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireSession, getCurrentUser } from '@/lib/auth/session'
 import { db } from '@/lib/db'
 import { participants, games, users, matchdays } from '@/lib/db/schema'
-import { eq, or, inArray, and, lte, gte } from 'drizzle-orm'
+import { eq, or, inArray, and, gte } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/sqlite-core'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -19,12 +19,15 @@ import { SETTINGS, getBoolSetting } from '@/lib/services/settings'
 import { computeStandingsWithMovement } from '@/lib/data/standings'
 import { getLiveTournament } from '@/lib/data/tournaments'
 import { getLatestFinishedTournament, computeRecap } from '@/lib/data/recap'
-import { todayISO, deadlineLabel } from '@/lib/dates'
+import { todayISO } from '@/lib/dates'
 import { ChevronRight } from 'lucide-react'
 import { UNPLAYED_STATUSES, isFinished, isUnplayed } from '@/lib/domain/gameStatus'
 import StandingsTable from '@/components/scoreboard/StandingsTable'
 import SectionCard from '@/components/common/SectionCard'
 import ShowMoreList from '@/components/common/ShowMoreList'
+import ThisWeekCard from '@/components/matchday/ThisWeekCard'
+import type { MatchdayRowData, MyMatchday } from '@/components/matchday/MatchdayRow'
+import { perspective } from '@/lib/domain/gameResult'
 
 export const dynamic = 'force-dynamic'
 
@@ -176,15 +179,23 @@ export default async function DashboardPage() {
       // Explicit, so "the game to play next" below doesn't depend on whichever index SQLite uses.
       .orderBy(games.id),
     computeStandingsWithMovement(tournament.id),
-    // This week's matchday progress: the regular games of the matchday whose Mon–Fri window
-    // covers today. Joined in one query, so no separate "which matchday is current" lookup.
-    db.select({ status: games.status, matchdayId: matchdays.id, number: matchdays.number })
+    // The featured matchday's regular games, both players joined: the matchday in progress or,
+    // between matchdays, the next to start — the earliest whose week hasn't ended. The subquery
+    // picks it, so there's no separate "which matchday" round trip.
+    db.select({
+      game: games,
+      md: { id: matchdays.id, number: matchdays.number, weekStart: matchdays.weekStart, weekEnd: matchdays.weekEnd },
+      homeName: homeUser.name, homeColor: homeUser.avatarColor, awayName: awayUser.name, awayColor: awayUser.avatarColor,
+    })
       .from(games)
       .innerJoin(matchdays, eq(matchdays.id, games.matchdayId))
+      .leftJoin(homeUser, eq(homeUser.id, games.homePlayerId))
+      .leftJoin(awayUser, eq(awayUser.id, games.awayPlayerId))
       .where(and(
-        eq(matchdays.tournamentId, tournament.id),
-        lte(matchdays.weekStart, today),
-        gte(matchdays.weekEnd, today),
+        inArray(games.matchdayId, db.select({ id: matchdays.id }).from(matchdays)
+          .where(and(eq(matchdays.tournamentId, tournament.id), gte(matchdays.weekEnd, today)))
+          .orderBy(matchdays.weekStart)
+          .limit(1)),
         eq(games.isCatchUp, false),
       )),
   ])
@@ -194,36 +205,55 @@ export default async function DashboardPage() {
     weekStart: row.matchday?.weekStart ?? null, weekEnd: row.matchday?.weekEnd ?? null,
   }))
 
-  // Catch-up = explicit backlog games (a newcomer's owed games) plus any regular game
-  // whose matchday week has already started but is still unplayed (overdue).
+  // The featured matchday, shown in its own card: who you play (or played, or that you rest) and how
+  // far the league has got through it. Its game is left out of the lists below.
+  const featured = weekGames[0]?.md ?? null
+  const meEntry = scores.find(s => s.userId === session.userId)
+  const myWeek = weekGames.find(r => r.game.homePlayerId === session.userId || r.game.awayPlayerId === session.userId)
+  let mine: MyMatchday | undefined
+  if (meEntry && featured) {
+    if (myWeek) {
+      const g = myWeek.game
+      const isHome = g.homePlayerId === session.userId
+      const p = isFinished(g.status) ? perspective(g, session.userId) : null
+      mine = {
+        resting: false,
+        me: { name: meEntry.name, avatarColor: meEntry.avatarColor },
+        opponent: isHome ? { name: myWeek.awayName ?? '—', avatarColor: myWeek.awayColor } : { name: myWeek.homeName ?? '—', avatarColor: myWeek.homeColor },
+        result: p ? { won: p.won, mySets: p.mySets, oppSets: p.oppSets, forfeited: p.forfeited } : undefined,
+      }
+    } else {
+      mine = { resting: true }
+    }
+  }
+  const featuredRow: MatchdayRowData | null = featured && {
+    id: featured.id, number: featured.number, weekStart: featured.weekStart, weekEnd: featured.weekEnd,
+    total: weekGames.length,
+    played: weekGames.filter(r => isFinished(r.game.status)).length,
+    past: false, hasIssue: false, mine,
+  }
+
+  // Catch-up = explicit backlog games (a newcomer's owed games) plus any regular game whose
+  // matchday has already started but is still unplayed — except the featured matchday's, which
+  // has its own card.
   const catchUpGames = enrichedGames
-    .filter(g => g.isCatchUp || (g.weekStart && g.weekStart <= today))
+    .filter(g => g.isCatchUp || (g.weekStart && g.weekStart <= today && g.matchdayId !== featured?.id))
     .sort((a, b) => (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0))
   const upcomingGames = enrichedGames
-    .filter(g => !g.isCatchUp && (!g.weekStart || g.weekStart > today))
+    .filter(g => !g.isCatchUp && (!g.weekStart || g.weekStart > today) && g.matchdayId !== featured?.id)
     .sort((a, b) => (a.matchday?.number ?? 0) - (b.matchday?.number ?? 0))
     .slice(0, 4)
 
-  const currentMatchday = weekGames[0] ? { id: weekGames[0].matchdayId, number: weekGames[0].number } : null
-  const weekPlayed = weekGames.filter(g => isFinished(g.status)).length
-  const weekPct = weekGames.length ? Math.round((weekPlayed / weekGames.length) * 100) : 0
-
-  // The single most important thing for this player to do right now (catch up > play).
+  // An owed game is the one thing more urgent than this week's — it gets the banner on top.
   const opponentName = (g: (typeof enrichedGames)[number]) =>
     g.homePlayerId === session.userId ? (g.awayPlayer?.name ?? '—') : (g.homePlayer?.name ?? '—')
   const overdue = enrichedGames.find(g =>
     isUnplayed(g.status) &&
     (g.isCatchUp || (g.weekEnd != null && g.weekEnd < today)))
-  const thisWeekPlay = enrichedGames.find(g =>
-    isUnplayed(g.status) &&
-    g.weekStart && g.weekEnd && g.weekStart <= today && today <= g.weekEnd)
 
   let nextAction: { emoji: string; title: string; detail: string; gameId: number; tone: string } | null = null
   if (overdue) {
     nextAction = { emoji: '⏳', title: 'You have a game to catch up on', detail: `Play ${opponentName(overdue)} as soon as you can.`, gameId: overdue.id, tone: 'ring-orange-400 bg-orange-50 dark:ring-orange-500/80 dark:bg-orange-500/15' }
-  } else if (thisWeekPlay) {
-    const dl = deadlineLabel(thisWeekPlay.weekStart, thisWeekPlay.weekEnd)
-    nextAction = { emoji: '🏓', title: 'Play your game this week', detail: `You're up against ${opponentName(thisWeekPlay)}${dl ? ` — ${dl.text}` : ''}.`, gameId: thisWeekPlay.id, tone: 'ring-emerald-400 bg-emerald-50 dark:ring-emerald-500/80 dark:bg-emerald-500/15' }
   }
 
   // The game in the banner above isn't repeated in the list below it.
@@ -255,20 +285,13 @@ export default async function DashboardPage() {
         </Link>
       )}
 
-      {currentMatchday && weekGames.length > 0 && (
-        <Link href={`/matchdays/${currentMatchday.id}`} className="block">
-          <Card className="hover:shadow-md transition-shadow">
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between mb-2 gap-2">
-                <p className="font-medium text-sm">Matchday {currentMatchday.number} — this week</p>
-                <span className="text-sm text-muted-foreground tabular-nums shrink-0">{weekPlayed}/{weekGames.length} games played</span>
-              </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div className="h-full bg-primary transition-all" style={{ width: `${weekPct}%` }} />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+      {featuredRow && featured && (
+        <ThisWeekCard
+          row={featuredRow}
+          label={featured.weekStart && featured.weekStart <= today ? 'This week' : 'Next up'}
+          me={meEntry ? { name: meEntry.name, avatarColor: meEntry.avatarColor } : null}
+          gameId={myWeek?.game.id ?? null}
+        />
       )}
 
       {listedCatchUp.length > 0 && (
