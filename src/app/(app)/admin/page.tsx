@@ -28,7 +28,7 @@ import InviteLink from '@/components/admin/InviteLink'
 import DeleteUserButton from '@/components/admin/DeleteUserButton'
 import ArchiveUserButton from '@/components/admin/ArchiveUserButton'
 import { isAdmin } from '@/lib/auth/admins'
-import { Monitor, ExternalLink, Award, Swords } from 'lucide-react'
+import { Monitor, ExternalLink, Award, Swords, TrendingUp } from 'lucide-react'
 import { UNPLAYED_STATUSES } from '@/lib/domain/gameStatus'
 import SectionCard from '@/components/common/SectionCard'
 
@@ -130,19 +130,32 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         title="Office display" compact
         description={<>
           The public wall board — live standings, this week&apos;s games and the fun wall. Open it
-          full-screen on the office TV.
+          full-screen on the office TV. The ELO board shows the ELO ladder and everyone&apos;s rank by
+          day over the last month.
         </>}
       >
-        <a
-          href="/display"
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
-        >
-          <Monitor className="h-4 w-4" />
-          Open office display
-          <ExternalLink className="h-3.5 w-3.5 opacity-60" />
-        </a>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href="/display"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
+          >
+            <Monitor className="h-4 w-4" />
+            Open office display
+            <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+          </a>
+          <a
+            href="/display/elo/ranks"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(buttonVariants({ variant: 'outline' }), 'gap-2')}
+          >
+            <TrendingUp className="h-4 w-4" />
+            Open ELO board
+            <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+          </a>
+        </div>
       </SectionCard>
 
       {/* Daily tournament — self-serve quick league/knockout, separate from the official season. */}

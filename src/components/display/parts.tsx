@@ -4,7 +4,7 @@ import AutoRefresh from '@/components/display/AutoRefresh'
 import DisplayClock from '@/components/display/DisplayClock'
 import type { DisplayData, WeekGame, FunWallEntry, ByePlayer, RecordEntry, RecordKey } from '@/lib/data/display'
 import { shortRange } from '@/lib/dates'
-import { Flame, Bomb, Crown, Target, CalendarClock, Coffee, Shield, Zap, HeartPulse } from 'lucide-react'
+import { Flame, Bomb, Crown, Target, CalendarClock, Coffee, Shield, Zap, HeartPulse, Trophy, TrendingUp, Swords, Mountain } from 'lucide-react'
 import CatchUpTicker from '@/components/display/CatchUpTicker'
 import StandingsTable from '@/components/scoreboard/StandingsTable'
 import type { StandingRow } from '@/lib/domain/standings'
@@ -156,6 +156,10 @@ const RECORD_META: Record<RecordKey, { title: string; icon: ReactNode; accent: s
   theWall: { title: 'The Wall', icon: <Shield className="h-[2.6vh] w-[2.6vh] text-emerald-400" />, accent: 'from-emerald-500/20 to-teal-500/10 ring-emerald-500/20' },
   setMachine: { title: 'Set machine', icon: <Zap className="h-[2.6vh] w-[2.6vh] text-pink-400" />, accent: 'from-pink-500/20 to-rose-500/10 ring-pink-500/20' },
   nailBiter: { title: 'Nail-biter', icon: <HeartPulse className="h-[2.6vh] w-[2.6vh] text-red-400" />, accent: 'from-red-500/20 to-rose-500/10 ring-red-500/20' },
+  eloTop: { title: 'Top rated', icon: <Trophy className="h-[2.6vh] w-[2.6vh] text-yellow-300" />, accent: 'from-yellow-400/20 to-sky-500/10 ring-yellow-400/20' },
+  eloClimber: { title: 'Climber of the week', icon: <TrendingUp className="h-[2.6vh] w-[2.6vh] text-green-400" />, accent: 'from-green-500/20 to-sky-500/10 ring-green-500/20' },
+  eloUpset: { title: 'Biggest upset', icon: <Swords className="h-[2.6vh] w-[2.6vh] text-violet-400" />, accent: 'from-violet-500/20 to-sky-500/10 ring-violet-500/20' },
+  eloPeak: { title: 'All-time peak', icon: <Mountain className="h-[2.6vh] w-[2.6vh] text-cyan-300" />, accent: 'from-cyan-500/20 to-sky-500/10 ring-cyan-500/20' },
 }
 
 // Text shown on a record tile when nobody has earned it yet (e.g. first matchday).
@@ -163,7 +167,9 @@ const RECORD_PLACEHOLDER = 'Waiting for a hero'
 
 // Canonical order shown on the board. Every category always appears; ones with no holder yet
 // (e.g. first matchday, before anyone qualifies) render an "up for grabs" placeholder.
-const RECORD_KEYS: RecordKey[] = ['onFire', 'destroyer', 'clutch', 'bestWinRate', 'theWall', 'setMachine', 'nailBiter']
+export const RECORD_KEYS: RecordKey[] = ['onFire', 'destroyer', 'clutch', 'bestWinRate', 'theWall', 'setMachine', 'nailBiter']
+/** The ELO tiles, for boards that show ratings too. */
+export const ELO_RECORD_KEYS: RecordKey[] = ['eloTop', 'eloClimber', 'eloUpset', 'eloPeak']
 
 function RecordTileByKey({ recordKey, entry }: { recordKey: RecordKey; entry?: RecordEntry }) {
   const meta = RECORD_META[recordKey]
@@ -173,9 +179,9 @@ function RecordTileByKey({ recordKey, entry }: { recordKey: RecordKey; entry?: R
 /** All record categories in order; `limit` caps how many show (for the small grid layouts). */
 
 /** Continuous horizontal marquee of all record tiles for the bottom of the board. */
-export function RecordsTicker({ records, secondsPerItem = 10 }: { records: RecordEntry[]; secondsPerItem?: number }) {
+export function RecordsTicker({ records, keys = RECORD_KEYS, secondsPerItem = 10 }: { records: RecordEntry[]; keys?: RecordKey[]; secondsPerItem?: number }) {
   const byKey = new Map(records.map(r => [r.key, r]))
-  const tiles = RECORD_KEYS.map(k => ({ key: k, entry: byKey.get(k) }))
+  const tiles = keys.map(k => ({ key: k, entry: byKey.get(k) }))
   const loop = [...tiles, ...tiles] // two identical copies → seamless -50% loop
   const duration = Math.max(24, tiles.length * secondsPerItem)
   return (

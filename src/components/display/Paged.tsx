@@ -6,6 +6,8 @@ import type { StandingRow } from '@/lib/domain/standings'
 import { StandingsPanel, ThisWeekFooter, WeekGameRows } from '@/components/display/parts'
 import { isFinished } from '@/lib/domain/gameStatus'
 import { useFreshResults } from '@/components/display/ResultCelebration'
+import EloLadder from '@/components/display/EloLadder'
+import type { EloLadderRow } from '@/lib/data/displayElo'
 
 /**
  * Auto-paging for the standings and this-week panels, built as a real carousel: every page is
@@ -44,7 +46,7 @@ function usePingPong(pageCount: number, intervalMs: number) {
  * screen (so a page turn never comes as a surprise), the sliding pages, and an optional footer
  * that stays put while they slide.
  */
-function PanelFrame({ title, chip, page, pageCount, intervalMs, footer, children }: {
+export function PanelFrame({ title, chip, page, pageCount, intervalMs, footer, children }: {
   title: string
   chip?: React.ReactNode
   page: number
@@ -101,6 +103,21 @@ export function PagedStandings({ rows, maxPerPage = 18, intervalMs = 20000 }: { 
     <PanelFrame title="Standings" chip={pageCount > 1 ? `${from}–${to} of ${rows.length}` : undefined} page={page} pageCount={pageCount} intervalMs={intervalMs}>
       {Array.from({ length: pageCount }, (_, i) => (
         <StandingsPanel key={i} rows={rows.slice(i * pageSize, i * pageSize + pageSize)} />
+      ))}
+    </PanelFrame>
+  )
+}
+
+/** The ELO ladder, for the ELO board. */
+export function PagedEloLadder({ rows, title = 'ELO ranking', maxPerPage = 18, intervalMs = 20000 }: { rows: EloLadderRow[]; title?: string; maxPerPage?: number; intervalMs?: number }) {
+  const { pageCount, pageSize } = paginate(rows.length, maxPerPage)
+  const page = usePingPong(pageCount, intervalMs)
+  const from = page * pageSize + 1
+  const to = Math.min(rows.length, from + pageSize - 1)
+  return (
+    <PanelFrame title={title} chip={pageCount > 1 ? `${from}–${to} of ${rows.length}` : 'All-time'} page={page} pageCount={pageCount} intervalMs={intervalMs}>
+      {Array.from({ length: pageCount }, (_, i) => (
+        <EloLadder key={i} rows={rows.slice(i * pageSize, i * pageSize + pageSize)} />
       ))}
     </PanelFrame>
   )

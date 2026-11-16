@@ -12,7 +12,8 @@ import { perspective } from '@/lib/domain/gameResult'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import GameCard from '@/components/game/GameCard'
-import { FINISHED_STATUSES, UNPLAYED_STATUSES } from '@/lib/domain/gameStatus'
+import { FINISHED_STATUSES, UNPLAYED_STATUSES, isFinished } from '@/lib/domain/gameStatus'
+import Disclosure from '@/components/common/Disclosure'
 import BackLink from '@/components/common/BackLink'
 import ResultChip from '@/components/common/ResultChip'
 import PlayerStatsCard from '@/components/player/PlayerStatsCard'
@@ -109,6 +110,10 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     homePlayer: g.homePlayerId === playerId ? player : { id: g.homePlayerId, name: opponentName ?? '—', avatarColor: opponentColor },
     awayPlayer: g.awayPlayerId === playerId ? player : { id: g.awayPlayerId, name: opponentName ?? '—', avatarColor: opponentColor },
   }))
+
+  // Still-to-play first and always in view; recorded ones fold away — they're history by now.
+  const catchUpPending = catchUpGames.filter(g => !isFinished(g.status))
+  const catchUpRecorded = catchUpGames.filter(g => isFinished(g.status))
 
   const playerForm = computePlayerForm(playerGames, playerId)
 
@@ -219,11 +224,23 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                 <p className="text-sm text-muted-foreground">
                   Owed games outside the regular matchdays. Open one to see or change its result.
                 </p>
+                <p className="text-xs font-medium text-muted-foreground tabular-nums">
+                  {catchUpPending.length} to play · {catchUpRecorded.length} recorded
+                </p>
               </CardHeader>
               <CardContent className="space-y-3">
-                {catchUpGames.map(g => (
+                {catchUpPending.map(g => (
                   <GameCard key={g.id} game={g} currentUserId={session.userId} />
                 ))}
+                {catchUpRecorded.length > 0 && (
+                  <Disclosure label={`Show ${catchUpRecorded.length} recorded`} closeLabel="Hide recorded">
+                    <div className="space-y-3">
+                      {catchUpRecorded.map(g => (
+                        <GameCard key={g.id} game={g} currentUserId={session.userId} />
+                      ))}
+                    </div>
+                  </Disclosure>
+                )}
               </CardContent>
             </Card>
           )}

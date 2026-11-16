@@ -27,6 +27,8 @@ export interface FunWallEntry {
 }
 
 export type RecordKey = 'onFire' | 'destroyer' | 'clutch' | 'bestWinRate' | 'theWall' | 'setMachine' | 'nailBiter'
+  // ELO tiles, from computeDisplayElo.
+  | 'eloTop' | 'eloClimber' | 'eloUpset' | 'eloPeak'
 
 export interface RecordEntry {
   key: RecordKey
